@@ -35,7 +35,8 @@ spec:
     spec:
       containers:
         - name: lgtm
-          image: grafana/otel-lgtm:latest
+          image: otel-lgtm-with-tar:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 3000
             - containerPort: 4317
@@ -49,7 +50,100 @@ spec:
           args:
             - -c
             - |
+              # Step 1: Save all yaml files to temporary folder (if any exist)
+              YAML_FILES_FOUND=false
+              mkdir -p /tmp/grafana-backup
+              for file in /otel-lgtm/grafana/**/*.yaml /otel-lgtm/grafana/*.yaml; do
+                if [ -f "$file" ]; then
+                  if [ "$YAML_FILES_FOUND" = "false" ]; then
+                    echo "Backing up YAML configuration files..."
+                    YAML_FILES_FOUND=true
+                  fi
+                  cp "$file" /tmp/grafana-backup/
+                fi
+              done
+              [ "$YAML_FILES_FOUND" = "false" ] && echo "No YAML configuration files found to backup"
+              
+              # Step 2: Verify tar is available (pre-installed in custom image)
+              echo "Verifying tar availability..."
+              tar --version
+              
+              # Step 3: Download and verify Grafana 12.2.1
+              echo "Downloading Grafana version 12.2.1..."
+              cd /tmp
+              
+              # Download with error checking and debugging
+              DOWNLOAD_SUCCESS=false
+              echo "Attempting download..."
+              if command -v curl >/dev/null 2>&1; then
+                echo "Using curl to download..."
+                if curl --connect-timeout 60 --max-time 300 --retry 3 --retry-delay 5 -L https://dl.grafana.com/grafana/release/12.2.1/grafana_12.2.1_18655849634_linux_amd64.tar.gz -o grafana-12.2.1.linux-amd64.tar.gz; then
+                  DOWNLOAD_SUCCESS=true
+                  echo "curl download completed"
+                fi
+              else
+                echo "ERROR: curl not found, cannot download Grafana"
+              fi
+              
+              # Show what was actually downloaded
+              if [ -f "grafana-12.2.1.linux-amd64.tar.gz" ]; then
+                echo "File size: $(ls -lh grafana-12.2.1.linux-amd64.tar.gz | awk '{print $5}')"
+                echo "First few bytes:"
+                head -c 100 grafana-12.2.1.linux-amd64.tar.gz | od -t x1 -A x | head -5
+              fi
+              
+              # Verify the download is a valid gzip file
+              if [ "$DOWNLOAD_SUCCESS" = "true" ] && [ -f "grafana-12.2.1.linux-amd64.tar.gz" ]; then
+                if gzip -t grafana-12.2.1.linux-amd64.tar.gz 2>/dev/null; then
+                  echo "Download verified successfully"
+                  
+                  # Step 4: Remove existing grafana and install new version
+                  echo "Removing existing Grafana installation..."
+                  rm -rf /otel-lgtm/grafana
+                  
+                  echo "Extracting Grafana 12.2.1..."
+                  mkdir -p /otel-lgtm/grafana
+                  tar -xzf grafana-12.2.1.linux-amd64.tar.gz
+                  
+                  # Find the extracted directory (it might be named differently)
+                  echo "Contents after extraction:"
+                  ls -la
+                  GRAFANA_DIR=""
+                  for dir in grafana*; do
+                    if [ -d "$dir" ]; then
+                      GRAFANA_DIR="$dir"
+                      break
+                    fi
+                  done
+                  
+                  if [ -n "$GRAFANA_DIR" ] && [ -d "$GRAFANA_DIR" ]; then
+                    echo "Found extracted directory: $GRAFANA_DIR"
+                    cp -r "$GRAFANA_DIR"/* /otel-lgtm/grafana/
+                    rm -rf grafana-12.2.1.linux-amd64.tar.gz "$GRAFANA_DIR"
+                  else
+                    echo "ERROR: Could not find extracted Grafana directory"
+                  fi
+                  echo "Grafana 12.2.1 upgrade completed"
+                else
+                  echo "ERROR: Downloaded file is not a valid gzip archive"
+                  echo "Keeping existing Grafana installation"
+                  rm -f grafana-12.2.1.linux-amd64.tar.gz
+                fi
+              else
+                echo "ERROR: Failed to download Grafana 12.2.1"
+                echo "Keeping existing Grafana installation"
+              fi
+              
+              # Step 5: Copy back the yaml files from tmp folder (if any were backed up)
+              if [ "$YAML_FILES_FOUND" = "true" ]; then
+                echo "Restoring YAML configuration files..."
+                cp /tmp/grafana-backup/* /otel-lgtm/grafana/conf/
+              fi
+              
+              # Step 6: Apply custom configuration and start services
               cp /k3d-volume/custom.ini /otel-lgtm/grafana/conf
+              
+              # Execute run-all.sh
               exec /otel-lgtm/run-all.sh
           # NOTE: By default OpenShift does not allow writing the root directory.
           # Thats why the data dirs for grafana, prometheus and loki can not be
@@ -75,8 +169,6 @@ spec:
           env:
             - name: ENABLE_LOGS_GRAFANA
               value: "true"
-            - name: GRAFANA_VERSION
-              value: "latest"
       volumes:
         - name: tempo-data
           emptyDir: {}

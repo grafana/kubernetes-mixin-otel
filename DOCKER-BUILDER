@@ -1,0 +1,25 @@
+# Dockerfile to add tar to grafana/otel-lgtm:latest
+# This uses a multi-stage build to copy tar from a full UBI image
+
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS tar-provider
+# Install tar and gzip in the minimal UBI image
+RUN microdnf install -y tar gzip && microdnf clean all
+
+# Main stage - based on your grafana/otel-lgtm image
+FROM grafana/otel-lgtm:latest
+
+# Copy tar and related utilities
+COPY --from=tar-provider /usr/bin/tar /usr/bin/tar
+COPY --from=tar-provider /usr/bin/gzip /usr/bin/gzip
+COPY --from=tar-provider /usr/bin/gunzip /usr/bin/gunzip
+
+# Copy the required shared libraries for tar
+# These are the typical dependencies - you may need to adjust based on your specific needs
+COPY --from=tar-provider /lib64/libacl.so.1* /lib64/
+COPY --from=tar-provider /lib64/libattr.so.1* /lib64/
+COPY --from=tar-provider /lib64/libselinux.so.1* /lib64/
+COPY --from=tar-provider /lib64/libpcre2-8.so.0* /lib64/
+COPY --from=tar-provider /lib64/libz.so.1* /lib64/
+
+# Ensure tar is executable
+RUN chmod +x /usr/bin/tar /usr/bin/gzip /usr/bin/gunzip
