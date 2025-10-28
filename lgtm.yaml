@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: lgtm
 spec:
+  type: LoadBalancer
   selector:
     app: lgtm
   ports:
@@ -69,6 +70,9 @@ spec:
             - name: pyroscope-storage
               mountPath: /data/pyroscope
 
+            - name: k8s-datasources
+              mountPath: /otel-lgtm/grafana/conf/provisioning/datasources
+
             - name: k3d-volume
               mountPath: /k3d-volume
           
@@ -88,6 +92,10 @@ spec:
           emptyDir: {}
         - name: pyroscope-storage
           emptyDir: {}
+          
+        - name: k8s-datasources
+          hostPath: 
+            path: /datasource
 
         - name: k3d-volume
           hostPath:
