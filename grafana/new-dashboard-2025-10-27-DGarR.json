@@ -115,8 +115,8 @@
               "uid": "ff2fyztsirqbkf"
             },
             "editorMode": "code",
-            "expr": "group by (cluster, namespace) (\n    target_info{\n        k8s_cluster_name=\"otel-receivers-only\",\n        k8s_namespace_name=\"default\"\n    }\n)",
-            "legendFormat": "__auto",
+            "expr": "group by (k8s_cluster_name, k8s_namespace_name) (\n    target_info{\n        k8s_cluster_name=~\"${cluster}\",\n        k8s_namespace_name=~\"${namespace}\"\n    }\n)",
+            "legendFormat": "{{k8s_cluster_name}} - {{k8s_namespace_name}}",
             "range": true,
             "refId": "A"
           }
@@ -134,10 +134,10 @@
           "allowCustomValue": false,
           "current": {
             "text": [
-              "duplicate-otlp"
+              "otel-receivers-only"
             ],
             "value": [
-              "duplicate-otlp"
+              "otel-receivers-only"
             ]
           },
           "definition": "label_values(target_info,k8s_cluster_name)",
@@ -158,10 +158,10 @@
           "allowCustomValue": false,
           "current": {
             "text": [
-              "kube-system"
+              "All"
             ],
             "value": [
-              "kube-system"
+              "$__all"
             ]
           },
           "definition": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
