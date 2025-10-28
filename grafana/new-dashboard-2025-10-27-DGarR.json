@@ -129,7 +129,56 @@
     "schemaVersion": 42,
     "tags": [],
     "templating": {
-      "list": []
+      "list": [
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": [
+              "duplicate-otlp"
+            ],
+            "value": [
+              "duplicate-otlp"
+            ]
+          },
+          "definition": "label_values(target_info,k8s_cluster_name)",
+          "includeAll": true,
+          "multi": true,
+          "name": "cluster",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(target_info,k8s_cluster_name)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        },
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": [
+              "kube-system"
+            ],
+            "value": [
+              "kube-system"
+            ]
+          },
+          "definition": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+          "includeAll": true,
+          "multi": true,
+          "name": "namespace",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
     },
     "time": {
       "from": "now-6h",
