@@ -29,7 +29,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "prometheus"
+          "uid": "ff2fyztsirqbkf"
         },
         "fieldConfig": {
           "defaults": {
@@ -112,16 +112,16 @@
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "prometheus"
+              "uid": "ff2fyztsirqbkf"
             },
             "editorMode": "code",
-            "expr": "otelcol_exporter_queue_batch_send_size_sum{service_instance_id=\"8f5ac535-9423-4658-bde9-f53c2e22419d\"}",
+            "expr": "group by (cluster, namespace) (\n    target_info{\n        k8s_cluster_name=\"otel-receivers-only\",\n        k8s_namespace_name=\"default\"\n    }\n)",
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
           }
         ],
-        "title": "New panel",
+        "title": "Cluster Count",
         "type": "timeseries"
       }
     ],
