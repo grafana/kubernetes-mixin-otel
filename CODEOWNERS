@@ -7,4 +7,4 @@
 * @sleepyfoodie @skl
 
 # de-own certain files to allow for dependabot auto-merge
-.config/Dockerfile
+.config/Dockerfile *
