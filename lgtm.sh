@@ -1,9 +1,9 @@
 #!/bin/bash
 
-k3d cluster delete otel-mixin
+k3d cluster delete kubernetes-mixin-otel
 
 # Create k3d cluster
-k3d cluster create otel-mixin \
+k3d cluster create kubernetes-mixin-otel \
     -v "$PWD"/k3d-volume:/k3d-volume \
     -v "$PWD"/datasource:/datasource \
     -p "3000:3000@loadbalancer" \
