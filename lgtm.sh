@@ -15,14 +15,12 @@ kubectl wait --for=condition=Ready pods -l app=lgtm --timeout=300s
 
 # Start port-forwarding in the background
 echo "Setting up port forwarding..."
-kubectl port-forward service/lgtm 3000:3000 4317:4317 4318:4318 > /dev/null 2>&1 &
+kubectl port-forward service/lgtm 3000:3000 > /dev/null 2>&1 &
 PORT_FORWARD_PID=$!
 
 echo ""
 echo "✅ LGTM stack deployed and port-forwarded!"
 echo "🌐 Grafana UI: http://localhost:3000"
-echo "📊 OTEL gRPC: localhost:4317"  
-echo "📊 OTEL HTTP: localhost:4318"
 echo ""
 echo "💡 Port-forward running in background (PID: $PORT_FORWARD_PID)"
 echo "💡 To stop: kill $PORT_FORWARD_PID"
