@@ -9,9 +9,9 @@ k3d cluster create kubernetes-mixin-otel \
 # Deploy the LGTM stack
 kubectl apply -f lgtm.yaml
 
-# Wait for pods to be ready
-echo "Waiting for LGTM pod to be ready..."
-kubectl wait --for=condition=Ready pods -l app=lgtm --timeout=300s
+# Wait for deployment to be available
+echo "Waiting for LGTM deployment to be ready..."
+kubectl rollout status deployment/lgtm --timeout=300s
 
 # Start port-forwarding in the background
 echo "Setting up port forwarding..."
