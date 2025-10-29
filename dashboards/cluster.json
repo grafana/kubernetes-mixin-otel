@@ -29,7 +29,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "ff2fyztsirqbkf"
+          "uid": "prometheus"
         },
         "fieldConfig": {
           "defaults": {
@@ -127,7 +127,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "ff2fyztsirqbkf"
+          "uid": "prometheus"
         },
         "fieldConfig": {
           "defaults": {
@@ -227,12 +227,8 @@
         {
           "allowCustomValue": false,
           "current": {
-            "text": [
-              "otel-receivers-only"
-            ],
-            "value": [
-              "otel-receivers-only"
-            ]
+            "text": "All",
+            "value": "$__all"
           },
           "definition": "label_values(target_info,k8s_cluster_name)",
           "includeAll": true,
@@ -252,9 +248,7 @@
           "allowCustomValue": false,
           "current": {
             "text": "All",
-            "value": [
-              "$__all"
-            ]
+            "value": "$__all"
           },
           "definition": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
           "includeAll": true,
