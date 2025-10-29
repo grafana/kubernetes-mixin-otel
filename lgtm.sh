@@ -6,10 +6,6 @@ k3d cluster delete kubernetes-mixin-otel
 k3d cluster create kubernetes-mixin-otel \
     -v "$PWD"/k3d-volume:/k3d-volume
 
-# Import the custom image into k3d
-echo "Importing custom image into k3d cluster..."
-k3d image import grafana/otel-lgtm:latest -c kubernetes-mixin-otel
-
 # Deploy the LGTM stack
 kubectl apply -f lgtm.yaml
 
