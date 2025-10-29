@@ -5,9 +5,3 @@
 # @grafana/k8s-monitoring-dev will be requested for
 # review when someone opens a pull request.
 * @sleepyfoodie @skl
-<<<<<<< HEAD
-
-# de-own certain files to allow for dependabot auto-merge
-.config/Dockerfile *
-=======
->>>>>>> 1d9c5c8 (remove dockerfile line)
