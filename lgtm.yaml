@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: lgtm
 spec:
-  type: LoadBalancer
   selector:
     app: lgtm
   ports:
@@ -88,10 +87,6 @@ spec:
           emptyDir: {}
         - name: pyroscope-storage
           emptyDir: {}
-          
-        - name: k8s-datasources
-          hostPath: 
-            path: /datasource
 
         - name: k3d-volume
           hostPath:
