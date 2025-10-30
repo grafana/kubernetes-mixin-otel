@@ -115,7 +115,7 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "system_cpu_logical_count{k8s_cluster_name=\"kubernetes-mixin-otel\"}",
+            "expr": "system_cpu_logical_count{k8s_cluster_name=\"${cluster}\"}",
             "legendFormat": "__auto",
             "range": true,
             "refId": "A"
@@ -129,7 +129,32 @@
     "schemaVersion": 42,
     "tags": [],
     "templating": {
-      "list": []
+      "list": [
+        {
+          "allowCustomValue": false,
+          "current": {
+            "text": [
+              "kubernetes-mixin-otel"
+            ],
+            "value": [
+              "kubernetes-mixin-otel"
+            ]
+          },
+          "definition": "label_values(target_info,k8s_cluster_name)",
+          "includeAll": true,
+          "multi": true,
+          "name": "cluster",
+          "options": [],
+          "query": {
+            "qryType": 1,
+            "query": "label_values(target_info,k8s_cluster_name)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
     },
     "time": {
       "from": "now-6h",
