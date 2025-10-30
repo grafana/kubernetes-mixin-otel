@@ -1,13 +1,29 @@
 # kubernetes-mixin-otel
 
-1. Run `lgtm.sh` to start the cluster
-1. Go to `localhost:3000/admin/provisioning` to connect the instance to the github repository
+## Local development
 
-## Useful commands
+Run the following command to setup a local [k3d](https://k3d.io/stable/) cluster:
 
-- Delete cluster
-  - `k3d cluster delete kubernetes-mixin-otel`
-- ssh into your pod
-  - `kubectl exec -it ${pod-name} -- /bin/bash`
-- Port forwarding
-  - `kubectl port-forward service/lgtm 3001:3000 4317:4317 4318:4318`
+```shell
+make dev
+```
+
+You should see the following output if successful:
+
+```shell
+╔═══════════════════════════════════════════════════════════════╗
+║             🚀 Development Environment Ready! 🚀              ║
+║                                                               ║
+║   Run `make dev-port-forward`                                 ║
+║   Grafana will be available at http://localhost:3000          ║
+║                                                               ║
+║   Data will be available in a few minutes.                    ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+```
+
+To delete the cluster, run the following:
+
+```shell
+make dev-down
+```

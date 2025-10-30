@@ -1,0 +1,70 @@
+mode: deployment
+replicaCount: 1
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+presets:
+  clusterMetrics:
+    enabled: true
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    hostmetrics:
+      scrapers:
+        load:
+        memory:
+  
+  processors:
+    batch: {}
+
+    transform:
+      metric_statements:
+        - context: resource
+          statements:
+            - set(attributes["service.instance.id"], attributes["k8s.pod.name"]) where attributes["k8s.pod.name"] != nil
+            - set(attributes["service.instance.id"], attributes["k8s.node.name"]) where attributes["k8s.node.name"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.name"], attributes["k8s.cluster.name"])
+  
+  exporters:
+    prometheusremotewrite:
+      external_labels:
+        k8s_cluster_name: 'kubernetes-mixin-otel'
+      endpoint: 'http://lgtm:9090/api/v1/write'
+      resource_to_telemetry_conversion:
+        enabled: true
+
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+      resource_to_telemetry_conversion:
+        enabled: true
+
+  service:
+    telemetry:
+      resource:
+        k8s.cluster.name: "kubernetes-mixin-otel"
+    
+    extensions: [health_check]
+    
+    pipelines:
+      metrics:
+        receivers: [otlp, hostmetrics]
+        processors:
+          [
+            transform,
+            batch,
+          ]
+        exporters: [prometheus, prometheusremotewrite]
+
+ports:
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP

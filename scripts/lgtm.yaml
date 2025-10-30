@@ -18,6 +18,10 @@ spec:
       protocol: TCP
       port: 4318
       targetPort: 4318
+    - name: prometheus
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,6 +44,7 @@ spec:
             - containerPort: 3000
             - containerPort: 4317
             - containerPort: 4318
+            - containerPort: 9090
           readinessProbe:
             exec:
               command:
@@ -72,7 +77,7 @@ spec:
               mountPath: /k3d-volume
           
           env:
-            - name: ENABLE_LOGS_GRAFANA
+            - name: ENABLE_LOGS_ALL
               value: "true"
       volumes:
         - name: tempo-data
