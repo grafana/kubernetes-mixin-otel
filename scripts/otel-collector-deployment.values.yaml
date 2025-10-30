@@ -18,8 +18,8 @@ config:
           endpoint: 0.0.0.0:4318
     hostmetrics:
       scrapers:
-        load:
-        memory:
+        load: {}
+        memory: {}
   
   processors:
     batch: {}
