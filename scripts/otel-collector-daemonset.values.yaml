@@ -82,7 +82,7 @@ config:
             transform,
             batch,
           ]
-        exporters: [prometheus]
+        exporters: [prometheus, prometheusremotewrite]
 
 ports:
   prometheus:
