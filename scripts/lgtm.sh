@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-k3d cluster delete kubernetes-mixin-otel
-
 # Create k3d cluster
 k3d cluster create kubernetes-mixin-otel \
     -v "$PWD"/../k3d-volume:/k3d-volume
