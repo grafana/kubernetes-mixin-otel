@@ -45,6 +45,13 @@ spec:
             - containerPort: 4317
             - containerPort: 4318
             - containerPort: 9090
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1"
+            limits:
+              memory: "1Gi"
+              cpu: "4"
           readinessProbe:
             exec:
               command:
