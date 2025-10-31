@@ -10,6 +10,7 @@ kubectl --context k3d-kubernetes-mixin-otel wait --for=condition=Ready nodes --a
 
 # Deploy the LGTM stack
 kubectl --context k3d-kubernetes-mixin-otel apply -f lgtm.yaml
+kubectl --context k3d-kubernetes-mixin-otel apply -f grafana-image-renderer.yaml
 
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm repo update
