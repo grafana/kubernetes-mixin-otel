@@ -244,14 +244,14 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(target_info,k8s_cluster_name)",
+          "definition": "label_values(system_cpu_logical_count,k8s_cluster_name)",
           "includeAll": true,
           "multi": true,
           "name": "cluster",
           "options": [],
           "query": {
             "qryType": 1,
-            "query": "label_values(target_info,k8s_cluster_name)",
+            "query": "label_values(system_cpu_logical_count,k8s_cluster_name)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "refresh": 1,
@@ -264,14 +264,14 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+          "definition": "label_values(k8s_namespace_phase{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
           "includeAll": true,
           "multi": true,
           "name": "namespace",
           "options": [],
           "query": {
             "qryType": 1,
-            "query": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+            "query": "label_values(k8s_namespace_phase{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "refresh": 1,
