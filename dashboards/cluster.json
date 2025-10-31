@@ -324,7 +324,7 @@
             "refId": "A"
           }
         ],
-        "title": "Cluster Count",
+        "title": "CPU Usage",
         "type": "timeseries"
       },
       {
@@ -432,7 +432,7 @@
             "refId": "limit"
           }
         ],
-        "title": "Memory usage by cluster",
+        "title": "Memory Usage by Cluster",
         "type": "timeseries"
       }
     ],
