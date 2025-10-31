@@ -318,10 +318,10 @@
               "uid": "ff2fyztsirqbkf"
             },
             "editorMode": "code",
-            "expr": "group by (k8s_cluster_name, k8s_namespace_name) (\n    target_info{\n        k8s_cluster_name=~\"${cluster}\",\n        k8s_namespace_name=~\"${namespace}\"\n    }\n)",
-            "legendFormat": "{{k8s_cluster_name}} - {{k8s_namespace_name}}",
+            "expr": "sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "legendFormat": "requests: {{k8s_cluster_name}} - {{k8s_namespace_name}}",
             "range": true,
-            "refId": "A"
+            "refId": "requests"
           }
         ],
         "title": "CPU Usage",
@@ -414,7 +414,7 @@
           {
             "editorMode": "code",
             "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
-            "legendFormat": "requests: {{k8s_cluster_name}}",
+            "legendFormat": "__auto",
             "range": true,
             "refId": "requests"
           },
@@ -427,7 +427,7 @@
             "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
             "hide": false,
             "instant": false,
-            "legendFormat": "limit: {{k8s_cluster_name}}",
+            "legendFormat": "__auto",
             "range": true,
             "refId": "limit"
           }
