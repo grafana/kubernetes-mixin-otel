@@ -229,7 +229,7 @@
             "refId": "limit"
           }
         ],
-        "title": "Memory Usage by Cluster",
+        "title": "Memory Usage",
         "type": "timeseries"
       }
     ],
