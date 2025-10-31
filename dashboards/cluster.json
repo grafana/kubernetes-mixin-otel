@@ -121,7 +121,7 @@
             "refId": "A"
           }
         ],
-        "title": "Cluster Count",
+        "title": "Cluster count",
         "type": "timeseries"
       },
       {
