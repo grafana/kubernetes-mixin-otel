@@ -83,7 +83,8 @@
                   "value": 80
                 }
               ]
-            }
+            },
+            "unit": "cores"
           },
           "overrides": []
         },
