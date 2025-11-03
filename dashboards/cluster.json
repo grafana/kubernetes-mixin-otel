@@ -116,7 +116,7 @@
               "uid": "ff2fyztsirqbkf"
             },
             "editorMode": "code",
-            "expr": "sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "expr": "sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
             "legendFormat": "requests: {{k8s_cluster_name}} - {{k8s_namespace_name}}",
             "range": true,
             "refId": "requests"
