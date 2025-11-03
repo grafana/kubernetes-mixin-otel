@@ -222,7 +222,7 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
             "hide": false,
             "instant": false,
             "legendFormat": "limit: {{k8s_cluster_name}}",
