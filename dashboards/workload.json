@@ -83,7 +83,8 @@
                   "value": 80
                 }
               ]
-            }
+            },
+            "unit": "bytes"
           },
           "overrides": []
         },
@@ -121,7 +122,7 @@
             "refId": "A"
           }
         ],
-        "title": "New panel",
+        "title": "Memory usage",
         "type": "timeseries"
       }
     ],
