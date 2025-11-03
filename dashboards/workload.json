@@ -114,6 +114,10 @@
               "type": "prometheus",
               "uid": "prometheus"
             },
+            "editorMode": "code",
+            "expr": "sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, k8s_node_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "legendFormat": "__auto",
+            "range": true,
             "refId": "A"
           }
         ],
@@ -129,11 +133,9 @@
         {
           "allowCustomValue": false,
           "current": {
-            "text": [
-              "kubernetes-mixin-otel"
-            ],
+            "text": "All",
             "value": [
-              "kubernetes-mixin-otel"
+              "$__all"
             ]
           },
           "definition": "label_values(system_cpu_logical_count,k8s_cluster_name)",
@@ -153,11 +155,9 @@
         {
           "allowCustomValue": false,
           "current": {
-            "text": [
-              "default"
-            ],
+            "text": "All",
             "value": [
-              "default"
+              "$__all"
             ]
           },
           "definition": "label_values(k8s_namespace_phase{k8s_cluster_name=~\"$cluster\"},k8s_namespace_name)",
