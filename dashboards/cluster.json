@@ -265,7 +265,7 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(k8s_namespace_phase{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+          "definition": "label_values(k8s_namespace_phase{k8s_cluster_name=~\"${cluster:pipe}\"},k8s_namespace_name)",
           "includeAll": true,
           "multi": true,
           "name": "namespace",
