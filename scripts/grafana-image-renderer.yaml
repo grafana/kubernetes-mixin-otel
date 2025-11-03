@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-renderer
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: image-renderer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: image-renderer
+    spec:
+      containers:
+        - name: image-renderer
+          image: grafana/grafana-image-renderer:latest
+          ports:
+            - containerPort: 8081
+              name: http
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1"
+            limits:
+              memory: "1Gi"
+              cpu: "4"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-renderer
+spec:
+  selector:
+    app.kubernetes.io/name: image-renderer
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8081
+      targetPort: http

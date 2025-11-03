@@ -45,17 +45,18 @@ spec:
             - containerPort: 4317
             - containerPort: 4318
             - containerPort: 9090
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1"
+            limits:
+              memory: "1Gi"
+              cpu: "4"
           readinessProbe:
             exec:
               command:
                 - cat
                 - /tmp/ready
-          command: ['/bin/sh']
-          args:
-            - -c
-            - |
-              cp /k3d-volume/custom.ini /otel-lgtm/grafana/conf
-              exec ./run-all.sh
           # NOTE: By default OpenShift does not allow writing the root directory.
           # Thats why the data dirs for grafana, prometheus and loki can not be
           # created and the pod never becomes ready.
@@ -73,12 +74,22 @@ spec:
               mountPath: /data/prometheus
             - name: pyroscope-storage
               mountPath: /data/pyroscope
-            - name: k3d-volume
-              mountPath: /k3d-volume
-          
+
           env:
             - name: ENABLE_LOGS_ALL
               value: "true"
+            # Grafana feature toggles
+            # Disabled for now: sharingDashboardImage,renderAuthJWT
+            - name: GF_FEATURE_TOGGLES_ENABLE
+              value: "provisioning,kubernetesDashboards,kubernetesClientDashboardsFolders,unifiedStorageSearch"
+            # Grafana rendering configuration
+            # - name: GF_RENDERING_RENDERER_TOKEN
+            #   value: "-"
+            # - name: GF_RENDERING_SERVER_URL
+            #   value: "http://image-renderer.default.svc.cluster.local.:8081/render"
+            # - name: GF_RENDERING_CALLBACK_URL
+            #   value: "http://lgtm.default.svc.cluster.local.:3000/"
+
       volumes:
         - name: tempo-data
           emptyDir: {}
@@ -92,7 +103,3 @@ spec:
           emptyDir: {}
         - name: pyroscope-storage
           emptyDir: {}
-
-        - name: k3d-volume
-          hostPath:
-            path: /k3d-volume

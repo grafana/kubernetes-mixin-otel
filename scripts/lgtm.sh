@@ -2,14 +2,16 @@
 set -euo pipefail
 
 # Create k3d cluster
-k3d cluster create kubernetes-mixin-otel \
-    -v "$PWD"/../k3d-volume:/k3d-volume
+k3d cluster create kubernetes-mixin-otel
 
 # Wait for cluster to be ready
 kubectl --context k3d-kubernetes-mixin-otel wait --for=condition=Ready nodes --all --timeout=300s
 
 # Deploy the LGTM stack
 kubectl --context k3d-kubernetes-mixin-otel apply -f lgtm.yaml
+
+# Disabled until Git Sync supports local rendering without requiring a public instance.
+# kubectl --context k3d-kubernetes-mixin-otel apply -f grafana-image-renderer.yaml
 
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm repo update
