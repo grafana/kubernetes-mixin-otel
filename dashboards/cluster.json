@@ -211,7 +211,7 @@
         "targets": [
           {
             "editorMode": "code",
-            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
             "legendFormat": "requests: {{k8s_cluster_name}}",
             "range": true,
             "refId": "requests"
