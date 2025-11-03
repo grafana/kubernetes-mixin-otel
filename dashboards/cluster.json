@@ -83,7 +83,8 @@
                   "value": 80
                 }
               ]
-            }
+            },
+            "unit": "cores"
           },
           "overrides": []
         },
@@ -115,13 +116,13 @@
               "uid": "ff2fyztsirqbkf"
             },
             "editorMode": "code",
-            "expr": "group by (k8s_cluster_name, k8s_namespace_name) (\n    target_info{\n        k8s_cluster_name=~\"${cluster}\",\n        k8s_namespace_name=~\"${namespace}\"\n    }\n)",
-            "legendFormat": "{{k8s_cluster_name}} - {{k8s_namespace_name}}",
+            "expr": "sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
+            "legendFormat": "requests: {{k8s_cluster_name}} - {{k8s_namespace_name}}",
             "range": true,
-            "refId": "A"
+            "refId": "requests"
           }
         ],
-        "title": "Cluster Count",
+        "title": "CPU Usage",
         "type": "timeseries"
       },
       {
@@ -181,7 +182,8 @@
                   "value": 80
                 }
               ]
-            }
+            },
+            "unit": "bytes"
           },
           "overrides": []
         },
@@ -209,13 +211,26 @@
         "targets": [
           {
             "editorMode": "code",
-            "expr": "sum by (k8s_cluster_name, instance) (\n    k8s_node_cpu_usage{k8s_cluster_name=~\"${cluster}\"}\n)",
-            "legendFormat": "__auto",
+            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
+            "legendFormat": "requests: {{k8s_cluster_name}}",
             "range": true,
-            "refId": "A"
+            "refId": "requests"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "limit: {{k8s_cluster_name}}",
+            "range": true,
+            "refId": "limit"
           }
         ],
-        "title": "Memory usage by cluster",
+        "title": "Memory Usage",
         "type": "timeseries"
       }
     ],
@@ -230,14 +245,14 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(target_info,k8s_cluster_name)",
+          "definition": "label_values(system_cpu_logical_count,k8s_cluster_name)",
           "includeAll": true,
           "multi": true,
           "name": "cluster",
           "options": [],
           "query": {
             "qryType": 1,
-            "query": "label_values(target_info,k8s_cluster_name)",
+            "query": "label_values(system_cpu_logical_count,k8s_cluster_name)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "refresh": 1,
@@ -250,14 +265,14 @@
             "text": "All",
             "value": "$__all"
           },
-          "definition": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+          "definition": "label_values(k8s_namespace_phase{k8s_cluster_name=~\"${cluster:pipe}\"},k8s_namespace_name)",
           "includeAll": true,
           "multi": true,
           "name": "namespace",
           "options": [],
           "query": {
             "qryType": 1,
-            "query": "label_values(target_info{k8s_cluster_name=\"$cluster\"},k8s_namespace_name)",
+            "query": "label_values(k8s_namespace_phase{k8s_cluster_name=~\"${cluster:pipe}\"},k8s_namespace_name)",
             "refId": "PrometheusVariableQueryEditor-VariableQuery"
           },
           "refresh": 1,
@@ -267,7 +282,7 @@
       ]
     },
     "time": {
-      "from": "now-6h",
+      "from": "now-12h",
       "to": "now"
     },
     "timepicker": {},
