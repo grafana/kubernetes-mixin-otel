@@ -33,12 +33,10 @@ config:
             - set(attributes["service.name"], attributes["k8s.cluster.name"])
   
   exporters:
-    prometheusremotewrite:
-      external_labels:
-        k8s_cluster_name: 'kubernetes-mixin-otel'
-      endpoint: 'http://lgtm:9090/api/v1/write'
-      resource_to_telemetry_conversion:
-        enabled: true
+    otlphttp/metrics:
+      endpoint: http://lgtm:9090/api/v1/otlp
+      tls:
+        insecure: true
 
     prometheus:
       endpoint: "0.0.0.0:8889"
@@ -55,12 +53,8 @@ config:
     pipelines:
       metrics:
         receivers: [otlp, hostmetrics]
-        processors:
-          [
-            transform,
-            batch,
-          ]
-        exporters: [prometheus, prometheusremotewrite]
+        processors: [transform, batch]
+        exporters: [otlphttp/metrics, prometheus]
 
 ports:
   prometheus:
