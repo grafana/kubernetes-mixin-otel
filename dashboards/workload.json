@@ -117,7 +117,7 @@
             },
             "editorMode": "code",
             "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
-            "legendFormat": "Usage {{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
+            "legendFormat": "usage",
             "range": true,
             "refId": "A"
           }
@@ -211,13 +211,13 @@
         "targets": [
           {
             "editorMode": "code",
-            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n)(\n    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
-            "legendFormat": "{{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
+            "legendFormat": "usage",
             "range": true,
             "refId": "usage"
           }
         ],
-        "title": "Memory Usage by Workload",
+        "title": "Memory Usage",
         "type": "timeseries"
       },
       {
@@ -317,6 +317,101 @@
           }
         ],
         "title": "CPU Usage by Workload",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "showValues": false,
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "id": 5,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.2.1",
+        "targets": [
+          {
+            "editorMode": "code",
+            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n)(\n    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "legendFormat": "{{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
+            "range": true,
+            "refId": "usage"
+          }
+        ],
+        "title": "Memory Usage",
         "type": "timeseries"
       }
     ],
