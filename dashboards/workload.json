@@ -119,7 +119,7 @@
             "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
             "legendFormat": "usage",
             "range": true,
-            "refId": "A"
+            "refId": "usage"
           }
         ],
         "title": "CPU Usage",
@@ -215,6 +215,32 @@
             "legendFormat": "usage",
             "range": true,
             "refId": "usage"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_available_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "capacity",
+            "range": true,
+            "refId": "capacity"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "expr": "# join with pod to get deployment replicaset etc info?\nk8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "limit"
           }
         ],
         "title": "Memory Usage",
