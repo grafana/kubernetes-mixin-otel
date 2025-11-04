@@ -117,7 +117,7 @@
             },
             "editorMode": "code",
             "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
-            "legendFormat": "Usage",
+            "legendFormat": "Usage {{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
             "range": true,
             "refId": "A"
           }
@@ -217,7 +217,7 @@
             "refId": "usage"
           }
         ],
-        "title": "Memory Usage",
+        "title": "Memory Usage by Workload",
         "type": "timeseries"
       },
       {
