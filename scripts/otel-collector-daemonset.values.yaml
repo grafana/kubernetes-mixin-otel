@@ -61,6 +61,12 @@ config:
         - context: resource
           statements:
             - set(attributes["service.instance.id"], attributes["k8s.pod.name"]) where attributes["k8s.pod.name"] != nil
+            - set(attributes["service.instance.id"], attributes["k8s.daemonset.uid"]) where attributes["k8s.daemonset.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.deployment.uid"]) where attributes["k8s.deployment.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.statefulset.uid"]) where attributes["k8s.statefulset.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.job.uid"]) where attributes["k8s.job.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.cronjob.uid"]) where attributes["k8s.cronjob.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.replicaset.uid"]) where attributes["k8s.replicaset.uid"] != nil and attributes["service.instance.id"] == nil
             - set(attributes["service.instance.id"], attributes["k8s.node.name"]) where attributes["k8s.node.name"] != nil and attributes["service.instance.id"] == nil
             - set(attributes["service.instance.id"], attributes["host.name"]) where attributes["host.name"] != nil and attributes["service.instance.id"] == nil
 
