@@ -120,6 +120,19 @@
             "legendFormat": "usage",
             "range": true,
             "refId": "usage"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "expr": "",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "__auto",
+            "range": true,
+            "refId": "A"
           }
         ],
         "title": "CPU Usage",
@@ -437,7 +450,7 @@
             "refId": "usage"
           }
         ],
-        "title": "Memory Usage",
+        "title": "Memory Usage by Workload",
         "type": "timeseries"
       }
     ],
