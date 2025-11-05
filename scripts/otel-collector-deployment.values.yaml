@@ -5,6 +5,9 @@ image:
   repository: otel/opentelemetry-collector-contrib
 
 presets:
+  kubernetesAttributes:
+    enabled: true
+
   clusterMetrics:
     enabled: true
 
@@ -16,12 +19,20 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-    hostmetrics:
-      scrapers:
-        load: {}
-        memory: {}
   
   processors:
+    attributes/k8sclustername:
+      actions:
+        - key: k8s.cluster.name
+          action: insert
+          value: kubernetes-mixin-otel
+    
+    attributes/servicename:
+      actions:
+        - key: service.name
+          action: insert
+          from_attribute: k8s.cluster.name
+
     batch: {}
 
     transform:
@@ -29,9 +40,15 @@ config:
         - context: resource
           statements:
             - set(attributes["service.instance.id"], attributes["k8s.pod.name"]) where attributes["k8s.pod.name"] != nil
+            - set(attributes["service.instance.id"], attributes["k8s.daemonset.uid"]) where attributes["k8s.daemonset.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.deployment.uid"]) where attributes["k8s.deployment.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.statefulset.uid"]) where attributes["k8s.statefulset.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.job.uid"]) where attributes["k8s.job.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.cronjob.uid"]) where attributes["k8s.cronjob.uid"] != nil and attributes["service.instance.id"] == nil
+            - set(attributes["service.instance.id"], attributes["k8s.replicaset.uid"]) where attributes["k8s.replicaset.uid"] != nil and attributes["service.instance.id"] == nil
             - set(attributes["service.instance.id"], attributes["k8s.node.name"]) where attributes["k8s.node.name"] != nil and attributes["service.instance.id"] == nil
-            - set(attributes["service.name"], attributes["k8s.cluster.name"])
-  
+            - set(attributes["service.instance.id"], attributes["host.name"]) where attributes["host.name"] != nil and attributes["service.instance.id"] == nil
+
   exporters:
     otlphttp/metrics:
       endpoint: http://lgtm:9090/api/v1/otlp
@@ -44,16 +61,17 @@ config:
         enabled: true
 
   service:
-    telemetry:
-      resource:
-        k8s.cluster.name: "kubernetes-mixin-otel"
-    
     extensions: [health_check]
     
     pipelines:
       metrics:
-        receivers: [otlp, hostmetrics]
-        processors: [transform, batch]
+        receivers: [otlp]
+        processors: [
+          attributes/k8sclustername,
+          attributes/servicename,
+          transform,
+          batch,
+        ]
         exporters: [otlphttp/metrics, prometheus]
 
 ports:
