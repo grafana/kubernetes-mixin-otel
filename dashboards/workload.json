@@ -116,7 +116,7 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n        * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n        (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) ({k8s_pod_name!=\"\", k8s_namespace_name!=\"\", k8s_cluster_name!=\"\"} and (k8s_deployment_name!=\"\" or k8s_daemonset_name!=\"\" or k8s_statefulset_name!=\"\" or k8s_job_name!=\"\" or k8s_cronjob_name!=\"\" or k8s_replicaset_name!=\"\")) > 0)\n    )\n)",
             "legendFormat": "usage",
             "range": true,
             "refId": "usage"
@@ -224,7 +224,7 @@
         "targets": [
           {
             "editorMode": "code",
-            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n        * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n        (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) ({k8s_pod_name!=\"\", k8s_namespace_name!=\"\", k8s_cluster_name!=\"\"} and (k8s_deployment_name!=\"\" or k8s_daemonset_name!=\"\" or k8s_statefulset_name!=\"\" or k8s_job_name!=\"\" or k8s_cronjob_name!=\"\" or k8s_replicaset_name!=\"\")) > 0)\n    )\n)",
             "legendFormat": "usage",
             "range": true,
             "refId": "usage"
@@ -235,7 +235,7 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_available_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_pod_memory_available_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n        * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n        (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) ({k8s_pod_name!=\"\", k8s_namespace_name!=\"\", k8s_cluster_name!=\"\"} and (k8s_deployment_name!=\"\" or k8s_daemonset_name!=\"\" or k8s_statefulset_name!=\"\" or k8s_job_name!=\"\" or k8s_cronjob_name!=\"\" or k8s_replicaset_name!=\"\")) > 0)\n    )\n)",
             "hide": false,
             "instant": false,
             "legendFormat": "capacity",
@@ -248,7 +248,11 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
+<<<<<<< HEAD
             "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    )(\n        k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"{namespace}\"}\n    )\n)",
+=======
+            "expr": "k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n        * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n        (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) ({k8s_pod_name!=\"\", k8s_namespace_name!=\"\", k8s_cluster_name!=\"\"} and (k8s_deployment_name!=\"\" or k8s_daemonset_name!=\"\" or k8s_statefulset_name!=\"\" or k8s_job_name!=\"\" or k8s_cronjob_name!=\"\" or k8s_replicaset_name!=\"\")) > 0)",
+>>>>>>> df319dc (try with join queries)
             "hide": false,
             "instant": false,
             "legendFormat": "limit",
@@ -349,7 +353,7 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n) (\n    k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)\n",
+            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n) (\n    k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n    (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) (k8s_container_cpu_request) > 0)\n)\n",
             "legendFormat": "{{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
             "range": true,
             "refId": "A"
@@ -444,7 +448,7 @@
         "targets": [
           {
             "editorMode": "code",
-            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n)(\n    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n)",
+            "expr": "sum by (\n    k8s_cluster_name, k8s_namespace_name,\n    k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n)(\n    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    * on(k8s_pod_name, k8s_namespace_name, k8s_cluster_name) group_left(k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name)\n    (count by (k8s_pod_name, k8s_namespace_name, k8s_cluster_name, k8s_deployment_name, k8s_daemonset_name, k8s_statefulset_name, k8s_job_name, k8s_cronjob_name, k8s_replicaset_name) (k8s_container_cpu_request) > 0)\n)",
             "legendFormat": "{{k8s_cluster_name}} - {{k8s_daemonset_name}}  {{k8s_deployment_name}} {{k8s_statefulset_name}} {{k8s_cronjob_name}} {{k8s_job_name}} {{k8s_replicaset_name}}",
             "range": true,
             "refId": "usage"
