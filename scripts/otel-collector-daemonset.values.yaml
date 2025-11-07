@@ -55,6 +55,9 @@ config:
       - key: host.name
         action: upsert
         from_attribute: k8s.node.name
+      - key: service.instance.id
+        action: upsert
+        from_attribute: k8s.node.name
 
     resourcedetection:
       detectors: [system]
