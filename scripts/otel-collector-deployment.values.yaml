@@ -5,6 +5,9 @@ image:
   repository: otel/opentelemetry-collector-contrib
 
 presets:
+  kubernetesAttributes:
+    enabled: true
+
   clusterMetrics:
     enabled: true
 
@@ -16,29 +19,34 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-    hostmetrics:
-      scrapers:
-        load: {}
-        memory: {}
   
   processors:
+    k8sattributes:
+      extract:
+        otel_annotations: true
+
+    attributes/k8sclustername:
+      actions:
+        - key: k8s.cluster.name
+          action: upsert
+          value: kubernetes-mixin-otel
+
+    resource/hostname:
+      attributes:
+      - key: host.name
+        action: upsert
+        from_attribute: k8s.node.name
+      - key: service.instance.id
+        action: upsert
+        from_attribute: k8s.node.name
+
     batch: {}
 
-    transform:
-      metric_statements:
-        - context: resource
-          statements:
-            - set(attributes["service.instance.id"], attributes["k8s.pod.name"]) where attributes["k8s.pod.name"] != nil
-            - set(attributes["service.instance.id"], attributes["k8s.node.name"]) where attributes["k8s.node.name"] != nil and attributes["service.instance.id"] == nil
-            - set(attributes["service.name"], attributes["k8s.cluster.name"])
-  
   exporters:
-    prometheusremotewrite:
-      external_labels:
-        k8s_cluster_name: 'kubernetes-mixin-otel'
-      endpoint: 'http://lgtm:9090/api/v1/write'
-      resource_to_telemetry_conversion:
-        enabled: true
+    otlphttp/metrics:
+      endpoint: http://lgtm:9090/api/v1/otlp
+      tls:
+        insecure: true
 
     prometheus:
       endpoint: "0.0.0.0:8889"
@@ -46,21 +54,18 @@ config:
         enabled: true
 
   service:
-    telemetry:
-      resource:
-        k8s.cluster.name: "kubernetes-mixin-otel"
-    
     extensions: [health_check]
     
     pipelines:
       metrics:
-        receivers: [otlp, hostmetrics]
-        processors:
-          [
-            transform,
-            batch,
-          ]
-        exporters: [prometheus, prometheusremotewrite]
+        receivers: [otlp]
+        processors: [
+          k8sattributes,
+          attributes/k8sclustername,
+          resource/hostname,
+          batch,
+        ]
+        exporters: [otlphttp/metrics, prometheus]
 
 ports:
   prometheus:
