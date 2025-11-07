@@ -22,6 +22,7 @@ config:
   
   processors:
     transform/copy_node_name:
+    # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
       metric_statements:
         - context: datapoint
           statements:
