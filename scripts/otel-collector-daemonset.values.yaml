@@ -37,6 +37,13 @@ config:
         network: {}
   
   processors:
+    transform/copy_node_name:
+      metric_statements:
+        - context: datapoint
+          statements:
+            - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
+            - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+
     k8sattributes:
       extract:
         otel_annotations: true
@@ -53,9 +60,6 @@ config:
         action: upsert
         value: ${env:K8S_NODE_NAME}
       - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
-      - key: service.instance.id
         action: upsert
         from_attribute: k8s.node.name
 
@@ -88,6 +92,7 @@ config:
           k8sattributes,
           attributes/k8sclustername,
           resource/hostname,
+          transform/copy_node_name,
           batch,
         ]
         exporters: [otlphttp/metrics, prometheus]
