@@ -31,6 +31,15 @@ config:
           action: upsert
           value: kubernetes-mixin-otel
 
+    resource/hostname:
+      attributes:
+      - key: host.name
+        action: upsert
+        from_attribute: k8s.node.name
+      - key: service.instance.id
+        action: upsert
+        from_attribute: k8s.node.name
+
     batch: {}
 
   exporters:
@@ -53,6 +62,7 @@ config:
         processors: [
           k8sattributes,
           attributes/k8sclustername,
+          resource/hostname,
           batch,
         ]
         exporters: [otlphttp/metrics, prometheus]
