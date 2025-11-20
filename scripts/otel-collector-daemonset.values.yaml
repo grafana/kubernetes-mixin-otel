@@ -91,7 +91,7 @@ config:
     
     pipelines:
       metrics:
-<<<<<<< HEAD
+
         receivers: [otlp, hostmetrics]
         processors: [
           resourcedetection,
@@ -102,16 +102,7 @@ config:
           batch,
         ]
         exporters: [otlphttp/metrics, prometheus]
-=======
-        receivers: [otlp, kubeletstats, hostmetrics]
-        processors:
-          [
-            resourcedetection,
-            transform,
-            batch,
-          ]
-        exporters: [prometheus, prometheusremotewrite]
->>>>>>> 0df1159 (chore: add pod level CPU metrics)
+
 
 ports:
   prometheus:
