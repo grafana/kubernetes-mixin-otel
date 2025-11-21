@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "gen/grafonnet-latest"
+        }
+      },
+      "version": "8a27651b56fbdba45a389ccb11440200091c73a1",
+      "sum": "V9vAj21qJOc2DlMPDgB1eEjSQU4A+sAA4AXuJ6bd4xc="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "gen/grafonnet-v11.4.0"
+        }
+      },
+      "version": "8a27651b56fbdba45a389ccb11440200091c73a1",
+      "sum": "aVAX09paQYNOoCSKVpuk1exVIyBoMt/C50QJI+Q/3nA="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/kubernetes-mixin.git",
+          "subdir": ""
+        }
+      },
+      "version": "ccae89885f23a2999eede17dbae7534fb77a1c9b",
+      "sum": "fxkiKDc57mTNXJFYRnSpBFnckXcUSVBI+JnOOwkC6P8="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
+          "subdir": "doc-util"
+        }
+      },
+      "version": "6ac6c69685b8c29c54515448eaca583da2d88150",
+      "sum": "BrAL/k23jq+xy9oA7TWIhUx07dsA/QLm3g7ktCwe//U="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/xtd.git",
+          "subdir": ""
+        }
+      },
+      "version": "4d7f8cb24d613430799f9d56809cc6964f35cea9",
+      "sum": "hOrwkOx34tOXqoDVnwuI/Uf/dr9HFFSPWpDPOvnEGrk="
+    }
+  ],
+  "legacyImports": false
+}
