@@ -98,7 +98,7 @@
         "options": {
           "legend": {
             "calcs": [],
-            "displayMode": "list",
+            "displayMode": "table",
             "placement": "bottom",
             "showLegend": true
           },
@@ -116,10 +116,12 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_pod_cpu_usage{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}\n    )\n)",
-            "legendFormat": "usage",
+            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}[1m])\n    )\n)",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "usage (1m)",
             "range": true,
-            "refId": "usage"
+            "refId": "usage-rate"
           },
           {
             "datasource": {
@@ -127,12 +129,25 @@
               "uid": "prometheus"
             },
             "editorMode": "code",
-            "expr": "sum(\n    sum by (\n        k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\"}[1m])\n    )\n)",
+            "expr": "sum(\n    sum by (k8s_cluster_name, k8s_namespace_name,\n            k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name) (\n        k8s_container_cpu_limit{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\", k8s_pod_name=~\"${pod}\"}\n    )\n)",
             "hide": false,
             "instant": false,
-            "legendFormat": "usage (1m)",
+            "legendFormat": "limit",
             "range": true,
-            "refId": "usage-rate"
+            "refId": "limit"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "expr": "sum(\n    sum by (k8s_cluster_name, k8s_namespace_name,\n        k8s_daemonset_name, k8s_deployment_name, k8s_cronjob_name, k8s_job_name, k8s_statefulset_name, k8s_replicaset_name\n    ) (\n        k8s_container_cpu_request{k8s_cluster_name=~\"${cluster}\", k8s_namespace_name=~\"${namespace}\", k8s_pod_name=~\"${pod}\"}\n    )\n)",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "requests",
+            "range": true,
+            "refId": "capacity"
           }
         ],
         "title": "CPU Usage (cores)",
