@@ -87,7 +87,6 @@ config:
     
     pipelines:
       metrics:
-
         receivers: [otlp, hostmetrics]
         processors: [
           resourcedetection,
@@ -98,7 +97,6 @@ config:
           batch,
         ]
         exporters: [otlphttp/metrics, prometheus]
-
 
 ports:
   prometheus:
