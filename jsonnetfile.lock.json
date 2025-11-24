@@ -24,16 +24,6 @@
     {
       "source": {
         "git": {
-          "remote": "https://github.com/grafana/kubernetes-mixin.git",
-          "subdir": ""
-        }
-      },
-      "version": "ccae89885f23a2999eede17dbae7534fb77a1c9b",
-      "sum": "fxkiKDc57mTNXJFYRnSpBFnckXcUSVBI+JnOOwkC6P8="
-    },
-    {
-      "source": {
-        "git": {
           "remote": "https://github.com/jsonnet-libs/docsonnet.git",
           "subdir": "doc-util"
         }
@@ -50,6 +40,16 @@
       },
       "version": "4d7f8cb24d613430799f9d56809cc6964f35cea9",
       "sum": "hOrwkOx34tOXqoDVnwuI/Uf/dr9HFFSPWpDPOvnEGrk="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/kubernetes-monitoring/kubernetes-mixin.git",
+          "subdir": ""
+        }
+      },
+      "version": "9d5f05be3b40f6a0085f5c577579feb2d3d27856",
+      "sum": "x9GJHiZvins+K5MO6NpfIc4wguMglNIBiitoeJPIyN4="
     }
   ],
   "legacyImports": false

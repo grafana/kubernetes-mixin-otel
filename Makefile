@@ -23,14 +23,4 @@ dev-down:
 
 .PHONY: generate-dashboards
 generate-dashboards:
-	@echo "Generating dashboards from jsonnet..."
-	@mkdir -p generated-dashboards
-	@for libsonnet in dashboards/*.libsonnet; do \
-		if [ -f "$$libsonnet" ]; then \
-			basename=$$(basename "$$libsonnet" .libsonnet); \
-			echo "Generating $$basename.json from $$libsonnet..."; \
-			jsonnet -J vendor "$$libsonnet" > "generated-dashboards/$$basename.json" || exit 1; \
-			echo "✓ Generated: generated-dashboards/$$basename.json"; \
-		fi; \
-	done
-	@echo "✓ All dashboards generated in generated-dashboards/"
+	@./scripts/generate-dashboards.sh

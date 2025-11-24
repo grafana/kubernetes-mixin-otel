@@ -1,3 +1,5 @@
+dist/
 generated-dashboards
+vendor
+
 /datasource/datasources.yaml
-/vendor
