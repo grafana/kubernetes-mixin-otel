@@ -36,4 +36,4 @@ Run the following command to generate dashboards into json files
 make generate-dashboards
 ```
 
-The dashboards will output into `generate-dashboards` folder.
+The dashboards will output into `generated-dashboards` folder.
