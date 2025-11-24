@@ -29,7 +29,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "prometheus"
+          "uid": "${datasource}"
         },
         "fieldConfig": {
           "defaults": {
@@ -113,7 +113,7 @@
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "ff2fyztsirqbkf"
+              "uid": "${datasource}"
             },
             "editorMode": "code",
             "expr": "sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
@@ -128,7 +128,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "prometheus"
+          "uid": "${datasource}"
         },
         "fieldConfig": {
           "defaults": {
@@ -210,6 +210,10 @@
         "pluginVersion": "12.2.1",
         "targets": [
           {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
             "editorMode": "code",
             "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
             "legendFormat": "requests: {{k8s_cluster_name}}",
@@ -219,7 +223,7 @@
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "prometheus"
+              "uid": "${datasource}"
             },
             "editorMode": "code",
             "expr": "sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~\"${cluster:pipe}\", k8s_namespace_name=~\"${namespace:pipe}\"}\n)",
