@@ -89,7 +89,9 @@ local var = g.dashboard.variable;
         + timeSeries.queryOptions.withTargets([
           prometheus.new(
             '${datasource}',
-            'sum by (k8s_cluster_name, k8s_namespace_name)(\n    k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}\n)'
+            'sum by (k8s_cluster_name, k8s_namespace_name)(
+                k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}
+            )'
           )
           + prometheus.withLegendFormat('requests: {{k8s_cluster_name}} - {{k8s_namespace_name}}'),
         ]),
@@ -123,12 +125,16 @@ local var = g.dashboard.variable;
         + timeSeries.queryOptions.withTargets([
           prometheus.new(
             '${datasource}',
-            'sum by (k8s_cluster_name) (\n    k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}\n)'
+            'sum by (k8s_cluster_name) (
+                k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}
+            )'
           )
           + prometheus.withLegendFormat('requests: {{k8s_cluster_name}}'),
           prometheus.new(
             '${datasource}',
-            'sum by (k8s_cluster_name) (\n    k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}\n)'
+            'sum by (k8s_cluster_name) (
+                k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}
+            )'
           )
           + prometheus.withLegendFormat('limit: {{k8s_cluster_name}}'),
         ]),
