@@ -242,6 +242,20 @@
         {
           "allowCustomValue": false,
           "current": {
+            "text": "Prometheus",
+            "value": "prometheus"
+          },
+          "includeAll": false,
+          "name": "datasource",
+          "options": [],
+          "query": "prometheus",
+          "refresh": 1,
+          "regex": "",
+          "type": "datasource"
+        },
+        {
+          "allowCustomValue": false,
+          "current": {
             "text": "All",
             "value": "$__all"
           },
