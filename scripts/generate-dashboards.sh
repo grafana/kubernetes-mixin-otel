@@ -10,10 +10,6 @@ mkdir -p "${OUTPUT_DIR}"
 
 # Find all .libsonnet files in dashboards directory (exclude -copy files)
 find "${DASHBOARDS_DIR}" -name "*.libsonnet" -type f ! -name "*-copy.libsonnet" | while read -r libsonnet_file; do
-  # Get the relative path from dashboards directory
-  rel_path="${libsonnet_file#${DASHBOARDS_DIR}/}"
-  base_name=$(basename "${libsonnet_file}" .libsonnet)
-  
   # Import the libsonnet file and extract all dashboards from grafanaDashboards
   # Skip files that don't have grafanaDashboards or have empty grafanaDashboards (library files)
   dashboard_json=$(jsonnet -J "${VENDOR_DIR}" -J . -e "
@@ -39,4 +35,3 @@ find "${DASHBOARDS_DIR}" -name "*.libsonnet" -type f ! -name "*-copy.libsonnet" 
 done
 
 echo "All dashboards generated successfully in ${OUTPUT_DIR}/"
-

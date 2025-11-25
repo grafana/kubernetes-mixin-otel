@@ -27,13 +27,3 @@ To delete the cluster, run the following:
 ```shell
 make dev-down
 ```
-
-## Json dashboards
-
-Run the following command to generate dashboards into json files
-
-```shell
-make generate-dashboards
-```
-
-The dashboards will output into `generated-dashboards` folder.
