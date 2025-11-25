@@ -1,5 +1,5 @@
 local templateCluster = import '../template/template-cluster.libsonnet';
-local config = import './config.libsonnet';
+local config = import './config-k8s.libsonnet';
 local variables = import '../variables/variables.libsonnet';
 local queries = import '../queries/cluster-queries.libsonnet';
 
