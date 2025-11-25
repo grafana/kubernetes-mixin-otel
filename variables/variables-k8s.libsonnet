@@ -16,7 +16,6 @@ local var = g.dashboard.variable;
       },
     },
 
-  // Cluster variable with configurable selector
   cluster(config, selector)::
     var.query.new('cluster')
     + var.query.withDatasourceFromVariable(self.datasource(config))
@@ -33,7 +32,6 @@ local var = g.dashboard.variable;
     )
     + var.query.withSort(type='alphabetical'),
 
-  // Convenience function to generate common cluster dashboard variables
   clusterDashboard(config):: 
     local datasourceVar = $.datasource(config);
     local clusterVar = $.cluster(config, 'up{%(cadvisorSelector)s}' % config);
@@ -42,7 +40,6 @@ local var = g.dashboard.variable;
       cluster: clusterVar,
     },
 
-  // Convenience function to generate namespace dashboard variables
   namespaceDashboard(config):: 
     local datasourceVar = $.datasource(config);
     local clusterVar = $.cluster(config, 'up{%(kubeStateMetricsSelector)s}' % config);

@@ -34,26 +34,6 @@ local datasourceVar =
           value: '$__all',
         },
       },
-
-    namespace:
-      var.query.new('namespace')
-      + var.query.withDatasourceFromVariable(datasourceVar)
-      + var.query.queryTypes.withLabelValues(
-        'k8s_namespace_name',
-        'k8s_namespace_phase{k8s_cluster_name=~"${cluster:pipe}"}',
-      )
-      + var.query.generalOptions.withLabel('namespace')
-      + var.query.selectionOptions.withIncludeAll(true)
-      + var.query.selectionOptions.withMulti(true)
-      + var.query.refresh.onTime()
-      + var.query.withSort(type='alphabetical')
-      + {
-        current: {
-          selected: true,
-          text: 'All',
-          value: '$__all',
-        },
-      },
   },
 }
 
