@@ -1,5 +1,5 @@
-dist/
-generated-dashboards
+dashboards_out
+tmp
 vendor
 
 /datasource/datasources.yaml

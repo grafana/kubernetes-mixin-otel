@@ -4,10 +4,15 @@ local config = import 'github.com/sleepyfoodie/kubernetes-mixin/config.libsonnet
 // It will use local queries from dashboards/resources/queries/cluster-queries.libsonnet
 local k8sMixinCluster = import 'github.com/sleepyfoodie/kubernetes-mixin/dashboards/resources/cluster.libsonnet';
 
-// Self-referential object: template accesses $._config which refers to self._config
+// Merge config with template so $._config resolves correctly
+// The template accesses $._config which refers to the root object's _config
+local merged = {
+  _config: config._config,
+} + k8sMixinCluster;
+
 {
   _config: config._config,
   grafanaDashboards:: {
-    'cluster.json': k8sMixinCluster.grafanaDashboards['k8s-resources-cluster.json'],
+    'cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json'],
   },
 }
