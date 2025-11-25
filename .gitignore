@@ -3,5 +3,3 @@ generated-dashboards
 vendor
 
 /datasource/datasources.yaml
-
-/scripts/generate-dashboards.sh

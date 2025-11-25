@@ -20,7 +20,3 @@ dev-port-forward:
 .PHONY: dev-down
 dev-down:
 	k3d cluster delete kubernetes-mixin-otel
-
-.PHONY: generate-dashboards
-generate-dashboards:
-	@./scripts/generate-dashboards.sh
