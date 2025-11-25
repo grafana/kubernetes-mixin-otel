@@ -18,6 +18,18 @@ local merged = {
 {
   _config: config._config,
   grafanaDashboards:: {
-    'cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json'],
+    'cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json']
+      // Override panel datasources to use the datasource variable instead of "-- Mixed --"
+      + {
+        panels: [
+          panel + {
+            datasource: {
+              type: 'datasource',
+              uid: '${datasource}',
+            },
+          }
+          for panel in merged.grafanaDashboards['k8s-resources-cluster.json'].panels
+        ],
+      },
   },
 }
