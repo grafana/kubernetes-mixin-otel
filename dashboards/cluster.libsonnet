@@ -1,4 +1,4 @@
-local templateCluster = import './template-cluster.libsonnet';
+local templateCluster = import '../template/template-cluster.libsonnet';
 local config = import './config.libsonnet';
 local variables = import '../variables/variables.libsonnet';
 local queries = import '../queries/cluster-queries.libsonnet';
