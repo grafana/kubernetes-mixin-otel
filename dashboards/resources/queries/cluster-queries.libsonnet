@@ -18,11 +18,11 @@
   timeSeriesQueries: {
     cpuUsage(config)::
     'sum(
-        sum by (
-            k8s_cluster_name) (
-                rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}[1m]) 
-            )
-        )
+      sum by (k8s_cluster_name) (
+        rate(
+          k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}
+        [1m]) 
+      )
     )',
     memory(config)::
       'sum by (k8s_cluster_name) (
