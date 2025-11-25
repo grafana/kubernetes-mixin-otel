@@ -1,23 +1,13 @@
-local templateCluster = import '../template/template-cluster.libsonnet';
-local config = import './config-k8s.libsonnet';
-local variables = import '../variables/variables.libsonnet';
-local queries = import '../queries/cluster-queries.libsonnet';
+local config = import 'github.com/sleepyfoodie/kubernetes-mixin/config.libsonnet';
 
-// Create a minimal variablesLib object that has a clusterDashboard function
-// Since variables.libsonnet doesn't have clusterDashboard, we'll pass vars directly
-local variablesLib = {
-  clusterDashboard(config)::
-    variables.variables,
-};
+// Import kubernetes-mixin template directly from vendor
+// It will use local queries from dashboards/resources/queries/cluster-queries.libsonnet
+local k8sMixinCluster = import 'github.com/sleepyfoodie/kubernetes-mixin/dashboards/resources/cluster.libsonnet';
 
+// Self-referential object: template accesses $._config which refers to self._config
 {
-  grafanaDashboards+:: {
-    'cluster.json': templateCluster.new(
-      config._config,
-      variablesLib,
-      queries,
-      vars=variables.variables,
-      queries=queries
-    ),
+  _config: config._config,
+  grafanaDashboards:: {
+    'cluster.json': k8sMixinCluster.grafanaDashboards['k8s-resources-cluster.json'],
   },
 }

@@ -4,10 +4,10 @@
     {
       "source": {
         "git": {
-          "remote": "https://github.com/kubernetes-monitoring/kubernetes-mixin.git"
+          "remote": "https://github.com/sleepyfoodie/kubernetes-mixin.git"
         }
       },
-      "version": "master"
+      "version": "sk/refactor-cluster"
     }
   ],
   "legacyImports": true
