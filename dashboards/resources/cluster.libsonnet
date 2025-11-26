@@ -1,9 +1,9 @@
 local config = import 'github.com/kubernetes-monitoring/kubernetes-mixin/config.libsonnet';
 
 // Import kubernetes-mixin template directly from vendor
-// It will use local queries from dashboards/resources/queries/cluster-queries.libsonnet
-local localQueries = import './queries/cluster-queries.libsonnet';
-local localVariables = import './variables/cluster-variables.libsonnet';
+// It will use local queries from dashboards/resources/queries/cluster.libsonnet
+local localQueries = import './queries/cluster.libsonnet';
+local localVariables = import './variables/cluster.libsonnet';
 local k8sMixinCluster = import 'github.com/kubernetes-monitoring/kubernetes-mixin/dashboards/resources/cluster.libsonnet';
 
 // Merge config with template so $._config resolves correctly
