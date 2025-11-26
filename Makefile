@@ -26,6 +26,9 @@ dev: generate lint
 	echo '║                                                               ║' && \
 	echo '║   Data will be available in a few minutes.                    ║' && \
 	echo '║                                                               ║' && \
+	echo '║   Dashboards will refresh every 10s, run `make generate`      ║' && \
+	echo '║   and refresh your browser to see the changes.                ║' && \
+	echo '║                                                               ║' && \
 	echo '╚═══════════════════════════════════════════════════════════════╝'
 
 .PHONY: dev-port-forward
