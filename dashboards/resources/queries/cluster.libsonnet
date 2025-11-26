@@ -16,10 +16,21 @@
   },
 
   timeSeriesQueries: {
-    cpuUsage(config)::
-      'sum(\n      sum by (k8s_cluster_name) (\n        rate(\n          k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}\n        [$__rate_interval]) \n      )\n    )',
-    memory(config)::
-      'sum by (k8s_cluster_name) (\n          k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}\n      )',
+    cpuUsage(config):: |||
+      sum(
+        sum by (k8s_cluster_name) (
+          rate(
+            k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}
+            [$__rate_interval]
+          )
+        )
+      )
+    |||,
+    memory(config):: |||
+      sum by (k8s_cluster_name) (
+        k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
+      )
+    |||,
     receiveBandwidth(config):: '0',
     transmitBandwidth(config):: '0',
     avgReceiveBandwidth(config):: '0',
@@ -37,8 +48,11 @@
       pods(config):: '0',
       workloads(config):: '0',
       cpuUsage(config):: '0',
-      cpuRequests(config)::
-        'sum by (k8s_cluster_name, k8s_namespace_name)(\n          k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}"}\n      )',
+      cpuRequests(config):: |||
+        sum by (k8s_cluster_name, k8s_namespace_name) (
+          k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}"}
+        )
+      |||,
       cpuRequestsPercent(config):: '0',
       cpuLimits(config):: '0',
       cpuLimitsPercent(config):: '0',
@@ -47,11 +61,17 @@
       pods(config):: '0',
       workloads(config):: '0',
       memoryUsage(config):: '0',
-      memoryRequests(config)::
-        'sum by (k8s_cluster_name) (\n          k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}\n      )',
+      memoryRequests(config):: |||
+        sum by (k8s_cluster_name) (
+          k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
+        )
+      |||,
       memoryRequestsPercent(config):: '0',
-      memoryLimits(config)::
-        'sum by (k8s_cluster_name) (\n          k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster:pipe}"}\n      )',
+      memoryLimits(config):: |||
+        sum by (k8s_cluster_name) (
+          k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster:pipe}"}
+        )
+      |||,
       memoryLimitsPercent(config):: '0',
     },
     networkUsage: {
