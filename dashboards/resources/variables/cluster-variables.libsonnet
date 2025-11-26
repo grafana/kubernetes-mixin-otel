@@ -3,6 +3,7 @@ local var = g.dashboard.variable;
 
 local datasourceVar =
   var.datasource.new('datasource', 'prometheus')
+  + var.datasource.generalOptions.withLabel('Data source')
   + {
     current: {
       selected: true,
@@ -36,4 +37,3 @@ local datasourceVar =
       },
   },
 }
-

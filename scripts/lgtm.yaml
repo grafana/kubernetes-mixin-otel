@@ -78,7 +78,7 @@ spec:
             - name: dashboards
               mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards
             - name: dashboards-out
-              mountPath: /kubernetes-mixin/dashboards_out
+              mountPath: /kubernetes-mixin-otel/dashboards_out
 
           env:
             - name: ENABLE_LOGS_ALL
@@ -111,7 +111,7 @@ spec:
 
         - name: dashboards
           hostPath:
-            path: /kubernetes-mixin/provisioning/dashboards
+            path: /kubernetes-mixin-otel/provisioning/dashboards
         - name: dashboards-out
           hostPath:
-            path: /kubernetes-mixin/dashboards_out
+            path: /kubernetes-mixin-otel/dashboards_out

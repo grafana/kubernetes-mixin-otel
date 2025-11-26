@@ -5,5 +5,5 @@ providers:
     type: file
     updateIntervalSeconds: 10
     options:
-      path: /kubernetes-mixin/dashboards_out
+      path: /kubernetes-mixin-otel/dashboards_out
       foldersFromFilesStructure: true

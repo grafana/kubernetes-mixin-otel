@@ -22,7 +22,7 @@ local merged = {
 {
   _config: config._config,
   grafanaDashboards:: {
-    'cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json']
+    'k8s-resources-cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json']
       + {
         panels: [
           panel + {

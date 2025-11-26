@@ -21,7 +21,7 @@
       sum by (k8s_cluster_name) (
         rate(
           k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}
-        [1m]) 
+        [$__rate_interval]) 
       )
     )',
     memory(config)::
