@@ -1,1 +1,5 @@
+dashboards_out
+tmp
+vendor
+
 /datasource/datasources.yaml

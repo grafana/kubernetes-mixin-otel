@@ -75,13 +75,18 @@ spec:
             - name: pyroscope-storage
               mountPath: /data/pyroscope
 
+            - name: dashboards
+              mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards
+            - name: dashboards-out
+              mountPath: /kubernetes-mixin-otel/dashboards_out
+
           env:
             - name: ENABLE_LOGS_ALL
               value: "true"
             # Grafana feature toggles
             # Disabled for now: sharingDashboardImage,renderAuthJWT
-            - name: GF_FEATURE_TOGGLES_ENABLE
-              value: "provisioning,kubernetesDashboards,kubernetesClientDashboardsFolders,unifiedStorageSearch"
+            # - name: GF_FEATURE_TOGGLES_ENABLE
+            # value: "provisioning,kubernetesDashboards,kubernetesClientDashboardsFolders,unifiedStorageSearch"
             # Grafana rendering configuration
             # - name: GF_RENDERING_RENDERER_TOKEN
             #   value: "-"
@@ -103,3 +108,10 @@ spec:
           emptyDir: {}
         - name: pyroscope-storage
           emptyDir: {}
+
+        - name: dashboards
+          hostPath:
+            path: /kubernetes-mixin-otel/provisioning/dashboards
+        - name: dashboards-out
+          hostPath:
+            path: /kubernetes-mixin-otel/dashboards_out

@@ -2,7 +2,9 @@
 set -euo pipefail
 
 # Create k3d cluster
-k3d cluster create kubernetes-mixin-otel
+k3d cluster create kubernetes-mixin-otel \
+    -v "$PWD"/provisioning:/kubernetes-mixin-otel/provisioning \
+    -v "$PWD"/../dashboards_out:/kubernetes-mixin-otel/dashboards_out
 
 # Wait for cluster to be ready
 kubectl --context k3d-kubernetes-mixin-otel wait --for=condition=Ready nodes --all --timeout=300s
