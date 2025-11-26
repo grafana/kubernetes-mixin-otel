@@ -1,3 +1,3 @@
-local k8sMixinConfig = import 'github.com/sleepyfoodie/kubernetes-mixin/config.libsonnet';
+local k8sMixinConfig = import 'github.com/kubernetes-monitoring/kubernetes-mixin/config.libsonnet';
 
 k8sMixinConfig

@@ -44,12 +44,12 @@
     {
       "source": {
         "git": {
-          "remote": "https://github.com/sleepyfoodie/kubernetes-mixin.git",
+          "remote": "https://github.com/kubernetes-monitoring/kubernetes-mixin.git",
           "subdir": ""
         }
       },
-      "version": "6eec076235b0cb4a560cea301029a55b7a9c9fb8",
-      "sum": "Eau/02ogWE5foc4PSNLvEc0MTMefR/7zYrFo6IpazBY="
+      "version": "72284a4cf7ce1e934a094ba466136de2e0acb426",
+      "sum": "KpQCmhr4AzMJI8ZCyHJGzstuvic9a/2bd3saTqYvYSQ="
     }
   ],
   "legacyImports": false
