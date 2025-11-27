@@ -19,4 +19,3 @@
     k8s_container_memory_limit_bytes{%s}
   ||| % filters,
 }
-

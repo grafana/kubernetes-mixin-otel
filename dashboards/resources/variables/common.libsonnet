@@ -60,4 +60,3 @@ local var = g.dashboard.variable;
       },
     },
 }
-

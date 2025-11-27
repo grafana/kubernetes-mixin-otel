@@ -1,9 +1,9 @@
-local kubeletstats = import '../metrics/kubeletstats.libsonnet';
 local k8scluster = import '../metrics/k8scluster.libsonnet';
+local kubeletstats = import '../metrics/kubeletstats.libsonnet';
 
 // queries path must match the path in the kubernetes-mixin template
 {
-  local filters = 'k8s_cluster_name=~\'${cluster}\', k8s_namespace_name=~\'${namespace}\', k8s_pod_name=~\'${pod}\'',
+  local filters = "k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'",
 
   // CPU Queries
   cpuUsageByContainer(config):: |||

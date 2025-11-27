@@ -63,4 +63,3 @@
     k8s_container_cpu_cfs_periods_total{%s}
   ||| % filters,
 }
-

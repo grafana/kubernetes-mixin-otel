@@ -1,5 +1,5 @@
-local kubeletstats = import '../metrics/kubeletstats.libsonnet';
 local k8scluster = import '../metrics/k8scluster.libsonnet';
+local kubeletstats = import '../metrics/kubeletstats.libsonnet';
 
 // queries path must match the path in the kubernetes-mixin template
 {
