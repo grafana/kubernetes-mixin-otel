@@ -2,9 +2,6 @@ local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonn
 local var = g.dashboard.variable;
 
 {
-  // Common dashboard variables shared across resource dashboards
-
-  // Datasource variable - Prometheus datasource selector
   datasource(config)::
     var.datasource.new('datasource', 'prometheus')
     + var.datasource.withRegex(config.datasourceFilterRegex)

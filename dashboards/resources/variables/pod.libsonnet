@@ -3,8 +3,6 @@ local var = g.dashboard.variable;
 local commonVariables = import './common.libsonnet';
 
 {
-  // Pod dashboard variables
-  // Returns datasource, cluster, namespace, and pod variables
   pod(config)::
     local datasource = commonVariables.datasource(config);
 

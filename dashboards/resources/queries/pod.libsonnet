@@ -1,3 +1,4 @@
+// queries path must match the path in the kubernetes-mixin template
 {
   // CPU Queries
   cpuUsageByContainer(config):: |||
