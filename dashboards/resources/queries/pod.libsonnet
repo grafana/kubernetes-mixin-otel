@@ -15,7 +15,7 @@
   cpuRequests(config):: |||
     sum by (k8s_pod_name) (
       max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        k8s_pod_cpu_time_seconds_total{
+        k8s_container_cpu_request{
           k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
         }
       )
@@ -38,14 +38,32 @@
   cpuRequestsByContainer(config):: |||
     sum by (k8s_container_name) (
       max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        k8s_pod_cpu_time_seconds_total{
+        k8s_container_cpu_request{
           k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
         }
       )
     )
   |||,
 
-  cpuUsageVsRequests(config):: '0',
+  cpuUsageVsRequests(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_cpu_time_seconds_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+          }[$__rate_interval]
+        )
+      )
+    )
+    /
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_cpu_request{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   cpuLimitsByContainer(config):: |||
     sum by (k8s_container_name) (
@@ -57,13 +75,31 @@
     )
   |||,
 
-  cpuUsageVsLimits(config):: '0',
+  cpuUsageVsLimits(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_cpu_time_seconds_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+          }[$__rate_interval]
+        )
+      )
+    )
+    /
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_cpu_limit{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   // Memory Queries
   memoryUsageWSS(config):: |||
-    sum by (k8s_container_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          k8s_pod_memory_rss_bytes{
+    sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_memory_working_set_bytes{
             k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
           }
         )
@@ -101,22 +137,102 @@
     )
   |||,
 
-  memoryUsageVsRequests(config):: '0',
+  memoryUsageVsRequests(config):: |||
+    sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_memory_usage_bytes{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+          }
+        )
+    )
+    /
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_memory_request_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
-  memoryLimitsByContainer(config):: '0',
+  memoryLimitsByContainer(config):: |||
+    sum by (k8s_container_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+        k8s_container_memory_limit_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
+  memoryUsageVsLimits(config):: |||
+    sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_memory_usage_bytes{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+          }
+        )
+    )
+    /
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_memory_limit_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
-  memoryUsageVsLimits(config):: '0',
+  memoryUsageRSS(config):: |||
+    sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_memory_rss_bytes{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+          }
+        )
+    )
+  |||,
 
-  memoryUsageRSS(config):: '0',
-
-  memoryUsageCache(config):: '0',
+  memoryUsageCache(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_pod_memory_usage_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+      -
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_pod_memory_rss_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   memoryUsageSwap(config):: '0',
 
   // Network Queries
-  networkReceiveBandwidth(config):: '0',
-
-  networkTransmitBandwidth(config):: '0',
+  networkReceiveBandwidth(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_network_io_bytes_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}', direction="receive"
+          }[$__rate_interval]
+        )
+      )
+    )
+  |||,
+  networkTransmitBandwidth(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_network_io_bytes_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}', direction="transmit"
+          }[$__rate_interval]
+        )
+      )
+    )
+  |||,
 
   networkReceivePackets(config):: '0',
 
