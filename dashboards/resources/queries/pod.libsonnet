@@ -26,7 +26,7 @@ local k8scluster = import '../metrics/k8scluster.libsonnet';
 
   cpuLimits(config):: |||
     sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
         %s
       )
     )
