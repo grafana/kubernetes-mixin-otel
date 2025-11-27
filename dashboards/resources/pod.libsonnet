@@ -4,7 +4,7 @@ local config = import '../../config.libsonnet';
 // It will use local queries from dashboards/resources/queries/pod.libsonnet
 local localQueries = import './queries/pod.libsonnet';
 local localVariables = import './variables/pod.libsonnet';
-local k8sMixinPod = import 'github.com/sleepyfoodie/kubernetes-mixin/dashboards/resources/pod.libsonnet';
+local k8sMixinPod = import 'github.com/kubernetes-monitoring/kubernetes-mixin/dashboards/resources/pod.libsonnet';
 
 // Merge config with template so $._config resolves correctly
 // The template accesses $._config which refers to the root object's _config

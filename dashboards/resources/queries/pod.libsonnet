@@ -238,9 +238,29 @@
 
   networkTransmitPackets(config):: '0',
 
-  networkReceivePacketsDropped(config):: '0',
+  networkReceivePacketsDropped(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_network_errors_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}', direction="receive"
+          }[$__rate_interval]
+        )
+      )
+    )
+  |||,
 
-  networkTransmitPacketsDropped(config):: '0',
+  networkTransmitPacketsDropped(config):: |||
+    sum by (k8s_pod_name) (
+      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        rate(
+          k8s_pod_network_errors_total{
+            k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}', direction="transmit"
+          }[$__rate_interval]
+        )
+      )
+    )
+  |||,
 
   // Storage Queries - Pod Level
   iopsPodReads(config):: '0',
