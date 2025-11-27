@@ -1,0 +1,59 @@
+# https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-kube-stack
+
+clusterName: my-otel-stack
+collectors:
+  daemon:
+    enabled: true
+    # disable scrapping using daemon_scrape_configs.yaml as it assumes the Prometheus Node Exporter and CAdvisor are setup
+    # https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-kube-stack#scrape_configs_file-details
+    scrape_configs_file: ""
+    presets:
+      logsCollection:
+        enabled: true # TODO disable when running on Docker Desktop
+        storeCheckpoints: false # TODO disable when running on Docker Desktop
+      hostMetrics:
+        enabled: true # TODO disable when running on Docker Desktop
+    config:
+      exporters:
+        otlphttp:
+          endpoint: "http://lgtm:4318"
+        prometheus: # for debugging
+          endpoint: "0.0.0.0:8889"
+      service:
+        pipelines:
+          traces:
+            exporters:
+              - otlphttp
+          metrics:
+            exporters:
+              - otlphttp
+              - prometheus
+          logs:
+            exporters:
+              - otlphttp
+    securityContext: # Run daemon collector as root for metrics & logs scrapping
+      runAsUser: 0
+      runAsGroup: 0
+instrumentation:
+  enabled: true
+  env:
+    - name: OTEL_K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  exporter:
+    endpoint: http://opentelemetry-stack-daemon-collector:4318
+  resource:
+    resourceAttributes:
+      deployment.environment.name: production
+opentelemetry-operator:
+  manager:
+    collectorImage:
+      repository: otel/opentelemetry-collector-contrib # use contrib for extra receivers/exporters
+      tag: "0.140.1"
+  admissionWebhooks:
+    certManager:
+      enabled: false # for production use cert-manager. See https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-operator#tls-certificate-requirement
+    autoGenerateCert:
+      enabled: true
+      recreate: true # set to true when autoGenerateCert is enabled to prevent cert trust problems
