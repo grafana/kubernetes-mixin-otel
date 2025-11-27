@@ -17,6 +17,15 @@ local merged = {
   },
 } + k8sMixinCluster;
 
+local fixJoinByField(transformation) =
+  if std.objectHas(transformation, 'id') && transformation.id == 'joinByField'
+  then transformation {
+    options+: {
+      byField: 'Time',
+    },
+  }
+  else transformation;
+
 {
   _config: config._config,
   grafanaDashboards:: {
@@ -28,7 +37,13 @@ local merged = {
             type: 'datasource',
             uid: '${datasource}',
           },
-        }
+        } + (
+          if std.objectHas(panel, 'transformations')
+          then {
+            transformations: [fixJoinByField(t) for t in panel.transformations],
+          }
+          else {}
+        )
         for panel in merged.grafanaDashboards['k8s-resources-cluster.json'].panels
       ],
     },

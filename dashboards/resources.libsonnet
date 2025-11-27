@@ -1,3 +1,6 @@
-(import 'resources/cluster.libsonnet') {
-  grafanaDashboards+:: (import 'resources/pod.libsonnet').grafanaDashboards,
+local cluster = import 'resources/cluster.libsonnet';
+local pod = import 'resources/pod.libsonnet';
+
+{
+  grafanaDashboards: cluster.grafanaDashboards + pod.grafanaDashboards,
 }
