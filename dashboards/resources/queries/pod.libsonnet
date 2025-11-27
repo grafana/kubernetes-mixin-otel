@@ -12,18 +12,50 @@
     )
   |||,
 
-  cpuRequests(config):: '0',
+  cpuRequests(config):: |||
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_pod_cpu_time_seconds_total{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
-  cpuLimits(config):: '0',
+  cpuLimits(config):: |||
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_cpu_limit{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   cpuThrottling(config):: '0',
 
   // CPU Quota Table Queries
-  cpuRequestsByContainer(config):: '0',
+  cpuRequestsByContainer(config):: |||
+    sum by (k8s_container_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+        k8s_pod_cpu_time_seconds_total{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   cpuUsageVsRequests(config):: '0',
 
-  cpuLimitsByContainer(config):: '0',
+  cpuLimitsByContainer(config):: |||
+    sum by (k8s_container_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+        k8s_container_cpu_limit{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   cpuUsageVsLimits(config):: '0',
 
@@ -38,9 +70,25 @@
     )
   |||,
 
-  memoryRequests(config):: '0',
+  memoryRequests(config):: |||
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_memory_request_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
-  memoryLimits(config):: '0',
+  memoryLimits(config):: |||
+    sum by (k8s_pod_name) (
+      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_container_memory_limit_bytes{
+          k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'
+        }
+      )
+    )
+  |||,
 
   // Memory Quota Table Queries
   memoryRequestsByContainer(config):: |||
