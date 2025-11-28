@@ -4,7 +4,7 @@ clusterName: my-otel-stack
 collectors:
   daemon:
     enabled: true
-    # disable scrapping using daemon_scrape_configs.yaml as it assumes the Prometheus Node Exporter and CAdvisor are setup
+    # disable scraping using daemon_scrape_configs.yaml as it assumes the Prometheus Node Exporter and CAdvisor are setup
     # https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-kube-stack#scrape_configs_file-details
     scrape_configs_file: ""
     presets:
@@ -31,7 +31,7 @@ collectors:
           logs:
             exporters:
               - otlphttp
-    securityContext: # Run daemon collector as root for metrics & logs scrapping
+    securityContext: # Run daemon collector as root for metrics & logs scraping
       runAsUser: 0
       runAsGroup: 0
 instrumentation:

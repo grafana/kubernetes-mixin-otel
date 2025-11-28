@@ -20,7 +20,7 @@ helm repo update
 
 # Deploy the OTel Kube Stack
 helm upgrade --install opentelemetry-stack opentelemetry/opentelemetry-kube-stack \
-    -f "$PWD"/otel-kube-stack-values.yaml \
+    -f otel-kube-stack-values.yaml \
     --kube-context k3d-kubernetes-mixin-otel \
     --namespace default \
     --wait \
