@@ -1,11 +1,13 @@
 local commonVariables = import './common.libsonnet';
 
 {
-  cluster(config)::
+  pod(config)::
     local datasource = commonVariables.datasource(config);
 
     {
       datasource: datasource,
       cluster: commonVariables.cluster(datasource),
+      namespace: commonVariables.namespace(datasource),
+      pod: commonVariables.pod(datasource),
     },
 }
