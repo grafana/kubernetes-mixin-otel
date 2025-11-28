@@ -17,6 +17,7 @@ local merged = {
   },
 } + k8sMixinCluster;
 
+// Fix joinByField transformation to use Time as the Field by default
 local fixJoinByField(transformation) =
   if std.objectHas(transformation, 'id') && transformation.id == 'joinByField'
   then transformation {
@@ -38,7 +39,6 @@ local fixJoinByField(transformation) =
             uid: '${datasource}',
           },
         } + (
-          // Fix joinByField transformation to use Time as the Field by default
           if std.objectHas(panel, 'transformations')
           then {
             transformations: [fixJoinByField(t) for t in panel.transformations],
