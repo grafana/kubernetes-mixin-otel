@@ -1,6 +1,2 @@
-local cluster = import 'resources/cluster.libsonnet';
-local pod = import 'resources/pod.libsonnet';
-
-{
-  grafanaDashboards: cluster.grafanaDashboards + pod.grafanaDashboards,
-}
+(import 'resources/cluster.libsonnet') +
+(import 'resources/pod.libsonnet')

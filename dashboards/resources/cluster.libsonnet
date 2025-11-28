@@ -28,7 +28,7 @@ local fixJoinByField(transformation) =
 
 {
   _config: config._config,
-  grafanaDashboards:: {
+  grafanaDashboards+:: {
     'k8s-resources-cluster.json': merged.grafanaDashboards['k8s-resources-cluster.json']
                                   {
       panels: [

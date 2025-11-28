@@ -19,7 +19,7 @@ local merged = {
 
 {
   _config: config._config,
-  grafanaDashboards:: {
+  grafanaDashboards+:: {
     'k8s-resources-pod.json': merged.grafanaDashboards['k8s-resources-pod.json']
                               {
       panels: [
