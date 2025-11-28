@@ -1,224 +1,150 @@
-local k8scluster = import '../metrics/k8scluster.libsonnet';
-local kubeletstats = import '../metrics/kubeletstats.libsonnet';
-
 // queries path must match the path in the kubernetes-mixin template
+local builders = {
+  podMetric(metric, filters)::
+    |||
+      sum by (k8s_pod_name) (
+        max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          %s{%s}
+        )
+      )
+    ||| % [metric, filters],
+
+  containerMetric(metric, filters)::
+    |||
+      sum by (k8s_container_name) (
+        max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          %s{%s}
+        )
+      )
+    ||| % [metric, filters],
+
+  podRate(metric, filters)::
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          rate(%s{%s}[$__rate_interval])
+        )
+      )
+    ||| % [metric, filters],
+
+  containerRate(metric, filters)::
+    |||
+      sum by (k8s_container_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          rate(%s{%s}[$__rate_interval])
+        )
+      )
+    ||| % [metric, filters],
+
+  ratio(numeratorMetric, denominatorMetric, filters, useRate=false)::
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          %s%s{%s}%s
+        )
+        /
+        max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          %s{%s}
+        )
+      )
+    ||| % [
+      if useRate then 'rate(' else '',
+      numeratorMetric,
+      filters,
+      if useRate then '[$__rate_interval])' else '',
+      denominatorMetric,
+      filters,
+    ],
+
+  difference(metric1, metric2, filters)::
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (%s{%s})
+        -
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (%s{%s})
+      )
+    ||| % [metric1, filters, metric2, filters],
+};
+
 {
   local filters = "k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'",
 
   // CPU Queries
-  cpuUsageByContainer(config):: |||
-    sum by (k8s_container_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-  ||| % kubeletstats.podCpuTimeSecondsTotal(filters),
+  cpuUsageByContainer(config)::
+    builders.containerRate('k8s_pod_cpu_time_seconds_total', filters),
 
-  cpuRequests(config):: |||
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerCpuRequest(filters),
+  cpuRequests(config)::
+    builders.podMetric('k8s_container_cpu_request', filters),
 
-  cpuLimits(config):: |||
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerCpuLimit(filters),
+  cpuLimits(config)::
+    builders.podMetric('k8s_container_cpu_limit', filters),
 
   cpuThrottling(config):: '0',
 
   // CPU Quota Table Queries
-  cpuRequestsByContainer(config):: |||
-    sum by (k8s_container_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerCpuRequest(filters),
+  cpuRequestsByContainer(config)::
+    builders.containerMetric('k8s_container_cpu_request', filters),
 
-  cpuUsageVsRequests(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-    /
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % [kubeletstats.podCpuTimeSecondsTotal(filters), k8scluster.containerCpuRequest(filters)],
+  cpuUsageVsRequests(config)::
+    builders.ratio('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, useRate=true),
 
-  cpuLimitsByContainer(config):: |||
-    sum by (k8s_container_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerCpuLimit(filters),
+  cpuLimitsByContainer(config)::
+    builders.containerMetric('k8s_container_cpu_limit', filters),
 
-  cpuUsageVsLimits(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-    /
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % [kubeletstats.podCpuTimeSecondsTotal(filters), k8scluster.containerCpuLimit(filters)],
+  cpuUsageVsLimits(config)::
+    builders.ratio('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, useRate=true),
 
   // Memory Queries
-  memoryUsageWSS(config):: |||
-    sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-          %s
-        )
-    )
-  ||| % kubeletstats.podMemoryWorkingSetBytes(filters),
+  memoryUsageWSS(config)::
+    builders.podMetric('k8s_pod_memory_working_set_bytes', filters),
 
-  memoryRequests(config):: |||
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerMemoryRequestBytes(filters),
+  memoryRequests(config)::
+    builders.podMetric('k8s_container_memory_request_bytes', filters),
 
-  memoryLimits(config):: |||
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerMemoryLimitBytes(filters),
+  memoryLimits(config)::
+    builders.podMetric('k8s_container_memory_limit_bytes', filters),
 
   // Memory Quota Table Queries
-  memoryRequestsByContainer(config):: |||
-    sum by (k8s_container_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerMemoryRequestBytes(filters),
+  memoryRequestsByContainer(config)::
+    builders.containerMetric('k8s_container_memory_request_bytes', filters),
 
-  memoryUsageVsRequests(config):: |||
-    sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-          %s
-        )
-    )
-    /
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % [kubeletstats.podMemoryUsageBytes(filters), k8scluster.containerMemoryRequestBytes(filters)],
+  memoryUsageVsRequests(config)::
+    builders.ratio('k8s_pod_memory_usage_bytes', 'k8s_container_memory_request_bytes', filters),
 
-  memoryLimitsByContainer(config):: |||
-    sum by (k8s_container_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-        %s
-      )
-    )
-  ||| % k8scluster.containerMemoryLimitBytes(filters),
+  memoryLimitsByContainer(config)::
+    builders.containerMetric('k8s_container_memory_limit_bytes', filters),
 
-  memoryUsageVsLimits(config):: |||
-    sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-          %s
-        )
-    )
-    /
-    sum by (k8s_pod_name) (
-      max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % [kubeletstats.podMemoryUsageBytes(filters), k8scluster.containerMemoryLimitBytes(filters)],
+  memoryUsageVsLimits(config)::
+    builders.ratio('k8s_pod_memory_usage_bytes', 'k8s_container_memory_limit_bytes', filters),
 
-  memoryUsageRSS(config):: |||
-    sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-          %s
-        )
-    )
-  ||| % kubeletstats.podMemoryRssBytes(filters),
+  memoryUsageRSS(config)::
+    builders.podMetric('k8s_pod_memory_rss_bytes', filters),
 
-  memoryUsageCache(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-      -
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        %s
-      )
-    )
-  ||| % [kubeletstats.podMemoryUsageBytes(filters), kubeletstats.podMemoryRssBytes(filters)],
+  memoryUsageCache(config)::
+    builders.difference(
+      'k8s_pod_memory_usage_bytes',
+      'k8s_pod_memory_rss_bytes',
+      filters
+    ),
 
   memoryUsageSwap(config):: '0',
 
   // Network Queries
-  networkReceiveBandwidth(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-  ||| % kubeletstats.podNetworkIoBytesTotal(filters, 'receive'),
+  networkReceiveBandwidth(config)::
+    builders.podRate('k8s_pod_network_io_bytes_total', filters + ', direction="receive"'),
 
-  networkTransmitBandwidth(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-  ||| % kubeletstats.podNetworkIoBytesTotal(filters, 'transmit'),
+  networkTransmitBandwidth(config)::
+    builders.podRate('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"'),
 
   networkReceivePackets(config):: '0',
 
   networkTransmitPackets(config):: '0',
 
-  networkReceivePacketsDropped(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-  ||| % kubeletstats.podNetworkErrorsTotal(filters, 'receive'),
+  networkReceivePacketsDropped(config)::
+    builders.podRate('k8s_pod_network_errors_total', filters + ', direction="receive"'),
 
-  networkTransmitPacketsDropped(config):: |||
-    sum by (k8s_pod_name) (
-      max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-        rate(
-          %s[$__rate_interval]
-        )
-      )
-    )
-  ||| % kubeletstats.podNetworkErrorsTotal(filters, 'transmit'),
+  networkTransmitPacketsDropped(config)::
+    builders.podRate('k8s_pod_network_errors_total', filters + ', direction="transmit"'),
 
   // Storage Queries - Pod Level
   iopsPodReads(config):: '0',

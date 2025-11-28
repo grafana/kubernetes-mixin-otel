@@ -59,4 +59,26 @@ local var = g.dashboard.variable;
         value: '$__all',
       },
     },
+
+  pod(datasource)::
+    var.query.new('pod')
+    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.queryTypes.withLabelValues(
+      'k8s_pod_name',
+      'k8s_pod_phase',
+    )
+    + var.query.generalOptions.withLabel('pod')
+    + var.query.selectionOptions.withIncludeAll(true)
+    + var.query.selectionOptions.withMulti(true)
+    + var.query.refresh.onTime()
+    + var.query.generalOptions.showOnDashboard.withLabelAndValue()
+    + var.query.withSort(type='alphabetical')
+    + {
+      allowCustom: false,
+      current: {
+        selected: true,
+        text: 'All',
+        value: '$__all',
+      },
+    },
 }

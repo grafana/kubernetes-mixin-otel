@@ -1,10 +1,5 @@
-local k8scluster = import '../metrics/k8scluster.libsonnet';
-local kubeletstats = import '../metrics/kubeletstats.libsonnet';
-
 // queries path must match the path in the kubernetes-mixin template
 {
-  local filters = 'k8s_cluster_name=~"${cluster}"',
-
   // CPU stat queries
   cpuUtilisation(config):: '0',
   cpuRequestsCommitment(config):: '0',
@@ -15,11 +10,11 @@ local kubeletstats = import '../metrics/kubeletstats.libsonnet';
     sum(
       sum by (k8s_cluster_name, k8s_namespace_name) (
         rate(
-          %s[$__rate_interval]
+          k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}[$__rate_interval]
         )
       )
     )
-  ||| % kubeletstats.podCpuTimeSecondsTotal(filters),
+  |||,
 
   podsByNamespace(config):: '0',
   workloadsByNamespace(config):: '0',
@@ -36,9 +31,10 @@ local kubeletstats = import '../metrics/kubeletstats.libsonnet';
   // Memory usage and namespace queries
   memoryUsageByNamespace(config):: |||
     sum by (k8s_cluster_name, k8s_namespace_name) (
-      %s
+      k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
     )
-  ||| % k8scluster.containerMemoryRequestBytes('k8s_cluster_name=~"${cluster:pipe}"'),
+  |||,
+
   memoryRequestsByNamespace(config):: '0',
   memoryUsageVsRequests(config):: '0',
   memoryLimitsByNamespace(config):: '0',
