@@ -4,7 +4,6 @@ local config = {
   _config: {},
 };
 
-// Expected outputs using actual template variables
 local expectedWithRate = |||
   sum by (k8s_pod_name) (
     max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
@@ -30,21 +29,18 @@ local expectedWithoutRate = |||
 |||;
 
 {
-  // Test: ratio with useRate=true (CPU usage vs requests)
   testRatioWithRate:
     local result = pod.cpuUsageVsRequests(config);
     assert result == expectedWithRate :
            'ratio with useRate=true failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedWithRate, result];
     'PASS: ratio with useRate=true',
 
-  // Test: ratio with useRate=false (Memory usage vs requests)
   testRatioWithoutRate:
     local result = pod.memoryUsageVsRequests(config);
     assert result == expectedWithoutRate :
            'ratio with useRate=false failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedWithoutRate, result];
     'PASS: ratio with useRate=false',
 
-  // Test: all 4 ratio queries work
   testAllRatioQueries:
     local queries = [
       pod.cpuUsageVsRequests(config),
