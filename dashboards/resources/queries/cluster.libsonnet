@@ -1,139 +1,66 @@
 // queries path must match the path in the kubernetes-mixin template
 {
-  statQueries: {
-    cpuUtilisation(config)::
-      '0',
-    cpuRequestsCommitment(config)::
-      '0',
-    cpuLimitsCommitment(config)::
-      '0',
-    memoryUtilisation(config)::
-      '0',
-    memoryRequestsCommitment(config)::
-      '0',
-    memoryLimitsCommitment(config)::
-      '0',
-  },
+  // CPU stat queries
+  cpuUtilisation(config):: '0',
+  cpuRequestsCommitment(config):: '0',
+  cpuLimitsCommitment(config):: '0',
 
-  timeSeriesQueries: {
-    cpuUsage(config):: |||
-      sum(
-        sum by (k8s_cluster_name) (
-          rate(
-            k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}
-            [$__rate_interval]
-          )
+  // CPU usage and namespace queries
+  cpuUsageByNamespace(config):: |||
+    sum(
+      sum by (k8s_cluster_name, k8s_namespace_name) (
+        rate(
+          k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}"}[$__rate_interval]
         )
       )
-    |||,
-    memory(config):: |||
-      sum by (k8s_cluster_name) (
-        k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
-      )
-    |||,
-    receiveBandwidth(config):: '0',
-    transmitBandwidth(config):: '0',
-    avgReceiveBandwidth(config):: '0',
-    avgTransmitBandwidth(config):: '0',
-    rateReceivedPackets(config):: '0',
-    rateTransmittedPackets(config):: '0',
-    rateReceivedPacketsDropped(config):: '0',
-    rateTransmittedPacketsDropped(config):: '0',
-    iopsReadsWrites(config):: '0',
-    throughputReadWrite(config):: '0',
-  },
+    )
+  |||,
 
-  tableQueries: {
-    cpuQuota: {
-      pods(config):: '0',
-      workloads(config):: '0',
-      cpuUsage(config):: '0',
-      cpuRequests(config):: |||
-        sum by (k8s_cluster_name, k8s_namespace_name) (
-          k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}"}
-        )
-      |||,
-      cpuRequestsPercent(config):: '0',
-      cpuLimits(config):: '0',
-      cpuLimitsPercent(config):: '0',
-    },
-    memoryRequests: {
-      pods(config):: '0',
-      workloads(config):: '0',
-      memoryUsage(config):: '0',
-      memoryRequests(config):: |||
-        sum by (k8s_cluster_name) (
-          k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
-        )
-      |||,
-      memoryRequestsPercent(config):: '0',
-      memoryLimits(config):: |||
-        sum by (k8s_cluster_name) (
-          k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster:pipe}"}
-        )
-      |||,
-      memoryLimitsPercent(config):: '0',
-    },
-    networkUsage: {
-      receiveBandwidth(config):: '0',
-      transmitBandwidth(config):: '0',
-      receivePackets(config):: '0',
-      transmitPackets(config):: '0',
-      receivePacketsDropped(config):: '0',
-      transmitPacketsDropped(config):: '0',
-    },
-    storageIO: {
-      readsIOPS(config):: '0',
-      writesIOPS(config):: '0',
-      totalIOPS(config):: '0',
-      readThroughput(config):: '0',
-      writeThroughput(config):: '0',
-      totalThroughput(config):: '0',
-    },
-  },
+  podsByNamespace(config):: '0',
+  workloadsByNamespace(config):: '0',
+  cpuRequestsByNamespace(config):: '0',
+  cpuUsageVsRequests(config):: '0',
+  cpuLimitsByNamespace(config):: '0',
+  cpuUsageVsLimits(config):: '0',
 
-  // Flat structure (for use with kubernetes-mixin template)
-  // Stat queries
-  cpuUtilisation(config):: self.statQueries.cpuUtilisation(config),
-  cpuRequestsCommitment(config):: self.statQueries.cpuRequestsCommitment(config),
-  cpuLimitsCommitment(config):: self.statQueries.cpuLimitsCommitment(config),
-  memoryUtilisation(config):: self.statQueries.memoryUtilisation(config),
-  memoryRequestsCommitment(config):: self.statQueries.memoryRequestsCommitment(config),
-  memoryLimitsCommitment(config):: self.statQueries.memoryLimitsCommitment(config),
+  // Memory stat queries
+  memoryUtilisation(config):: '0',
+  memoryRequestsCommitment(config):: '0',
+  memoryLimitsCommitment(config):: '0',
 
-  // TimeSeries queries
-  cpuUsageByNamespace(config):: self.timeSeriesQueries.cpuUsage(config),
-  memoryUsageByNamespace(config):: self.timeSeriesQueries.memory(config),
-  networkReceiveBandwidth(config):: self.timeSeriesQueries.receiveBandwidth(config),
-  networkTransmitBandwidth(config):: self.timeSeriesQueries.transmitBandwidth(config),
-  avgContainerReceiveBandwidth(config):: self.timeSeriesQueries.avgReceiveBandwidth(config),
-  avgContainerTransmitBandwidth(config):: self.timeSeriesQueries.avgTransmitBandwidth(config),
-  rateOfReceivedPackets(config):: self.timeSeriesQueries.rateReceivedPackets(config),
-  rateOfTransmittedPackets(config):: self.timeSeriesQueries.rateTransmittedPackets(config),
-  rateOfReceivedPacketsDropped(config):: self.timeSeriesQueries.rateReceivedPacketsDropped(config),
-  rateOfTransmittedPacketsDropped(config):: self.timeSeriesQueries.rateTransmittedPacketsDropped(config),
-  iopsReadsWrites(config):: self.timeSeriesQueries.iopsReadsWrites(config),
-  throughputReadWrite(config):: self.timeSeriesQueries.throughputReadWrite(config),
+  // Memory usage and namespace queries
+  memoryUsageByNamespace(config):: |||
+    sum by (k8s_cluster_name, k8s_namespace_name) (
+      k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"}
+    )
+  |||,
 
-  // Table queries
-  podsByNamespace(config):: self.tableQueries.cpuQuota.pods(config),
-  workloadsByNamespace(config):: self.tableQueries.cpuQuota.workloads(config),
-  cpuRequestsByNamespace(config):: self.tableQueries.cpuQuota.cpuRequests(config),
-  cpuUsageVsRequests(config):: self.tableQueries.cpuQuota.cpuRequestsPercent(config),
-  cpuLimitsByNamespace(config):: self.tableQueries.cpuQuota.cpuLimits(config),
-  cpuUsageVsLimits(config):: self.tableQueries.cpuQuota.cpuLimitsPercent(config),
-  memoryRequestsByNamespace(config):: self.tableQueries.memoryRequests.memoryRequests(config),
-  memoryUsageVsRequests(config):: self.tableQueries.memoryRequests.memoryRequestsPercent(config),
-  memoryLimitsByNamespace(config):: self.tableQueries.memoryRequests.memoryLimits(config),
-  memoryUsageVsLimits(config):: self.tableQueries.memoryRequests.memoryLimitsPercent(config),
-  networkReceivePackets(config):: self.tableQueries.networkUsage.receivePackets(config),
-  networkTransmitPackets(config):: self.tableQueries.networkUsage.transmitPackets(config),
-  networkReceivePacketsDropped(config):: self.tableQueries.networkUsage.receivePacketsDropped(config),
-  networkTransmitPacketsDropped(config):: self.tableQueries.networkUsage.transmitPacketsDropped(config),
-  iopsReads(config):: self.tableQueries.storageIO.readsIOPS(config),
-  iopsWrites(config):: self.tableQueries.storageIO.writesIOPS(config),
-  iopsReadsWritesCombined(config):: self.tableQueries.storageIO.totalIOPS(config),
-  throughputRead(config):: self.tableQueries.storageIO.readThroughput(config),
-  throughputWrite(config):: self.tableQueries.storageIO.writeThroughput(config),
-  throughputReadWriteCombined(config):: self.tableQueries.storageIO.totalThroughput(config),
+  memoryRequestsByNamespace(config):: '0',
+  memoryUsageVsRequests(config):: '0',
+  memoryLimitsByNamespace(config):: '0',
+  memoryUsageVsLimits(config):: '0',
+
+  // Network queries
+  networkReceiveBandwidth(config):: '0',
+  networkTransmitBandwidth(config):: '0',
+  networkReceivePackets(config):: '0',
+  networkTransmitPackets(config):: '0',
+  networkReceivePacketsDropped(config):: '0',
+  networkTransmitPacketsDropped(config):: '0',
+  avgContainerReceiveBandwidth(config):: '0',
+  avgContainerTransmitBandwidth(config):: '0',
+  rateOfReceivedPackets(config):: '0',
+  rateOfTransmittedPackets(config):: '0',
+  rateOfReceivedPacketsDropped(config):: '0',
+  rateOfTransmittedPacketsDropped(config):: '0',
+
+  // Storage I/O queries
+  iopsReadsWrites(config):: '0',
+  throughputReadWrite(config):: '0',
+  iopsReads(config):: '0',
+  iopsWrites(config):: '0',
+  iopsReadsWritesCombined(config):: '0',
+  throughputRead(config):: '0',
+  throughputWrite(config):: '0',
+  throughputReadWriteCombined(config):: '0',
 }
