@@ -76,20 +76,71 @@
 
   // CPU Quota Table Queries
   cpuRequestsByPod(config)::
-    '0',
+    |||
+      k8s_container_cpu_request{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+      group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+        k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+        or
+        k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+      )
+    |||,
 
   cpuUsageVsRequests(config)::
-    '0',
-
+    |||
+      sum(
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, k8s_node_name) (
+          rate(
+            k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+          [$__rate_interval])
+        )
+        /
+        k8s_container_cpu_request{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+        group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+          or
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+        )
+      )
+    |||,
   cpuLimitsByPod(config)::
-    '0',
+    |||
+      sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)(
+        k8s_container_cpu_limit{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+        group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+          or
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+        )
+      )
+    |||,
 
   cpuUsageVsLimits(config)::
-    '0',
+    |||
+      sum(
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, k8s_node_name) (
+          rate(
+            k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+          [$__rate_interval])
+        )
+        /
+        k8s_container_cpu_limit{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+        group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+          or
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+        )
+      )
+    |||,
 
   // Memory Usage TimeSeries Queries
   memoryUsageByPod(config)::
-    '0',
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+        )
+      )
+    |||,
 
   memoryQuotaRequests(config)::
     '0',
@@ -99,19 +150,75 @@
 
   // Memory Quota Table Queries
   memoryRequestsByPod(config)::
-    '0',
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+          group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+            or
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+          )
+        )
+      )
+    |||,
 
   memoryUsageVsRequests(config)::
-    '0',
+    |||
+      sum by (k8s_namespace_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+        )
+        /
+        k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+        group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+          or
+          k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+        )
+      )
+    |||,
 
   memoryLimitsByPod(config)::
-    '0',
+    |||
+      sum by (k8s_pod_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+          group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+            or
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+          )
+        )
+      )
+    |||,
 
   memoryUsageVsLimits(config)::
-    '0',
+    |||
+      sum by (k8s_namespace_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+        )
+        /
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_container_memory_limit_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+          group_left(phase) max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 1
+            or
+            k8s_pod_phase{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"} == 2
+          )
+        )
+      )
+    |||,
 
   memoryUsageRSS(config)::
-    '0',
+    |||
+      sum by (k8s_namespace_name) (
+        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+          k8s_pod_memory_rss_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}
+        )
+      )
+    |||,
 
   memoryUsageCache(config)::
     '0',
