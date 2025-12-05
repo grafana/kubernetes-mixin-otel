@@ -1,167 +1,90 @@
 // Shared query builders for all resource dashboards
+local maxBy = 'k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name';
+local podMaxBy = 'k8s_cluster_name, k8s_namespace_name, k8s_pod_name';
+
+local withRate(expr, filters, useRate) =
+  if useRate then
+    'rate(%s{%s}[$__rate_interval])' % [expr, filters]
+  else
+    '%s{%s}' % [expr, filters];
+
+local sumExpr(inner, groupBy) =
+  if groupBy == '' then
+    'sum(\n  %s\n)' % inner
+  else
+    'sum by (%s) (\n  %s\n)' % [groupBy, inner];
+
+local maxByContainer(expr) =
+  'max by (%s) (\n    %s\n  )' % [maxBy, expr];
+
+// Active pod filter (Pending=1 or Running=2), normalized to 1
+// pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
+// known issue here: https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36819
+local activePodFilter(phaseFilters) =
+  |||
+    * on (%(podMaxBy)s)
+    group_left() clamp_max(
+      max by (%(podMaxBy)s) (
+        (k8s_pod_phase{%(filters)s} == 1) or (k8s_pod_phase{%(filters)s} == 2)
+      ), 1
+    )
+  ||| % { podMaxBy: podMaxBy, filters: phaseFilters };
+
 {
-  // Simple metric aggregated by a label
   metric(metric, filters, groupBy='')::
-    if groupBy == '' then
-      |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [metric, filters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [groupBy, metric, filters],
+    sumExpr(
+      maxByContainer('%s{%s}' % [metric, filters]),
+      groupBy
+    ),
 
-  // Rate metric aggregated by a label
   rate(metric, filters, groupBy='')::
-    if groupBy == '' then
-      |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            rate(%s{%s}[$__rate_interval])
-          )
-        )
-      ||| % [metric, filters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            rate(%s{%s}[$__rate_interval])
-          )
-        )
-      ||| % [groupBy, metric, filters],
+    sumExpr(
+      maxByContainer(withRate(metric, filters, true)),
+      groupBy
+    ),
 
-  // Ratio of two metrics (optionally with rate on numerator)
   ratio(numeratorMetric, denominatorMetric, filters, groupBy='', useRate=false)::
-    local ratePrefix = if useRate then 'rate(' else '';
-    local rateSuffix = if useRate then '[$__rate_interval])' else '';
-    if groupBy == '' then
+    sumExpr(
       |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s%s{%s}%s
-          )
-          /
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [ratePrefix, numeratorMetric, filters, rateSuffix, denominatorMetric, filters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s%s{%s}%s
-          )
-          /
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [groupBy, ratePrefix, numeratorMetric, filters, rateSuffix, denominatorMetric, filters],
+        %s
+        /
+        %s
+      ||| % [
+        maxByContainer(withRate(numeratorMetric, filters, useRate)),
+        maxByContainer('%s{%s}' % [denominatorMetric, filters]),
+      ],
+      groupBy
+    ),
 
-  // Difference of two metrics
   difference(metric1, metric2, filters, groupBy='')::
-    if groupBy == '' then
+    sumExpr(
       |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-          -
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [metric1, filters, metric2, filters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-          -
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s}
-          )
-        )
-      ||| % [groupBy, metric1, filters, metric2, filters],
+        %s
+        -
+        %s
+      ||| % [
+        maxByContainer('%s{%s}' % [metric1, filters]),
+        maxByContainer('%s{%s}' % [metric2, filters]),
+      ],
+      groupBy
+    ),
 
-  // Metric filtered to active pods only (Pending=1 or Running=2)
-  // Uses clamp_max to normalize phase value to 1 for multiplication
   metricActiveOnly(metric, filters, phaseFilters, groupBy='')::
-    if groupBy == '' then
-      |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() clamp_max(
-              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
-              ), 1
-            )
-          )
-        )
-      ||| % [metric, filters, phaseFilters, phaseFilters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() clamp_max(
-              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
-              ), 1
-            )
-          )
-        )
-      ||| % [groupBy, metric, filters, phaseFilters, phaseFilters],
+    sumExpr(
+      maxByContainer('%s{%s}%s' % [metric, filters, activePodFilter(phaseFilters)]),
+      groupBy
+    ),
 
-  // Ratio filtered to active pods only
-  // Uses clamp_max to normalize phase value to 1 for multiplication
   ratioActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, groupBy='', useRate=false)::
-    local ratePrefix = if useRate then 'rate(' else '';
-    local rateSuffix = if useRate then '[$__rate_interval])' else '';
-    if groupBy == '' then
+    sumExpr(
       |||
-        sum(
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s%s{%s}%s
-          )
-          /
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() clamp_max(
-              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
-              ), 1
-            )
-          )
-        )
-      ||| % [ratePrefix, numeratorMetric, filters, rateSuffix, denominatorMetric, filters, phaseFilters, phaseFilters]
-    else
-      |||
-        sum by (%s) (
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s%s{%s}%s
-          )
-          /
-          max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-            %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() clamp_max(
-              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
-              ), 1
-            )
-          )
-        )
-      ||| % [groupBy, ratePrefix, numeratorMetric, filters, rateSuffix, denominatorMetric, filters, phaseFilters, phaseFilters],
+        %s
+        /
+        %s
+      ||| % [
+        maxByContainer(withRate(numeratorMetric, filters, useRate)),
+        maxByContainer('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)]),
+      ],
+      groupBy
+    ),
 }
-
