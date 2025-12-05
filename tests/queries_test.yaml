@@ -1,0 +1,238 @@
+# Promtool unit tests for OTel mixin queries
+# Run with: promtool test rules tests/queries_test.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # ===================
+  # Cluster Queries
+  # ===================
+  - interval: 1m
+    input_series:
+      # CPU metrics
+      - series: 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '0+60x10'
+      - series: 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '0+30x10'
+      
+      # CPU requests/limits
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '0.5x10'
+      - series: 'k8s_container_cpu_limit{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '1x10'
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '0.25x10'
+      - series: 'k8s_container_cpu_limit{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '0.5x10'
+
+      # Node allocatable
+      - series: 'k8s_node_allocatable_cpu_cores{k8s_cluster_name="prod", k8s_node_name="node-1"}'
+        values: '4x10'
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="prod", k8s_node_name="node-1"}'
+        values: '8589934592x10'
+
+      # Memory metrics
+      - series: 'k8s_pod_memory_working_set_bytes{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '104857600x10'
+      - series: 'k8s_pod_memory_working_set_bytes{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '52428800x10'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '134217728x10'
+      - series: 'k8s_container_memory_limit_bytes{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '268435456x10'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '67108864x10'
+      - series: 'k8s_container_memory_limit_bytes{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1", k8s_container_name="coredns"}'
+        values: '134217728x10'
+
+      # Memory RSS
+      - series: 'k8s_pod_memory_rss_bytes{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '83886080x10'
+      - series: 'k8s_pod_memory_usage_bytes{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", k8s_container_name="nginx"}'
+        values: '104857600x10'
+
+      # Network metrics
+      - series: 'k8s_pod_network_io_bytes_total{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", direction="receive"}'
+        values: '0+1048576x10'
+      - series: 'k8s_pod_network_io_bytes_total{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", direction="transmit"}'
+        values: '0+524288x10'
+      - series: 'k8s_pod_network_errors_total{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", direction="receive"}'
+        values: '0+10x10'
+      - series: 'k8s_pod_network_errors_total{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1", direction="transmit"}'
+        values: '0+5x10'
+
+      # Pod phase (2 = Running)
+      - series: 'k8s_pod_phase{k8s_cluster_name="prod", k8s_namespace_name="default", k8s_pod_name="nginx-1"}'
+        values: '2x10'
+      - series: 'k8s_pod_phase{k8s_cluster_name="prod", k8s_namespace_name="kube-system", k8s_pod_name="coredns-1"}'
+        values: '2x10'
+
+    promql_expr_test:
+      # ===== Cluster: CPU Usage by Namespace =====
+      - expr: |
+          sum by (k8s_namespace_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"prod"}[5m])
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_namespace_name="default"}'
+            value: 1
+          - labels: '{k8s_namespace_name="kube-system"}'
+            value: 0.5
+
+      # ===== Cluster: CPU Requests by Namespace =====
+      - expr: |
+          sum by (k8s_namespace_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_container_cpu_request{k8s_cluster_name=~"prod"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_namespace_name="default"}'
+            value: 0.5
+          - labels: '{k8s_namespace_name="kube-system"}'
+            value: 0.25
+
+      # ===== Cluster: Memory Usage by Namespace =====
+      - expr: |
+          sum by (k8s_namespace_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"prod"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_namespace_name="default"}'
+            value: 104857600
+          - labels: '{k8s_namespace_name="kube-system"}'
+            value: 52428800
+
+      # ===== Namespace: CPU Usage by Pod =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"prod", k8s_namespace_name=~"default"}[5m])
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 1
+
+      # ===== Namespace: Memory Usage by Pod =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 104857600
+
+      # ===== Namespace: CPU Requests with Active Pod Filter =====
+      # Uses clamp_max to normalize phase value to 1 for proper filtering
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_container_cpu_request{k8s_cluster_name=~"prod", k8s_namespace_name=~"default"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
+              group_left() clamp_max(
+                max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+                  (k8s_pod_phase{k8s_cluster_name=~"prod", k8s_namespace_name=~"default"} == 1) or (k8s_pod_phase{k8s_cluster_name=~"prod", k8s_namespace_name=~"default"} == 2)
+                ), 1
+              )
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 0.5
+
+      # ===== Pod: CPU Usage by Container =====
+      - expr: |
+          sum by (k8s_container_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}[5m])
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_container_name="nginx"}'
+            value: 1
+
+      # ===== Pod: Memory Requests =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_container_memory_request_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 134217728
+
+      # ===== Pod: Memory Cache (difference) =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_pod_memory_usage_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+            -
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_pod_memory_rss_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 20971520
+
+      # ===== Network: Receive Bandwidth =====
+      - expr: |
+          sum by (k8s_namespace_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              rate(k8s_pod_network_io_bytes_total{k8s_cluster_name=~"prod", direction="receive"}[5m])
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_namespace_name="default"}'
+            value: 17476.266666666666
+
+      # ===== Ratio: CPU Usage vs Requests =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}[5m])
+            )
+            /
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_container_cpu_request{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 2
+
+      # ===== Ratio: Memory Usage vs Limits =====
+      - expr: |
+          sum by (k8s_pod_name) (
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_pod_memory_usage_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+            /
+            max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
+              k8s_container_memory_limit_bytes{k8s_cluster_name=~"prod", k8s_namespace_name=~"default", k8s_pod_name=~"nginx-1"}
+            )
+          )
+        eval_time: 10m
+        exp_samples:
+          - labels: '{k8s_pod_name="nginx-1"}'
+            value: 0.390625
+

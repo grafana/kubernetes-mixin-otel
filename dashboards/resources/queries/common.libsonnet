@@ -95,14 +95,17 @@
       ||| % [groupBy, metric1, filters, metric2, filters],
 
   // Metric filtered to active pods only (Pending=1 or Running=2)
+  // Uses clamp_max to normalize phase value to 1 for multiplication
   metricActiveOnly(metric, filters, phaseFilters, groupBy='')::
     if groupBy == '' then
       |||
         sum(
           max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
             %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-              k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
+            group_left() clamp_max(
+              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
+              ), 1
             )
           )
         )
@@ -112,14 +115,17 @@
         sum by (%s) (
           max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
             %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-              k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
+            group_left() clamp_max(
+              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
+              ), 1
             )
           )
         )
       ||| % [groupBy, metric, filters, phaseFilters, phaseFilters],
 
   // Ratio filtered to active pods only
+  // Uses clamp_max to normalize phase value to 1 for multiplication
   ratioActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, groupBy='', useRate=false)::
     local ratePrefix = if useRate then 'rate(' else '';
     local rateSuffix = if useRate then '[$__rate_interval])' else '';
@@ -132,8 +138,10 @@
           /
           max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
             %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-              k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
+            group_left() clamp_max(
+              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
+              ), 1
             )
           )
         )
@@ -147,8 +155,10 @@
           /
           max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
             %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-            group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-              k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
+            group_left() clamp_max(
+              max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
+                (k8s_pod_phase{%s} == 1) or (k8s_pod_phase{%s} == 2)
+              ), 1
             )
           )
         )

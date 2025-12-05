@@ -6,7 +6,8 @@ JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
 JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
-TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN) $(GRAFANA_DASHBOARD_LINTER_BIN)
+PROMTOOL_BIN=$(BIN_DIR)/promtool
+TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN) $(GRAFANA_DASHBOARD_LINTER_BIN) $(PROMTOOL_BIN)
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
 SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
@@ -87,3 +88,11 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	# Replace $$interval:$$resolution var with $$__rate_interval to make dashboard-linter happy.
 	@sed -i -e 's/$$interval:$$resolution/$$__rate_interval/g' $(OUT_DIR)/*.json
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
+
+.PHONY: test
+test: test-queries
+
+.PHONY: test-queries
+test-queries: $(PROMTOOL_BIN)
+	@echo "Running promtool tests for queries..."
+	@$(PROMTOOL_BIN) test rules tests/queries_test.yaml
