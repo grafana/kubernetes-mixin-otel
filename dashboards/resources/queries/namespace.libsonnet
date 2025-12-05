@@ -1,146 +1,25 @@
 // queries path must match the path in the kubernetes-mixin template
-local builders = {
-  // Simple metric aggregated by pod
-  podMetric(metric, filters)::
-    |||
-      sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s}
-        )
-      )
-    ||| % [metric, filters],
-
-  // Simple metric (total for namespace)
-  namespaceMetric(metric, filters)::
-    |||
-      sum(
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s}
-        )
-      )
-    ||| % [metric, filters],
-
-  // Rate metric aggregated by pod
-  podRate(metric, filters)::
-    |||
-      sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          rate(%s{%s}[$__rate_interval])
-        )
-      )
-    ||| % [metric, filters],
-
-  // Rate metric aggregated by namespace
-  namespaceRate(metric, filters)::
-    |||
-      sum by (k8s_namespace_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          rate(%s{%s}[$__rate_interval])
-        )
-      )
-    ||| % [metric, filters],
-
-  // Ratio of rate to metric (for utilization stats)
-  namespaceUtilisation(rateMetric, denominatorMetric, filters, useRate=true)::
-    |||
-      sum(
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s%s{%s}%s
-        )
-        /
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s}
-        )
-      )
-    ||| % [
-      if useRate then 'rate(' else '',
-      rateMetric,
-      filters,
-      if useRate then '[$__rate_interval])' else '',
-      denominatorMetric,
-      filters,
-    ],
-
-  // Ratio aggregated by pod
-  podRatio(numeratorMetric, denominatorMetric, filters, useRate=false)::
-    |||
-      sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s%s{%s}%s
-        )
-        /
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s}
-        )
-      )
-    ||| % [
-      if useRate then 'rate(' else '',
-      numeratorMetric,
-      filters,
-      if useRate then '[$__rate_interval])' else '',
-      denominatorMetric,
-      filters,
-    ],
-
-  // Metric with active pod phase filter (Pending=1 or Running=2)
-  podMetricActiveOnly(metric, filters, phaseFilters)::
-    |||
-      sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-          group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-            k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
-          )
-        )
-      )
-    ||| % [metric, filters, phaseFilters, phaseFilters],
-
-  // Ratio with active pod phase filter
-  podRatioActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, useRate=false)::
-    |||
-      sum by (k8s_pod_name) (
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s%s{%s}%s
-        )
-        /
-        max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (
-          %s{%s} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name)
-          group_left() max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-            k8s_pod_phase{%s} == 1 or k8s_pod_phase{%s} == 2
-          )
-        )
-      )
-    ||| % [
-      if useRate then 'rate(' else '',
-      numeratorMetric,
-      filters,
-      if useRate then '[$__rate_interval])' else '',
-      denominatorMetric,
-      filters,
-      phaseFilters,
-      phaseFilters,
-    ],
-};
+local b = import './common.libsonnet';
 
 {
   local filters = 'k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"',
 
   // CPU Utilization Stat Queries
   cpuUtilisationFromRequests(config)::
-    builders.namespaceUtilisation('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters),
+    b.ratio('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, useRate=true),
 
   cpuUtilisationFromLimits(config)::
-    builders.namespaceUtilisation('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters),
+    b.ratio('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, useRate=true),
 
   memoryUtilisationFromRequests(config)::
-    builders.namespaceUtilisation('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters, useRate=false),
+    b.ratio('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters),
 
   memoryUtilisationFromLimits(config)::
-    builders.namespaceUtilisation('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters, useRate=false),
+    b.ratio('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters),
 
   // CPU Usage TimeSeries Queries
   cpuUsageByPod(config)::
-    builders.podRate('k8s_pod_cpu_time_seconds_total', filters),
+    b.rate('k8s_pod_cpu_time_seconds_total', filters, groupBy='k8s_pod_name'),
 
   cpuQuotaRequests(config)::
     '0',
@@ -150,20 +29,20 @@ local builders = {
 
   // CPU Quota Table Queries
   cpuRequestsByPod(config)::
-    builders.podMetricActiveOnly('k8s_container_cpu_request', filters, filters),
+    b.metricActiveOnly('k8s_container_cpu_request', filters, filters, groupBy='k8s_pod_name'),
 
   cpuUsageVsRequests(config)::
-    builders.podRatioActiveOnly('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, filters, useRate=true),
+    b.ratioActiveOnly('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, filters, groupBy='k8s_pod_name', useRate=true),
 
   cpuLimitsByPod(config)::
-    builders.podMetricActiveOnly('k8s_container_cpu_limit', filters, filters),
+    b.metricActiveOnly('k8s_container_cpu_limit', filters, filters, groupBy='k8s_pod_name'),
 
   cpuUsageVsLimits(config)::
-    builders.podRatioActiveOnly('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, filters, useRate=true),
+    b.ratioActiveOnly('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, filters, groupBy='k8s_pod_name', useRate=true),
 
   // Memory Usage TimeSeries Queries
   memoryUsageByPod(config)::
-    builders.podMetric('k8s_pod_memory_working_set_bytes', filters),
+    b.metric('k8s_pod_memory_working_set_bytes', filters, groupBy='k8s_pod_name'),
 
   memoryQuotaRequests(config)::
     '0',
@@ -173,19 +52,19 @@ local builders = {
 
   // Memory Quota Table Queries
   memoryRequestsByPod(config)::
-    builders.podMetricActiveOnly('k8s_container_memory_request_bytes', filters, filters),
+    b.metricActiveOnly('k8s_container_memory_request_bytes', filters, filters, groupBy='k8s_pod_name'),
 
   memoryUsageVsRequests(config)::
-    builders.podRatioActiveOnly('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters, filters),
+    b.ratioActiveOnly('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters, filters, groupBy='k8s_pod_name'),
 
   memoryLimitsByPod(config)::
-    builders.podMetricActiveOnly('k8s_container_memory_limit_bytes', filters, filters),
+    b.metricActiveOnly('k8s_container_memory_limit_bytes', filters, filters, groupBy='k8s_pod_name'),
 
   memoryUsageVsLimits(config)::
-    builders.podRatioActiveOnly('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters, filters),
+    b.ratioActiveOnly('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters, filters, groupBy='k8s_pod_name'),
 
   memoryUsageRSS(config)::
-    builders.podMetric('k8s_pod_memory_rss_bytes', filters),
+    b.metric('k8s_pod_memory_rss_bytes', filters, groupBy='k8s_pod_name'),
 
   memoryUsageCache(config)::
     '0',
@@ -195,10 +74,10 @@ local builders = {
 
   // Network Table Queries
   networkReceiveBandwidth(config)::
-    builders.namespaceRate('k8s_pod_network_io_bytes_total', filters + ', direction="receive"'),
+    b.rate('k8s_pod_network_io_bytes_total', filters + ', direction="receive"', groupBy='k8s_namespace_name'),
 
   networkTransmitBandwidth(config)::
-    builders.namespaceRate('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"'),
+    b.rate('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"', groupBy='k8s_namespace_name'),
 
   networkReceivePackets(config)::
     '0',
@@ -207,17 +86,17 @@ local builders = {
     '0',
 
   networkReceivePacketsDropped(config)::
-    builders.namespaceRate('k8s_pod_network_errors_total', filters + ', direction="receive"'),
+    b.rate('k8s_pod_network_errors_total', filters + ', direction="receive"', groupBy='k8s_namespace_name'),
 
   networkTransmitPacketsDropped(config)::
-    builders.namespaceRate('k8s_pod_network_errors_total', filters + ', direction="transmit"'),
+    b.rate('k8s_pod_network_errors_total', filters + ', direction="transmit"', groupBy='k8s_namespace_name'),
 
   // Network TimeSeries Queries
   networkReceiveBandwidthTimeSeries(config)::
-    builders.namespaceRate('k8s_pod_network_io_bytes_total', filters + ', direction="receive"'),
+    b.rate('k8s_pod_network_io_bytes_total', filters + ', direction="receive"', groupBy='k8s_namespace_name'),
 
   networkTransmitBandwidthTimeSeries(config)::
-    builders.namespaceRate('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"'),
+    b.rate('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"', groupBy='k8s_namespace_name'),
 
   rateOfReceivedPackets(config)::
     '0',
@@ -226,10 +105,10 @@ local builders = {
     '0',
 
   rateOfReceivedPacketsDropped(config)::
-    builders.namespaceRate('k8s_pod_network_errors_total', filters + ', direction="receive"'),
+    b.rate('k8s_pod_network_errors_total', filters + ', direction="receive"', groupBy='k8s_namespace_name'),
 
   rateOfTransmittedPacketsDropped(config)::
-    builders.namespaceRate('k8s_pod_network_errors_total', filters + ', direction="transmit"'),
+    b.rate('k8s_pod_network_errors_total', filters + ', direction="transmit"', groupBy='k8s_namespace_name'),
 
   // Storage TimeSeries Queries
   iopsReadsWrites(config)::
