@@ -27,11 +27,3 @@ To delete the cluster, run the following:
 ```shell
 make dev-down
 ```
-
-## Testing
-
-Run promtool unit tests for queries:
-
-```shell
-make test
-```
