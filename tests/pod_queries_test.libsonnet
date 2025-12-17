@@ -4,29 +4,29 @@ local config = {
   _config: {},
 };
 
-local expectedWithRate = |||
-  sum by (k8s_pod_name) (
-    max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}[$__rate_interval])
-    )
-    /
-    max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_container_cpu_request{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-  )
-|||;
+local expectedWithRate =
+  "sum by (k8s_pod_name) (\n" +
+  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
+  '    rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}", k8s_pod_name=~"${pod}"}[$__rate_interval])\n' +
+  "  )\n" +
+  "/\n" +
+  "max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
+  '    k8s_container_cpu_request{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}", k8s_pod_name=~"${pod}"}\n' +
+  "  )\n" +
+  "\n" +
+  ")";
 
-local expectedWithoutRate = |||
-  sum by (k8s_pod_name) (
-    max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_pod_memory_usage_bytes{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-    /
-    max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_container_memory_request_bytes{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-  )
-|||;
+local expectedWithoutRate =
+  "sum by (k8s_pod_name) (\n" +
+  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
+  '    k8s_pod_memory_usage_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}", k8s_pod_name=~"${pod}"}\n' +
+  "  )\n" +
+  "/\n" +
+  "max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
+  '    k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}", k8s_pod_name=~"${pod}"}\n' +
+  "  )\n" +
+  "\n" +
+  ")";
 
 {
   testRatioWithRate:

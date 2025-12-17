@@ -90,9 +90,11 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
 
 .PHONY: test
-test: test-queries
+test: test-jsonnet
 
-.PHONY: test-queries
-test-queries: $(PROMTOOL_BIN)
-	@echo "Running promtool tests for queries..."
-	@$(PROMTOOL_BIN) test rules tests/queries_test.yaml
+.PHONY: test-jsonnet
+test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
+	@echo "Running jsonnet query tests..."
+	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet > /dev/null
+	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet > /dev/null
+	@echo "All tests passed!"
