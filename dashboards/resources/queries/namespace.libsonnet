@@ -2,7 +2,7 @@
 local b = import './common.libsonnet';
 
 {
-  local filters = 'k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"',
+  local filters = 'k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"',
 
   // CPU Utilization Stat Queries
   cpuUtilisationFromRequests(config)::

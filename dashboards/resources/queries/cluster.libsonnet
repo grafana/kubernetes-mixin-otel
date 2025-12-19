@@ -38,7 +38,7 @@ local b = import './common.libsonnet';
 
   // Memory stat queries
   memoryUtilisation(config)::
-    b.ratioSum('k8s_pod_memory_working_set_bytes', 'k8s_node_allocatable_memory_bytes', filters),
+    b.ratioSum('k8s_pod_memory_working_set_bytes', 'system_memory_limit_bytes', filters),
 
   memoryRequestsCommitment(config)::
     b.ratioSum('k8s_container_memory_request_bytes', 'k8s_node_allocatable_memory_bytes', filters),
