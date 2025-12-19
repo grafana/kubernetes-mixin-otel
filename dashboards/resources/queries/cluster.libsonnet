@@ -9,10 +9,10 @@ local b = import './common.libsonnet';
     b.ratioSum('k8s_pod_cpu_time_seconds_total', 'system_cpu_logical_count', filters, useRate=true),
 
   cpuRequestsCommitment(config)::
-    b.ratioSum('k8s_container_cpu_request', 'k8s_node_allocatable_cpu_cores', filters),
+    b.ratioSum('k8s_container_cpu_request', 'system_cpu_logical_count', filters),
 
   cpuLimitsCommitment(config)::
-    b.ratioSum('k8s_container_cpu_limit', 'k8s_node_allocatable_cpu_cores', filters),
+    b.ratioSum('k8s_container_cpu_limit', 'system_cpu_logical_count', filters),
 
   // CPU usage and namespace queries
   cpuUsageByNamespace(config)::
@@ -41,10 +41,10 @@ local b = import './common.libsonnet';
     b.ratioSum('k8s_pod_memory_working_set_bytes', 'system_memory_limit_bytes', filters),
 
   memoryRequestsCommitment(config)::
-    b.ratioSum('k8s_container_memory_request_bytes', 'k8s_node_allocatable_memory_bytes', filters),
+    b.ratioSum('k8s_container_memory_request_bytes', 'k8s_node_memory_working_set_bytes', filters),
 
   memoryLimitsCommitment(config)::
-    b.ratioSum('k8s_container_memory_limit_bytes', 'k8s_node_allocatable_memory_bytes', filters),
+    b.ratioSum('k8s_container_memory_limit_bytes', 'k8s_node_memory_working_set_bytes', filters),
 
   // Memory usage and namespace queries
   memoryUsageByNamespace(config)::
