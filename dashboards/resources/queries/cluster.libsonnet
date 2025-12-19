@@ -6,7 +6,7 @@ local b = import './common.libsonnet';
 
   // CPU stat queries
   cpuUtilisation(config)::
-    b.ratioSum('k8s_pod_cpu_time_seconds_total', 'k8s_node_allocatable_cpu_cores', filters, useRate=true),
+    b.ratioSum('k8s_pod_cpu_time_seconds_total', 'system_cpu_logical_count', filters, useRate=true),
 
   cpuRequestsCommitment(config)::
     b.ratioSum('k8s_container_cpu_request', 'k8s_node_allocatable_cpu_cores', filters),
