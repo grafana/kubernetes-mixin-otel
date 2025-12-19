@@ -5,42 +5,16 @@ local config = {
 };
 
 local expectedCpuUsageByPod =
-  "sum by (k8s_pod_name) (\n" +
-  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}[$__rate_interval])\n' +
-  "  )\n" +
-  ")";
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}[$__rate_interval])))';
 
 local expectedMemoryUsageByPod =
-  "sum by (k8s_pod_name) (\n" +
-  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}\n' +
-  "  )\n" +
-  ")";
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}))';
 
 local expectedCpuUtilisationFromRequests =
-  "sum(\n" +
-  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}[$__rate_interval])\n' +
-  "  )\n" +
-  "/\n" +
-  "max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    k8s_container_cpu_request{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}\n' +
-  "  )\n" +
-  "\n" +
-  ")";
+  'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}[$__rate_interval])) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}))';
 
 local expectedMemoryUtilisationFromRequests =
-  "sum(\n" +
-  "  max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}\n' +
-  "  )\n" +
-  "/\n" +
-  "max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (\n" +
-  '    k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}\n' +
-  "  )\n" +
-  "\n" +
-  ")";
+  'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster}", k8s_namespace_name=~"${namespace}"}))';
 
 {
   testCpuUsageByPod:
