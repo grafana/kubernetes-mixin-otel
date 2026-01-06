@@ -98,18 +98,6 @@ local b = import './common.libsonnet';
   networkTransmitBandwidthTimeSeries(config)::
     b.rateSum('k8s_pod_network_io_bytes_total', filters + ', direction="transmit"', by='k8s_namespace_name'),
 
-  rateOfReceivedPackets(config)::
-    '0',
-
-  rateOfTransmittedPackets(config)::
-    '0',
-
-  rateOfReceivedPacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', filters + ', direction="receive"', by='k8s_namespace_name'),
-
-  rateOfTransmittedPacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', filters + ', direction="transmit"', by='k8s_namespace_name'),
-
   // Storage TimeSeries Queries
   iopsReadsWrites(config)::
     '0',
