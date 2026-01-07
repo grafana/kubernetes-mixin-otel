@@ -4,29 +4,11 @@ local config = {
   _config: {},
 };
 
-local expectedWithRate = |||
-  sum by (k8s_pod_name) (
-    max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}[$__rate_interval])
-    )
-    /
-    max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_container_cpu_request{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-  )
-|||;
+local expectedWithRate =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval])) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
 
-local expectedWithoutRate = |||
-  sum by (k8s_pod_name) (
-    max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_pod_memory_usage_bytes{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-    /
-    max by(k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (
-      k8s_container_memory_request_bytes{k8s_cluster_name=~'${cluster}', k8s_namespace_name=~'${namespace}', k8s_pod_name=~'${pod}'}
-    )
-  )
-|||;
+local expectedWithoutRate =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
 
 {
   testRatioWithRate:

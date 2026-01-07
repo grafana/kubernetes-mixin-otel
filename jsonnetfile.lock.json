@@ -8,7 +8,7 @@
           "subdir": "gen/grafonnet-latest"
         }
       },
-      "version": "8a27651b56fbdba45a389ccb11440200091c73a1",
+      "version": "7380c9c64fb973f34c3ec46265621a2b0dee0058",
       "sum": "V9vAj21qJOc2DlMPDgB1eEjSQU4A+sAA4AXuJ6bd4xc="
     },
     {
@@ -18,7 +18,7 @@
           "subdir": "gen/grafonnet-v11.4.0"
         }
       },
-      "version": "8a27651b56fbdba45a389ccb11440200091c73a1",
+      "version": "7380c9c64fb973f34c3ec46265621a2b0dee0058",
       "sum": "aVAX09paQYNOoCSKVpuk1exVIyBoMt/C50QJI+Q/3nA="
     },
     {
@@ -48,8 +48,8 @@
           "subdir": ""
         }
       },
-      "version": "ab52e60474917bc9cb7f8150e3317437c66d7a6b",
-      "sum": "xPikpiEGlqM6ZyH5o/Dmndc6Qw9yUxIvIn51jxhXizo="
+      "version": "93a00d2aff5c2c2544b02e981d96ef85ae4b3012",
+      "sum": "4LTzUL19qMEBP3Ey2umgxTu30QLD1PAmU32vF6VxO/c="
     }
   ],
   "legacyImports": false
