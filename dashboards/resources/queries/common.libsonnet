@@ -20,8 +20,8 @@ local avgExpr(inner, by) =
   else
     'avg by (%s) (%s)' % [by, inner];
 
-local maxByContainer(expr) =
-  'max by (%s) (%s)' % [maxBy, expr];
+local maxExpr(inner, by) =
+  'max by (%s) (%s)' % [by, inner];
 
 // Active pod filter (Pending=1 or Running=2), normalized to 1
 // pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
@@ -39,27 +39,27 @@ local activePodFilter(phaseFilters) =
 {
   metricSum(metric, filters, by='')::
     sumExpr(
-      maxByContainer('%s{%s}' % [metric, filters]),
+      maxExpr('%s{%s}' % [metric, filters], maxBy),
       by
     ),
 
   rateSum(metric, filters, by='')::
     sumExpr(
-      maxByContainer(withRate(metric, filters, true)),
+      maxExpr(withRate(metric, filters, true), maxBy),
       by
     ),
 
   rateAvg(metric, filters, by='')::
     avgExpr(
-      maxByContainer(withRate(metric, filters, true)),
+      maxExpr(withRate(metric, filters, true), maxBy),
       by
     ),
 
   ratioSum(numeratorMetric, denominatorMetric, filters, by='', useRate=false)::
     sumExpr(
       '%s / %s' % [
-        maxByContainer(withRate(numeratorMetric, filters, useRate)),
-        maxByContainer('%s{%s}' % [denominatorMetric, filters]),
+        maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
+        maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy),
       ],
       by
     ),
@@ -67,23 +67,23 @@ local activePodFilter(phaseFilters) =
   differenceSum(metric1, metric2, filters, by='')::
     sumExpr(
       '%s - %s' % [
-        maxByContainer('%s{%s}' % [metric1, filters]),
-        maxByContainer('%s{%s}' % [metric2, filters]),
+        maxExpr('%s{%s}' % [metric1, filters], maxBy),
+        maxExpr('%s{%s}' % [metric2, filters], maxBy),
       ],
       by
     ),
 
   metricSumActiveOnly(metric, filters, phaseFilters, by='')::
     sumExpr(
-      maxByContainer('%s{%s}%s' % [metric, filters, activePodFilter(phaseFilters)]),
+      maxExpr('%s{%s}%s' % [metric, filters, activePodFilter(phaseFilters)], maxBy),
       by
     ),
 
   ratioSumActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, by='', useRate=false)::
     sumExpr(
       '%s / %s' % [
-        maxByContainer(withRate(numeratorMetric, filters, useRate)),
-        maxByContainer('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)]),
+        maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
+        maxExpr('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)], maxBy),
       ],
       by
     ),
