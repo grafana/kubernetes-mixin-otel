@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Config
+
+clusters:
+- cluster:
+    server: ${KWOK_API_SERVER}
+    insecure-skip-tls-verify: true
+  name: ${KWOK_CONTEXT}
+
+users:
+- name: ${KWOK_CONTEXT}
+  user:
+    client-certificate-data: ${CLIENT_CERT_DATA}
+    client-key-data: ${CLIENT_KEY_DATA}
+
+contexts:
+- context:
+    cluster: ${KWOK_CONTEXT}
+    user: ${KWOK_CONTEXT}
+  name: ${KWOK_CONTEXT}
+
+current-context: ${KWOK_CONTEXT}
+
