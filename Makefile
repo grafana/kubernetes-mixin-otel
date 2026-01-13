@@ -40,6 +40,55 @@ dev-port-forward:
 dev-down:
 	k3d cluster delete kubernetes-mixin-otel
 
+.PHONY: kwok
+kwok: generate
+	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME) ./run-kwok-env.sh && \
+	echo '' && \
+	echo '╔═══════════════════════════════════════════════════════════════╗' && \
+	echo '║             🚀 KWOK Environment Ready! 🚀                     ║' && \
+	echo '║                                                               ║' && \
+	echo '║   Grafana:    http://localhost:3000                           ║' && \
+	echo '║   Prometheus: http://localhost:8889/metrics                   ║' && \
+	echo '║                                                               ║' && \
+	echo '║   Cluster: $(CLUSTER_NAME) ($(NODE_COUNT) nodes, $(POD_COUNT) pods)                  ║' && \
+	echo '║   Context: kwok-$(CLUSTER_NAME)                                  ║' && \
+	echo '║                                                               ║' && \
+	echo '║   Run `make kwok-down` to tear down                           ║' && \
+	echo '╚═══════════════════════════════════════════════════════════════╝'
+
+.PHONY: kwok-down
+kwok-down:
+	docker rm -f kwok-otel-collector lgtm || true
+	kwokctl delete cluster --name $(CLUSTER_NAME) || true
+	@echo "KWOK environment torn down"
+
+NODE_COUNT ?= 50
+CLUSTER_NAME ?= queries-testing
+
+.PHONY: kwok-nodes
+kwok-nodes:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./scale-kwok-nodes.sh $(NODE_COUNT)
+
+POD_COUNT ?= 200
+.PHONY: kwok-pods
+kwok-pods:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./create-kwok-pods.sh $(POD_COUNT)
+
+.PHONY: kwok-resource-usage
+kwok-resource-usage:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./apply-kwok-resource-usage.sh
+
+.PHONY: kwok-annotate-nodes
+kwok-annotate-nodes:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./annotate-kwok-nodes.sh
+
+.PHONY: kwok-setup
+kwok-setup:
+	@$(MAKE) kwok-nodes NODE_COUNT=$(NODE_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
+	@$(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
+	@$(MAKE) kwok-resource-usage CLUSTER_NAME=$(CLUSTER_NAME)
+	@$(MAKE) kwok-annotate-nodes CLUSTER_NAME=$(CLUSTER_NAME)
+
 .PHONY: clean-dashboards
 clean-dashboards:
 	rm -f $(OUT_DIR)/*.json*

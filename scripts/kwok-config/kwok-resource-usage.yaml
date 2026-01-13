@@ -1,0 +1,27 @@
+# ClusterResourceUsage - simulates CPU and memory usage for all KWOK-managed pods
+# Ref: https://kwok.sigs.k8s.io/docs/user/resource-usage-configuration/
+apiVersion: kwok.x-k8s.io/v1alpha1
+kind: ClusterResourceUsage
+metadata:
+  name: default-resource-usage
+spec:
+  # Empty selector = applies to all pods managed by KWOK
+  selector:
+    matchNamespaces: []
+    matchNames: []
+  usages:
+    - containers: []  # Empty = all containers
+      usage:
+        cpu:
+          # Static CPU usage with annotation override
+          expression: |
+            "kwok.x-k8s.io/usage-cpu" in pod.metadata.annotations
+            ? Quantity(pod.metadata.annotations["kwok.x-k8s.io/usage-cpu"])
+            : Quantity("50m")
+        memory:
+          # Static memory usage with annotation override
+          expression: |
+            "kwok.x-k8s.io/usage-memory" in pod.metadata.annotations
+            ? Quantity(pod.metadata.annotations["kwok.x-k8s.io/usage-memory"])
+            : Quantity("128Mi")
+
