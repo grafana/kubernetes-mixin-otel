@@ -21,17 +21,29 @@ receivers:
       filesystem: {}
       network: {}
 
-  # Scrape simulated kubelet resource metrics from KWOK controller
+  # Scrape simulated kubelet resource metrics from KWOK controller for all nodes
   prometheus/kwok:
     config:
       scrape_configs:
         - job_name: 'kwok-resource-metrics'
           scrape_interval: 30s
-          static_configs:
-            - targets: ['${env:KWOK_CONTROLLER_IP}:10247']
-          metrics_path: /metrics/nodes/node-000000/metrics/resource
-          # Note: This only scrapes node-000000. For all nodes, use service discovery
-          # or generate targets dynamically
+          kubernetes_sd_configs:
+            - role: node
+              kubeconfig_file: /kube/config
+          relabel_configs:
+            # Extract node name
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: node_name
+            # Set target to KWOK controller
+            - target_label: __address__
+              replacement: '${env:KWOK_CONTROLLER_IP}:10247'
+            # Build metrics path using node name
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: __metrics_path__
+              replacement: '/metrics/nodes/$1/metrics/resource'
+            # Add k8s_node_name label
+            - source_labels: [__meta_kubernetes_node_name]
+              target_label: k8s_node_name
 
   k8s_cluster:
     auth_type: kubeConfig
@@ -58,22 +70,6 @@ processors:
       - key: k8s.cluster.name
         action: upsert
         value: ${env:CLUSTER_NAME}
-
-  resource/hostname:
-    attributes:
-      - key: k8s.node.name
-        action: upsert
-        value: ${env:K8S_NODE_NAME}
-      - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
-
-  transform/copy_node_name:
-    metric_statements:
-      - context: datapoint
-        statements:
-          - set(datapoint.attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
-          - set(datapoint.attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
 
   resourcedetection:
     detectors: [system]
@@ -108,8 +104,6 @@ service:
         - resourcedetection
         - k8sattributes
         - resource/k8sclustername
-        - resource/hostname
-        - transform/copy_node_name
         - batch
       exporters: [otlphttp/metrics, prometheus]
 

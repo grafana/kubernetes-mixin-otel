@@ -18,7 +18,7 @@ echo "=== KWOK + LGTM + OTel bootstrap for ${CLUSTER_NAME} ==="
 # 1. Ensure KWOK cluster exists
 if ! kwokctl get clusters | grep -q "^${CLUSTER_NAME}$"; then
   echo "[kwok] Creating cluster ${CLUSTER_NAME}..."
-  kwokctl create cluster --name "${CLUSTER_NAME}"
+  kwokctl create cluster --name "${CLUSTER_NAME}" --enable-crds ClusterResourceUsage,ResourceUsage
 else
   echo "[kwok] Cluster ${CLUSTER_NAME} already exists."
 fi
