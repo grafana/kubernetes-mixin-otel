@@ -15,15 +15,36 @@ local var = g.dashboard.variable;
       },
     },
 
-  // Cluster variable - Kubernetes cluster selector
   cluster(datasource)::
     var.query.new('cluster')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_cluster_name',
-      'system_cpu_logical_count',
+      'k8s_node_condition_ready',
     )
     + var.query.generalOptions.withLabel('cluster')
+    + var.query.selectionOptions.withIncludeAll(true)
+    + var.query.selectionOptions.withMulti(true)
+    + var.query.refresh.onTime()
+    + var.query.generalOptions.showOnDashboard.withLabelAndValue()
+    + var.query.withSort(type='alphabetical')
+    + {
+      allowCustom: false,
+      current: {
+        selected: true,
+        text: 'All',
+        value: '$__all',
+      },
+    },
+  
+  node(datasource)::
+    var.query.new('node')
+    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.queryTypes.withLabelValues(
+      'k8s_node_name',
+      'k8s_node_condition_ready',
+    )
+    + var.query.generalOptions.withLabel('node')
     + var.query.selectionOptions.withIncludeAll(true)
     + var.query.selectionOptions.withMulti(true)
     + var.query.refresh.onTime()
