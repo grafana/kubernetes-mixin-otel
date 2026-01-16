@@ -94,14 +94,6 @@ elif docker ps -a --format '{{.Names}}' | grep -q '^kwok-otel-collector$'; then
   docker rm -f kwok-otel-collector
 fi
 
-# Get KWOK controller IP for prometheus scraping
-KWOK_CONTROLLER_IP=$(docker inspect "kwok-${CLUSTER_NAME}-kwok-controller" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' || echo "")
-if [[ -z "${KWOK_CONTROLLER_IP}" ]]; then
-  echo "[otel] Warning: Could not get KWOK controller IP, resource metrics may not be scraped"
-  KWOK_CONTROLLER_IP="127.0.0.1"
-fi
-echo "[otel] KWOK controller IP: ${KWOK_CONTROLLER_IP}"
-
 echo "[otel] Starting otel/opentelemetry-collector-contrib (kwok-otel-collector)..."
 docker run -d \
   --name kwok-otel-collector \
@@ -109,7 +101,6 @@ docker run -d \
   -e KUBECONFIG=/kube/config \
   -e CLUSTER_NAME="${CLUSTER_NAME}" \
   -e K8S_NODE_NAME="${CLUSTER_NAME}" \
-  -e KWOK_CONTROLLER_IP="${KWOK_CONTROLLER_IP}" \
   -p 8889:8889 \
   -v "${OTEL_CONFIG}:/etc/otelcol/config.yaml" \
   otel/opentelemetry-collector-contrib:latest \

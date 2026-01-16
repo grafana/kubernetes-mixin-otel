@@ -21,29 +21,19 @@ receivers:
       filesystem: {}
       network: {}
 
-  # Scrape simulated kubelet resource metrics from KWOK controller for all nodes
-  prometheus/kwok:
-    config:
-      scrape_configs:
-        - job_name: 'kwok-resource-metrics'
-          scrape_interval: 30s
-          kubernetes_sd_configs:
-            - role: node
-              kubeconfig_file: /kube/config
-          relabel_configs:
-            # Extract node name
-            - source_labels: [__meta_kubernetes_node_name]
-              target_label: node_name
-            # Set target to KWOK controller
-            - target_label: __address__
-              replacement: '${env:KWOK_CONTROLLER_IP}:10247'
-            # Build metrics path using node name
-            - source_labels: [__meta_kubernetes_node_name]
-              target_label: __metrics_path__
-              replacement: '/metrics/nodes/$1/metrics/resource'
-            # Add k8s_node_name label
-            - source_labels: [__meta_kubernetes_node_name]
-              target_label: k8s_node_name
+  # Collect kubelet stats from KWOK simulated nodes via API server proxy
+  kubeletstats:
+    auth_type: kubeConfig
+    collection_interval: 30s
+    insecure_skip_verify: true
+    metric_groups:
+      - node
+      - pod
+      - container
+    # Discover all nodes and scrape via API server proxy
+    nodes: "*"
+    k8s_api_config:
+      auth_type: kubeConfig
 
   k8s_cluster:
     auth_type: kubeConfig
@@ -99,7 +89,7 @@ service:
 
   pipelines:
     metrics:
-      receivers: [otlp, hostmetrics, k8s_cluster, prometheus/kwok]
+      receivers: [otlp, hostmetrics, k8s_cluster, kubeletstats]
       processors:
         - resourcedetection
         - k8sattributes
