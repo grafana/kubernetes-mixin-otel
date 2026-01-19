@@ -21,19 +21,16 @@ receivers:
       filesystem: {}
       network: {}
 
-  # Collect kubelet stats from KWOK simulated nodes via API server proxy
+  # Collect kubelet stats from kwok-stats-proxy (simulates /stats/summary for KWOK)
   kubeletstats:
-    auth_type: kubeConfig
+    auth_type: none
+    endpoint: ${env:STATS_PROXY_ENDPOINT}
     collection_interval: 30s
     insecure_skip_verify: true
     metric_groups:
       - node
       - pod
       - container
-    # Discover all nodes and scrape via API server proxy
-    nodes: "*"
-    k8s_api_config:
-      auth_type: kubeConfig
 
   k8s_cluster:
     auth_type: kubeConfig
