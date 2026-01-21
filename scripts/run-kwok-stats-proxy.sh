@@ -23,10 +23,10 @@ docker run -d \
   "${STATS_PROXY_IMAGE}"
 
 # Get stats proxy IP for OTel collector
-STATS_PROXY_IP=$(docker inspect kwok-stats-proxy --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' || echo "")
+STATS_PROXY_IP=$(docker inspect kwok-stats-proxy --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 if [[ -z "${STATS_PROXY_IP}" ]]; then
-  echo "[stats-proxy] Warning: Could not get stats proxy IP"
-  STATS_PROXY_IP="127.0.0.1"
+  echo "ERROR: Could not get stats proxy IP. Is the container running?"
+  exit 1
 fi
 echo "[stats-proxy] Stats proxy IP: ${STATS_PROXY_IP}"
 
