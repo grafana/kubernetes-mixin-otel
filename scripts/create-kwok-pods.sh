@@ -10,6 +10,12 @@ CONTEXT="${KWOK_CONTEXT:-kwok-${CLUSTER_NAME}}"
 
 echo "[kwok] Creating ${POD_COUNT} pods with resource requests..."
 
+# KWOK doesn't run the service account controller
+if ! kubectl --context "${CONTEXT}" get serviceaccount default -n default; then
+  echo "[kwok] Creating default service account..."
+  kubectl --context "${CONTEXT}" create serviceaccount default -n default
+fi
+
 if [[ ! -f "${POD_TEMPLATE}" ]]; then
   echo "ERROR: Pod template not found at ${POD_TEMPLATE}"
   exit 1

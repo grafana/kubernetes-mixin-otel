@@ -245,5 +245,10 @@ func getKubeClient() (*kubernetes.Clientset, error) {
 		}
 	}
 
+	// Skip TLS verification for KWOK clusters (certificates may not include all hostnames)
+	config.TLSClientConfig.Insecure = true
+	config.TLSClientConfig.CAData = nil
+	config.TLSClientConfig.CAFile = ""
+
 	return kubernetes.NewForConfig(config)
 }
