@@ -8,13 +8,8 @@ KUBECONFIG_OUT="${KUBECONFIG_OUT:-/tmp/kwok-kubeconfig}"
 STATS_PROXY_DIR="${SCRIPT_DIR}/kwok-stats-proxy"
 STATS_PROXY_IMAGE="kwok-stats-proxy:latest"
 
-if docker ps --format '{{.Names}}' | grep -q '^kwok-stats-proxy$'; then
-  echo "[stats-proxy] Removing existing kwok-stats-proxy container..."
-  docker rm -f kwok-stats-proxy
-elif docker ps -a --format '{{.Names}}' | grep -q '^kwok-stats-proxy$'; then
-  echo "[stats-proxy] Removing stopped kwok-stats-proxy container..."
-  docker rm -f kwok-stats-proxy
-fi
+# Remove existing container if any
+make -C "${SCRIPT_DIR}/.." kwok-stats-proxy-rm
 
 echo "[stats-proxy] Building kwok-stats-proxy image..."
 docker build -t "${STATS_PROXY_IMAGE}" "${STATS_PROXY_DIR}"
