@@ -9,43 +9,61 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/).
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Your Machine                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                    k3d Cluster                              │   │
-│   │                    (real K8s in Docker)                     │   │
-│   │                                                             │   │
-│   │   ┌─────────────────┐      ┌─────────────────┐              │   │
-│   │   │ OTel Collector  │      │ OTel Collector  │              │   │
-│   │   │ (Deployment)    │      │ (DaemonSet)     │              │   │
-│   │   │                 │      │                 │              │   │
-│   │   │ - k8s_cluster   │      │ - kubeletstats  │              │   │
-│   │   │ - k8s_events    │      │ - hostmetrics   │              │   │
-│   │   └────────┬────────┘      └────────┬────────┘              │   │
-│   │            │                        │                       │   │
-│   │            └──────────┬─────────────┘                       │   │
-│   │                       │ OTLP :4318                          │   │
-│   │                       ▼                                     │   │
-│   │            ┌─────────────────────┐                          │   │
-│   │            │   LGTM Pod          │                          │   │
-│   │            │                     │                          │   │
-│   │            │  ┌───────────────┐  │                          │   │
-│   │            │  │ Grafana :3000 │──┼──────────────────────────┼───┼──▶ localhost:3000
-│   │            │  ├───────────────┤  │                          │   │
-│   │            │  │ Prometheus    │  │                          │   │
-│   │            │  │ :9090         │──┼──────────────────────────┼───┼──▶ localhost:9090
-│   │            │  ├───────────────┤  │                          │   │
-│   │            │  │ OTLP Receiver │  │                          │   │
-│   │            │  │ :4317/:4318   │  │                          │   │
-│   │            │  └───────────────┘  │                          │   │
-│   │            └─────────────────────┘                          │   │
-│   │                                                             │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                              k3d Cluster                                      │
+│                                                                               │
+│  ┌───────────────────────────────┐    ┌───────────────────────────────┐       │
+│  │  OTel Collector (Deployment)  │    │  OTel Collector (DaemonSet)   │       │
+│  │  (1 replica)                  │    │  (1 per node)                 │       │
+│  │                               │    │                               │       │
+│  │  Receivers:                   │    │  Receivers:                   │       │
+│  │  ┌─────────────────────────┐  │    │  ┌─────────────────────────┐  │       │
+│  │  │ k8s_cluster (preset)    │  │    │  │ kubeletstats (preset)   │  │       │
+│  │  │ • node metrics          │  │    │  │ • pod CPU/memory        │  │       │
+│  │  │ • pod counts            │  │    │  │ • container stats       │  │       │
+│  │  │ • deployment status     │  │    │  ├─────────────────────────┤  │       │
+│  │  └─────────────────────────┘  │    │  │ hostmetrics             │  │       │
+│  │               │               │    │  │ • node CPU/memory/disk  │  │       │
+│  │               │               │    │  └─────────────────────────┘  │       │
+│  └───────────────┼───────────────┘    └───────────────┼───────────────┘       │
+│                  │                                    │                       │
+│                  └──────────────┬─────────────────────┘                       │
+│                                 │                                             │
+│                                 │  OTLP/HTTP                                  │
+│                                 │  http://lgtm:9090/api/v1/otlp               │
+│                                 ▼                                             │
+│                  ┌───────────────────────────────────────┐                    │
+│                  │            LGTM Pod                   │                    │
+│                  │                                       │                    │
+│                  │  ┌─────────────────────────────────┐  │                    │
+│                  │  │     OTLP Receiver (:9090)       │  │                    │
+│                  │  │     /api/v1/otlp                │  │                    │
+│                  │  └───────────────┬─────────────────┘  │                    │
+│                  │                  │                    │                    │
+│                  │                  ▼                    │                    │
+│                  │  ┌─────────────────────────────────┐  │                    │
+│                  │  │     Prometheus / Mimir          │──┼───▶ localhost:9090 │
+│                  │  │     (stores metrics in TSDB)    │  │                    │
+│                  │  └───────────────┬─────────────────┘  │                    │
+│                  │                  │ PromQL             │                    │
+│                  │                  ▼                    │                    │
+│                  │  ┌─────────────────────────────────┐  │                    │
+│                  │  │         Grafana                 │──┼───▶ localhost:3000 │
+│                  │  │     (dashboards & queries)      │  │                    │
+│                  │  └─────────────────────────────────┘  │                    │
+│                  │                                       │                    │
+│                  └───────────────────────────────────────┘                    │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### OTel Collectors Summary
+
+| Collector | Type | What It Collects | Runs On |
+|-----------|------|------------------|---------|
+| **Deployment** | Single pod | Cluster-wide metrics (nodes, deployments, quotas) | Any node |
+| **DaemonSet** | Pod per node | Per-node metrics (kubelet stats, host metrics) | Every node |
+
 ---
 
 # KWOK cluster
@@ -61,54 +79,45 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/).
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Your Machine                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌──────────────────┐     ┌──────────────────┐                     │
-│   │  KWOK Cluster    │     │   Docker         │                     │
-│   │  (simulated K8s) │     │                  │                     │
-│   │                  │     │  ┌────────────┐  │                     │
-│   │  - 50 fake nodes │◀────┼──│ stats-proxy│  │                     │
-│   │  - 200 fake pods │     │  └────────────┘  │                     │
-│   │                  │     │        │         │                     │
-│   └────────▲─────────┘     │        ▼         │                     │
-│            │               │  ┌────────────┐  │                     │
-│            │               │  │ OTel       │  │                     │
-│            └───────────────┼──│ Collector  │  │                     │
-│                            │  └─────┬──────┘  │                     │
-│                            │        │         │                     │
-│                            │        ▼         │                     │
-│                            │  ┌────────────┐  │                     │
-│                            │  │   LGTM     │──┼───▶ localhost:3000  │
-│                            │  │ (Grafana)  │  │     (Grafana UI)    │
-│                            │  └────────────┘  │                     │
-│                            └──────────────────┘                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Metrics flow in KWOK
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Docker Network                                  │
-│                                                                     │
-│  ┌─────────────────┐          ┌─────────────────────────────────┐   │
-│  │ kwok-otel-      │  OTLP    │         LGTM Container          │   │
-│  │ collector       │─────────▶│                                 │   │
-│  │                 │ :4318    │  ┌──────────┐   ┌────────────┐  │   │
-│  │ Receivers:      │          │  │ OTLP     │──▶│ Prometheus │  │   │
-│  │ - kubeletstats  │          │  │ Receiver │   │ /Mimir     │  │   │
-│  │ - k8s_cluster   │          │  └──────────┘   │ (internal) │  │   │
-│  │ - hostmetrics   │          │                 └──────┬─────┘  │   │
-│  └─────────────────┘          │                        │        │   │
-│                               │                   PromQL│       │   │
-│                               │                        ▼        │   │
-│                               │                 ┌────────────┐  │   │
-│                               │                 │  Grafana   │──┼───▶ :3000
-│                               │                 └────────────┘  │   │
-│                               └─────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              Your Machine                                           │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│   ┌───────────────────────┐       ┌───────────────────────────────────────────────┐ │
+│   │  KWOK Cluster         │       │   Docker                                      │ │
+│   │  (simulated K8s API)  │       │                                               │ │
+│   │                       │       │   ┌─────────────────────────────────────────┐ │ │
+│   │  - 50 fake nodes      │◀──────┼───│ stats-proxy                             │ │ │
+│   │  - 200 fake pods      │       │   │ (simulates kubelet /stats/summary)      │ │ │
+│   │  - No real containers │       │   └─────────────────────────────────────────┘ │ │
+│   │                       │       │                       ▲                       │ │
+│   └───────────▲───────────┘       │                       │ scrapes               │ │
+│               │                   │                       │                       │ │
+│               │ queries           │   ┌───────────────────┴─────────────────────┐ │ │
+│               │ K8s API           │   │ OTel Collector                          │ │ │
+│               │                   │   │                                         │ │ │
+│               └───────────────────┼───│ Receivers:                              │ │ │
+│                                   │   │  • kubeletstats (via stats-proxy)       │ │ │
+│                                   │   │  • k8s_cluster (queries KWOK API)       │ │ │
+│                                   │   │  • hostmetrics (Docker host stats)      │ │ │
+│                                   │   └─────────────────────┬───────────────────┘ │ │
+│                                   │                         │                     │ │
+│                                   │                         │ OTLP :4318          │ │
+│                                   │                         ▼                     │ │
+│                                   │   ┌─────────────────────────────────────────┐ │ │
+│                                   │   │ LGTM                                    │ │ │
+│                                   │   │                                         │ │ │
+│                                   │   │  OTLP Receiver ──▶ Prometheus/Mimir     │ │ │
+│                                   │   │                         │               │ │ │
+│                                   │   │                    PromQL│              │ │ │
+│                                   │   │                         ▼               │ │ │
+│                                   │   │                      Grafana ───────────┼─┼─┼──▶ localhost:3000
+│                                   │   │                                         │ │ │
+│                                   │   └─────────────────────────────────────────┘ │ │
+│                                   │                                               │ │
+│                                   └───────────────────────────────────────────────┘ │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Key Differences: KWOK vs k3d
@@ -117,7 +126,10 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/).
 |--------|------|-----|
 | Cluster type | Simulated (no real containers) | Real K8s (containers in Docker) |
 | Resource usage | Very light (~50MB) | Heavier (real workloads) |
-| OTel Collectors | Docker container | Kubernetes Pods (Helm) |
+| OTel Collectors | 1 Docker container | 2 Kubernetes Pods (Helm) |
 | LGTM stack | Docker container | Kubernetes Pod |
+| Kubelet stats | Fake (via stats-proxy) | Real (actual kubelet) |
+| Host metrics | From Docker host | From k3d node containers |
+| OTLP endpoint | `:4318` (standard) | `:9090/api/v1/otlp` (Mimir native) |
 | Prometheus port | Not exposed | Exposed (:9090) |
 | Use case | Dashboard query testing | Full integration testing |
