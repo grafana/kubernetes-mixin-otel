@@ -1,6 +1,8 @@
+Our dev environment runs two types of clusters. See below for a description of both k3d and KWOK. 
+
 # k3d Cluster (kubernetes-mixin-otel)
 
-A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/).
+A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/). Our script does the following on `make dev` command:
 
 1. [Create k3d cluster](lgtm.sh#L5-L7) with volume mounts for dashboards.
 2. [Deploy LGTM stack](lgtm.sh#L13) as a Kubernetes Deployment via [lgtm.yaml](lgtm.yaml).
@@ -67,6 +69,8 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/).
 ---
 
 # KWOK cluster
+
+A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io/) (Kubernetes Without Kubelet). No real containers run — just a fake API server with simulated nodes and pods. Our script does the following on `make kwok` command:
 
 1. [Create KWOK cluster](run-kwok-env.sh#L19-L24) to simulate a lightweight k8s cluster.
 1. [Switch kubectl context](run-kwok-env.sh#L27-L28) to the KWOK cluster created in step 1.
