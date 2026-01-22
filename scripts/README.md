@@ -70,7 +70,7 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/). Ou
 
 # KWOK cluster
 
-A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io/) (Kubernetes Without Kubelet). No real containers run — just a fake API server with simulated nodes and pods. Our script does the following on `make kwok` command:
+A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io/) (Kubernetes Without Kubelet). No real containers run — just a fake API server with simulated nodes and pods. KWOK has a way to fake container metrics but only for Prometheus. In our KWOK environment, we have `stats-proxy` as a mini service to fake container metrics for Otel. Our script does the following on `make kwok` command:
 
 1. [Create KWOK cluster](run-kwok-env.sh#L19-L24) to simulate a lightweight k8s cluster.
 1. [Switch kubectl context](run-kwok-env.sh#L27-L28) to the KWOK cluster created in step 1.
