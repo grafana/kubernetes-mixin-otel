@@ -58,9 +58,13 @@ kwok: generate
 
 .PHONY: kwok-down
 kwok-down:
-	docker rm -f kwok-otel-collector lgtm || true
+	docker rm -f kwok-otel-collector kwok-stats-proxy lgtm || true
 	kwokctl delete cluster --name $(CLUSTER_NAME) || true
 	@echo "KWOK environment torn down"
+
+.PHONY: kwok-stats-proxy-rm
+kwok-stats-proxy-rm:
+	@docker rm -f kwok-stats-proxy || true
 
 NODE_COUNT ?= 50
 CLUSTER_NAME ?= queries-testing

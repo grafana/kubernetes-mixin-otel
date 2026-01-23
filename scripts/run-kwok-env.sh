@@ -18,7 +18,7 @@ echo "=== KWOK + LGTM + OTel bootstrap for ${CLUSTER_NAME} ==="
 # 1. Ensure KWOK cluster exists
 if ! kwokctl get clusters | grep -q "^${CLUSTER_NAME}$"; then
   echo "[kwok] Creating cluster ${CLUSTER_NAME}..."
-  kwokctl create cluster --name "${CLUSTER_NAME}"
+  kwokctl create cluster --name "${CLUSTER_NAME}" --enable-crds ClusterResourceUsage,ResourceUsage
 else
   echo "[kwok] Cluster ${CLUSTER_NAME} already exists."
 fi
@@ -85,7 +85,10 @@ else
     grafana/otel-lgtm:latest
 fi
 
-# 6. Start OTel collector container
+# 6. Build and start kwok-stats-proxy (provides /stats/summary for kubeletstatsreceiver)
+source "${SCRIPT_DIR}/run-kwok-stats-proxy.sh"
+
+# 7. Start OTel collector container
 if docker ps --format '{{.Names}}' | grep -q '^kwok-otel-collector$'; then
   echo "[otel] Removing existing kwok-otel-collector container..."
   docker rm -f kwok-otel-collector
@@ -94,14 +97,6 @@ elif docker ps -a --format '{{.Names}}' | grep -q '^kwok-otel-collector$'; then
   docker rm -f kwok-otel-collector
 fi
 
-# Get KWOK controller IP for prometheus scraping
-KWOK_CONTROLLER_IP=$(docker inspect "kwok-${CLUSTER_NAME}-kwok-controller" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' || echo "")
-if [[ -z "${KWOK_CONTROLLER_IP}" ]]; then
-  echo "[otel] Warning: Could not get KWOK controller IP, resource metrics may not be scraped"
-  KWOK_CONTROLLER_IP="127.0.0.1"
-fi
-echo "[otel] KWOK controller IP: ${KWOK_CONTROLLER_IP}"
-
 echo "[otel] Starting otel/opentelemetry-collector-contrib (kwok-otel-collector)..."
 docker run -d \
   --name kwok-otel-collector \
@@ -109,7 +104,7 @@ docker run -d \
   -e KUBECONFIG=/kube/config \
   -e CLUSTER_NAME="${CLUSTER_NAME}" \
   -e K8S_NODE_NAME="${CLUSTER_NAME}" \
-  -e KWOK_CONTROLLER_IP="${KWOK_CONTROLLER_IP}" \
+  -e STATS_PROXY_ENDPOINT="http://${STATS_PROXY_IP}:10250" \
   -p 8889:8889 \
   -v "${OTEL_CONFIG}:/etc/otelcol/config.yaml" \
   otel/opentelemetry-collector-contrib:latest \

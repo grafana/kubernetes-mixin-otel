@@ -21,17 +21,16 @@ receivers:
       filesystem: {}
       network: {}
 
-  # Scrape simulated kubelet resource metrics from KWOK controller
-  prometheus/kwok:
-    config:
-      scrape_configs:
-        - job_name: 'kwok-resource-metrics'
-          scrape_interval: 30s
-          static_configs:
-            - targets: ['${env:KWOK_CONTROLLER_IP}:10247']
-          metrics_path: /metrics/nodes/node-000000/metrics/resource
-          # Note: This only scrapes node-000000. For all nodes, use service discovery
-          # or generate targets dynamically
+  # Collect kubelet stats from kwok-stats-proxy (simulates /stats/summary for KWOK)
+  kubeletstats:
+    auth_type: none
+    endpoint: ${env:STATS_PROXY_ENDPOINT}
+    collection_interval: 30s
+    insecure_skip_verify: true
+    metric_groups:
+      - node
+      - pod
+      - container
 
   k8s_cluster:
     auth_type: kubeConfig
@@ -58,22 +57,6 @@ processors:
       - key: k8s.cluster.name
         action: upsert
         value: ${env:CLUSTER_NAME}
-
-  resource/hostname:
-    attributes:
-      - key: k8s.node.name
-        action: upsert
-        value: ${env:K8S_NODE_NAME}
-      - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
-
-  transform/copy_node_name:
-    metric_statements:
-      - context: datapoint
-        statements:
-          - set(datapoint.attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
-          - set(datapoint.attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
 
   resourcedetection:
     detectors: [system]
@@ -103,13 +86,11 @@ service:
 
   pipelines:
     metrics:
-      receivers: [otlp, hostmetrics, k8s_cluster, prometheus/kwok]
+      receivers: [otlp, hostmetrics, k8s_cluster, kubeletstats]
       processors:
         - resourcedetection
         - k8sattributes
         - resource/k8sclustername
-        - resource/hostname
-        - transform/copy_node_name
         - batch
       exporters: [otlphttp/metrics, prometheus]
 
