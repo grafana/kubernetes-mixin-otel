@@ -110,12 +110,20 @@ docker run -d \
   otel/opentelemetry-collector-contrib:latest \
   --config /etc/otelcol/config.yaml
 
+# 8. Start Beyla for auto-instrumentation tracing (optional)
+if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
+  make -C "${SCRIPT_DIR}/.." kwok-beyla
+fi
+
 echo
 echo "=== Done ==="
 echo "KWOK cluster:           ${CLUSTER_NAME} (context: ${KWOK_CONTEXT})"
 echo "Kubeconfig for Docker:  ${KUBECONFIG_OUT}"
 echo "LGTM (Grafana):         http://localhost:3000"
 echo "Collector Prometheus:   http://localhost:8889/metrics"
+if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
+  echo "Beyla tracing:          Enabled (traces → Grafana Tempo)"
+fi
 echo
 echo "Useful checks:"
 echo "  kubectl --context ${KWOK_CONTEXT} get nodes | wc -l"

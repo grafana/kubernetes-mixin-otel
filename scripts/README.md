@@ -79,6 +79,21 @@ A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io
 1. [Start LGTM Stack](run-kwok-env.sh#L70-L86) in Port 3000 for grafana UI and Port 4317/4318 for OTLP receivers.
 1. [Start kwok-stats-proxy](run-kwok-env.sh#L89) to simulate stats summary endpoint for KWOK kubeletstatsreceiver.
 1. [Start Otel Collector](run-kwok-env.sh#L91-L111) with config from [kwok-otel-collector](kwok-config/kwok-otel-collector.yaml).
+1. (Optional) [Start Beyla](run-kwok-beyla.sh) for auto-instrumentation tracing when `ENABLE_BEYLA=true`.
+
+### Beyla Tracing (Optional)
+
+[Grafana Beyla](https://grafana.com/docs/beyla/latest/) provides eBPF-based auto-instrumentation for tracing **Grafana dashboard query performance**. Enable it with:
+
+```shell
+make kwok ENABLE_BEYLA=true
+```
+
+This instruments:
+- **Port 3000** (Grafana) - incoming dashboard/API requests
+- **Port 9090** (Prometheus/Mimir) - metric queries from Grafana
+
+Traces appear in **Grafana Tempo** (Explore → Tempo).
 
 ## Architecture
 
@@ -112,11 +127,19 @@ A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io
 │                                   │   │ LGTM                                    │ │ │
 │                                   │   │                                         │ │ │
 │                                   │   │  OTLP Receiver ──▶ Prometheus/Mimir     │ │ │
-│                                   │   │                         │               │ │ │
-│                                   │   │                    PromQL│              │ │ │
-│                                   │   │                         ▼               │ │ │
-│                                   │   │                      Grafana ───────────┼─┼─┼──▶ localhost:3000
+│                                   │   │       │                 │               │ │ │
+│                                   │   │       │            PromQL│              │ │ │
+│                                   │   │       ▼                 ▼               │ │ │
+│                                   │   │     Tempo            Grafana ───────────┼─┼─┼──▶ localhost:3000
+│                                   │   │       ▲                 │               │ │ │
+│                                   │   └───────┼─────────────────┼───────────────┘ │ │
+│                                   │           │                 │                 │ │
+│                                   │   ┌───────┴─────────────────┴───────────────┐ │ │
+│                                   │   │ Beyla (optional, ENABLE_BEYLA=true)     │ │ │
 │                                   │   │                                         │ │ │
+│                                   │   │  eBPF auto-instrumentation:             │ │ │
+│                                   │   │   • traces Grafana queries (:3000)      │ │ │
+│                                   │   │   • traces Prometheus queries (:9090)   │ │ │
 │                                   │   └─────────────────────────────────────────┘ │ │
 │                                   │                                               │ │
 │                                   └───────────────────────────────────────────────┘ │

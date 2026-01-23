@@ -44,6 +44,12 @@ Optionally customize the cluster size:
 make kwok NODE_COUNT=100 POD_COUNT=500
 ```
 
+Enable [Beyla](https://grafana.com/docs/beyla/latest/) for auto-instrumentation tracing (traces the real Docker containers):
+
+```shell
+make kwok ENABLE_BEYLA=true
+```
+
 To delete the KWOK environment:
 
 ```shell
