@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +25,12 @@ import (
 
 type server struct {
 	client *kubernetes.Clientset
+
+	// Track cumulative CPU time per pod/container for proper counter behavior
+	mu              sync.RWMutex
+	startTime       time.Time
+	podCPUTime      map[string]uint64 // pod UID -> cumulative CPU nanoseconds
+	containerCPUTime map[string]uint64 // pod UID + container name -> cumulative CPU nanoseconds
 }
 
 func main() {
@@ -32,7 +39,12 @@ func main() {
 		log.Fatalf("Failed to create Kubernetes client: %v", err)
 	}
 
-	s := &server{client: client}
+	s := &server{
+		client:           client,
+		startTime:        time.Now(),
+		podCPUTime:       make(map[string]uint64),
+		containerCPUTime: make(map[string]uint64),
+	}
 
 	// Handle requests for specific nodes: /nodes/{nodeName}/stats/summary
 	// Also handle root /stats/summary for single-node mode
@@ -80,7 +92,7 @@ func (s *server) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) getStatsSummary(ctx context.Context, nodeName string) (*stats.Summary, error) {
 	now := metav1.Now()
-	startTime := metav1.NewTime(time.Now().Add(-24 * time.Hour))
+	startTime := metav1.NewTime(s.startTime)
 
 	// Get all pods, optionally filtered by node
 	listOpts := metav1.ListOptions{}
@@ -101,24 +113,46 @@ func (s *server) getStatsSummary(ctx context.Context, nodeName string) (*stats.S
 		nodeName = "kwok-node"
 	}
 
+	// Calculate elapsed time since start for cumulative counters
+	elapsed := time.Since(s.startTime)
+
 	// Calculate node totals
 	var nodeCPUNanos uint64 = 0
+	var nodeCPUTime uint64 = 0
 	var nodeMemBytes uint64 = 0
 
 	podStats := make([]stats.PodStats, 0, len(pods.Items))
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	for _, pod := range pods.Items {
 		if pod.Status.Phase != corev1.PodRunning {
 			continue
 		}
 
+		podUID := string(pod.UID)
 		podCPUNanos, podMemBytes := getPodResourceUsage(&pod)
+		
+		// Calculate cumulative CPU time: usage (cores) * elapsed time (nanoseconds)
+		// UsageNanoCores is in nanocores (1e-9 cores), elapsed is in nanoseconds
+		// CPU time = cores * seconds = (nanocores / 1e9) * (nanoseconds / 1e9) * 1e9 nanoseconds
+		// Simplified: nanocores * seconds
+		podCumulativeCPU := uint64(float64(podCPUNanos) * elapsed.Seconds())
+		s.podCPUTime[podUID] = podCumulativeCPU
+
 		nodeCPUNanos += podCPUNanos
+		nodeCPUTime += podCumulativeCPU
 		nodeMemBytes += podMemBytes
 
 		containers := make([]stats.ContainerStats, 0, len(pod.Spec.Containers))
 		for _, container := range pod.Spec.Containers {
+			containerKey := podUID + "/" + container.Name
 			containerCPU, containerMem := getContainerResourceUsage(&pod, container.Name)
+			
+			// Calculate cumulative CPU time for container
+			containerCumulativeCPU := uint64(float64(containerCPU) * elapsed.Seconds())
+			s.containerCPUTime[containerKey] = containerCumulativeCPU
 
 			containers = append(containers, stats.ContainerStats{
 				Name:      container.Name,
@@ -126,7 +160,7 @@ func (s *server) getStatsSummary(ctx context.Context, nodeName string) (*stats.S
 				CPU: &stats.CPUStats{
 					Time:                 now,
 					UsageNanoCores:       &containerCPU,
-					UsageCoreNanoSeconds: func() *uint64 { v := containerCPU * 1000; return &v }(),
+					UsageCoreNanoSeconds: &containerCumulativeCPU,
 				},
 				Memory: &stats.MemoryStats{
 					Time:            now,
@@ -146,8 +180,9 @@ func (s *server) getStatsSummary(ctx context.Context, nodeName string) (*stats.S
 			StartTime:  startTime,
 			Containers: containers,
 			CPU: &stats.CPUStats{
-				Time:           now,
-				UsageNanoCores: &podCPUNanos,
+				Time:                 now,
+				UsageNanoCores:       &podCPUNanos,
+				UsageCoreNanoSeconds: &podCumulativeCPU,
 			},
 			Memory: &stats.MemoryStats{
 				Time:            now,
@@ -162,8 +197,9 @@ func (s *server) getStatsSummary(ctx context.Context, nodeName string) (*stats.S
 			NodeName:  nodeName,
 			StartTime: startTime,
 			CPU: &stats.CPUStats{
-				Time:           now,
-				UsageNanoCores: &nodeCPUNanos,
+				Time:                 now,
+				UsageNanoCores:       &nodeCPUNanos,
+				UsageCoreNanoSeconds: &nodeCPUTime,
 			},
 			Memory: &stats.MemoryStats{
 				Time:            now,
