@@ -48,7 +48,7 @@ kwok: generate
 	echo '╔════════════════════════════════════════════════════════╗' && \
 	echo '║           🚀 KWOK Environment Ready! 🚀                ║' && \
 	echo '╠════════════════════════════════════════════════════════╣' && \
-	echo '║  Grafana:     http://localhost:3000                    ║' && \
+	echo '║  Grafana:     http://localhost:3001                    ║' && \
 	echo '║  Prometheus:  http://localhost:8889/metrics            ║' && \
 	echo '╠════════════════════════════════════════════════════════╣' && \
 	printf '║  Cluster:     %-40s ║\n' '$(CLUSTER_NAME)' && \
@@ -61,13 +61,13 @@ kwok: generate
 
 .PHONY: kwok-down
 kwok-down:
-	docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm || true
-	kwokctl delete cluster --name $(CLUSTER_NAME) || true
+	@docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
+	@kwokctl delete cluster --name $(CLUSTER_NAME) 2>/dev/null || true
 	@echo "KWOK environment torn down"
 
 .PHONY: kwok-stats-proxy-rm
 kwok-stats-proxy-rm:
-	@docker rm -f kwok-stats-proxy || true
+	@docker rm -f kwok-stats-proxy 2>/dev/null || true
 
 .PHONY: kwok-beyla
 kwok-beyla:
@@ -75,8 +75,8 @@ kwok-beyla:
 
 .PHONY: kwok-beyla-rm
 kwok-beyla-rm:
-	@docker stop kwok-beyla --time 3 || true
-	@docker rm -f kwok-beyla || true
+	@docker stop kwok-beyla --timeout 3 2>/dev/null || true
+	@docker rm -f kwok-beyla 2>/dev/null || true
 
 NODE_COUNT ?= 50
 CLUSTER_NAME ?= queries-testing

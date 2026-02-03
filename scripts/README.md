@@ -76,7 +76,7 @@ A lightweight simulated Kubernetes cluster using [KWOK](https://kwok.sigs.k8s.io
 1. [Switch kubectl context](run-kwok-env.sh#L27-L28) to the KWOK cluster created in step 1.
 1. [Setup KWOK Resources](run-kwok-env.sh#L31) defined in [kwok-pod-template.yaml](kwok-config/kwok-pod-template.yaml)
 1. [Generate Kubeconfig for Docker](run-kwok-env.sh#L33-L68) to create a kubeconfig that Docker containers can use to talk to KWOK API.
-1. [Start LGTM Stack](run-kwok-env.sh#L70-L86) in Port 3000 for grafana UI and Port 4317/4318 for OTLP receivers.
+1. [Start LGTM Stack](run-kwok-env.sh#L70-L86) in Port 3001 for grafana UI and Port 4317/4318 for OTLP receivers.
 1. [Start kwok-stats-proxy](run-kwok-env.sh#L89) to simulate stats summary endpoint for KWOK kubeletstatsreceiver.
 1. [Start Otel Collector](run-kwok-env.sh#L91-L111) with config from [kwok-otel-collector](kwok-config/kwok-otel-collector.yaml).
 1. (Optional) [Start Beyla](run-kwok-beyla.sh) for auto-instrumentation tracing when `ENABLE_BEYLA=true`.
@@ -130,7 +130,7 @@ Traces appear in **Grafana Tempo** (Explore → Tempo).
 │                                   │   │       │                 │               │ │ │
 │                                   │   │       │            PromQL│              │ │ │
 │                                   │   │       ▼                 ▼               │ │ │
-│                                   │   │     Tempo            Grafana ───────────┼─┼─┼──▶ localhost:3000
+│                                   │   │     Tempo            Grafana ───────────┼─┼─┼──▶ localhost:3001
 │                                   │   │       ▲                 │               │ │ │
 │                                   │   └───────┼─────────────────┼───────────────┘ │ │
 │                                   │           │                 │                 │ │

@@ -8,7 +8,7 @@ set -euo pipefail
 # Stop gracefully first, then force remove (avoids zombie with --pid=host)
 if docker ps -a --format '{{.Names}}' | grep -q '^kwok-beyla$'; then
   echo "[beyla] Stopping kwok-beyla container..."
-  docker stop kwok-beyla --time 5 || true
+  docker stop kwok-beyla --timeout 5 || true
   docker rm -f kwok-beyla || true
 fi
 
@@ -22,10 +22,10 @@ echo "[beyla] LGTM container IP: ${LGTM_IP}"
 echo "[beyla] Starting Grafana Beyla for query performance tracing..."
 docker run -d \
   --name kwok-beyla \
+  --init \
   --privileged \
   --pid=host \
   --network=host \
-  --stop-signal=SIGKILL \
   -e BEYLA_OPEN_PORT=3000,9090 \
   -e BEYLA_TRACE_PRINTER=text \
   -e BEYLA_SERVICE_NAME=grafana-lgtm \

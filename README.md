@@ -36,7 +36,7 @@ For a lightweight simulated cluster (no real containers), use [KWOK](https://kwo
 make kwok
 ```
 
-This creates a simulated Kubernetes cluster with fake nodes/pods (default: 50 nodes, 200 pods), useful for testing dashboard queries without heavy resource usage.
+This creates a simulated Kubernetes cluster with fake nodes/pods (default: 50 nodes, 200 pods), useful for testing dashboard queries without heavy resource usage. Grafana will be available at http://localhost:3001.
 
 Optionally customize the cluster size:
 
