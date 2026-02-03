@@ -49,6 +49,13 @@ local activePodFilter(phaseFilters) =
       by
     ),
 
+  // For pod-level metrics (no k8s_container_name label)
+  rateSumPodLevel(metric, filters, by='')::
+    sumExpr(
+      maxExpr(withRate(metric, filters, true), podMaxBy),
+      by
+    ),
+
   rateAvg(metric, filters, by='')::
     avgExpr(
       maxExpr(withRate(metric, filters, true), maxBy),
@@ -60,6 +67,17 @@ local activePodFilter(phaseFilters) =
       '%s / %s' % [
         maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
         maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy),
+      ],
+      by
+    ),
+
+  // For pod-level numerator metrics (no k8s_container_name) with container-level denominator
+  // Aggregates container resources to pod level before division
+  ratioSumPodLevel(numeratorMetric, denominatorMetric, filters, by='', useRate=false)::
+    sumExpr(
+      '%s / %s' % [
+        maxExpr(withRate(numeratorMetric, filters, useRate), podMaxBy),
+        sumExpr(maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy), podMaxBy),
       ],
       by
     ),
@@ -84,6 +102,18 @@ local activePodFilter(phaseFilters) =
       '%s / %s' % [
         maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
         maxExpr('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)], maxBy),
+      ],
+      by
+    ),
+
+  // For pod-level numerator metrics (no k8s_container_name) with container-level denominator
+  // Aggregates container resources to pod level before division
+  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, filters, phaseFilters, by='', useRate=false)::
+    sumExpr(
+      '%s / (%s%s)' % [
+        maxExpr(withRate(numeratorMetric, filters, useRate), podMaxBy),
+        sumExpr(maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy), podMaxBy),
+        activePodFilter(phaseFilters),
       ],
       by
     ),
