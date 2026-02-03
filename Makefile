@@ -12,7 +12,7 @@ SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
 
 # Find all libsonnet files recursively in the dashboards directory
-DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet' 2>/dev/null)
+DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
 
 .PHONY: dev
 dev: generate lint
@@ -40,31 +40,43 @@ dev-port-forward:
 dev-down:
 	k3d cluster delete kubernetes-mixin-otel
 
+ENABLE_BEYLA ?= false
 .PHONY: kwok
 kwok: generate
-	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME) ./run-kwok-env.sh && \
+	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME) ENABLE_BEYLA=$(ENABLE_BEYLA) ./run-kwok-env.sh && \
 	echo '' && \
-	echo '╔═══════════════════════════════════════════════════════════════╗' && \
-	echo '║             🚀 KWOK Environment Ready! 🚀                     ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Grafana:    http://localhost:3000                           ║' && \
-	echo '║   Prometheus: http://localhost:8889/metrics                   ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Cluster: $(CLUSTER_NAME) ($(NODE_COUNT) nodes, $(POD_COUNT) pods)                  ║' && \
-	echo '║   Context: kwok-$(CLUSTER_NAME)                                  ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Run `make kwok-down` to tear down                           ║' && \
-	echo '╚═══════════════════════════════════════════════════════════════╝'
+	echo '╔════════════════════════════════════════════════════════╗' && \
+	echo '║           🚀 KWOK Environment Ready! 🚀                ║' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	echo '║  Grafana:     http://localhost:3001                    ║' && \
+	echo '║  Prometheus:  http://localhost:8889/metrics            ║' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	printf '║  Cluster:     %-40s ║\n' '$(CLUSTER_NAME)' && \
+	printf '║  Nodes/Pods:  %-40s ║\n' '$(NODE_COUNT) nodes, $(POD_COUNT) pods' && \
+	printf '║  Context:     %-40s ║\n' 'kwok-$(CLUSTER_NAME)' && \
+	printf '║  Beyla:       %-40s ║\n' '$(ENABLE_BEYLA)' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	echo '║  Run `make kwok-down` to tear down                     ║' && \
+	echo '╚════════════════════════════════════════════════════════╝'
 
 .PHONY: kwok-down
 kwok-down:
-	docker rm -f kwok-otel-collector kwok-stats-proxy lgtm || true
-	kwokctl delete cluster --name $(CLUSTER_NAME) || true
+	@docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
+	@kwokctl delete cluster --name $(CLUSTER_NAME) 2>/dev/null || true
 	@echo "KWOK environment torn down"
 
 .PHONY: kwok-stats-proxy-rm
 kwok-stats-proxy-rm:
-	@docker rm -f kwok-stats-proxy || true
+	@docker rm -f kwok-stats-proxy 2>/dev/null || true
+
+.PHONY: kwok-beyla
+kwok-beyla:
+	@cd scripts && ./run-kwok-beyla.sh
+
+.PHONY: kwok-beyla-rm
+kwok-beyla-rm:
+	@docker stop kwok-beyla --timeout 3 2>/dev/null || true
+	@docker rm -f kwok-beyla 2>/dev/null || true
 
 NODE_COUNT ?= 50
 CLUSTER_NAME ?= queries-testing
@@ -147,6 +159,6 @@ test: test-jsonnet
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@echo "Running jsonnet query tests..."
-	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet > /dev/null
-	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet > /dev/null
+	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet
+	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
 	@echo "All tests passed!"

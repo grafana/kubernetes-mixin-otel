@@ -79,9 +79,12 @@ else
   echo "[lgtm] Starting grafana/otel-lgtm container..."
   docker run -d \
     --name lgtm \
-    -p 3000:3000 \
+    -p 3001:3000 \
     -p 4317:4317 \
     -p 4318:4318 \
+    -p 9090:9090 \
+    -v "${SCRIPT_DIR}/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboards.yaml" \
+    -v "${SCRIPT_DIR}/../dashboards_out:/kubernetes-mixin-otel/dashboards_out" \
     grafana/otel-lgtm:latest
 fi
 
@@ -110,12 +113,20 @@ docker run -d \
   otel/opentelemetry-collector-contrib:latest \
   --config /etc/otelcol/config.yaml
 
+# 8. Start Beyla for auto-instrumentation tracing (optional)
+if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
+  make -C "${SCRIPT_DIR}/.." kwok-beyla
+fi
+
 echo
 echo "=== Done ==="
 echo "KWOK cluster:           ${CLUSTER_NAME} (context: ${KWOK_CONTEXT})"
 echo "Kubeconfig for Docker:  ${KUBECONFIG_OUT}"
-echo "LGTM (Grafana):         http://localhost:3000"
+echo "LGTM (Grafana):         http://localhost:3001"
 echo "Collector Prometheus:   http://localhost:8889/metrics"
+if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
+  echo "Beyla tracing:          Enabled (traces → Grafana Tempo)"
+fi
 echo
 echo "Useful checks:"
 echo "  kubectl --context ${KWOK_CONTEXT} get nodes | wc -l"
