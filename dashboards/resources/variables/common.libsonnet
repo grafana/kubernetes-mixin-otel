@@ -36,7 +36,7 @@ local var = g.dashboard.variable;
         value: '$__all',
       },
     },
-  
+
   node(datasource)::
     var.query.new('node')
     + var.query.withDatasourceFromVariable(datasource)

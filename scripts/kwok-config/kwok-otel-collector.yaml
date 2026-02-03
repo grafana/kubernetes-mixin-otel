@@ -63,7 +63,10 @@ processors:
     timeout: 2s
     override: true
 
-  batch: {}
+  batch:
+    send_batch_size: 1000
+    send_batch_max_size: 2000
+    timeout: 10s
 
 exporters:
   # Send metrics to local LGTM (grafana/otel-lgtm container)
