@@ -10,6 +10,7 @@ TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN) $(GRAFANA_
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
 SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
+RULES_OUT_DIR ?=rules_out
 
 # Find all libsonnet files recursively in the dashboards directory
 DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
@@ -110,8 +111,19 @@ clean-dashboards:
 	rm -f $(OUT_DIR)/*.json*
 	rm -f $(OUT_DIR)/.dashboards-generated
 
+.PHONY: clean-rules
+clean-rules:
+	rm -f $(RULES_OUT_DIR)/*.yaml
+	rm -f $(RULES_OUT_DIR)/.rules-generated
+
 .PHONY: generate
-generate: $(OUT_DIR)/.dashboards-generated
+generate: generate-dashboards generate-rules
+
+.PHONY: generate-dashboards
+generate-dashboards: $(OUT_DIR)/.dashboards-generated
+
+.PHONY: generate-rules
+generate-rules: $(RULES_OUT_DIR)/.rules-generated
 
 $(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
 	$(JB_BIN) install
@@ -134,6 +146,14 @@ jsonnet-fmt: $(JSONNETFMT_BIN)
 $(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet lib/dashboards.jsonnet $(DASHBOARD_SOURCES)
 	@mkdir -p $(OUT_DIR)
 	@$(JSONNET_BIN) -J vendor -m $(OUT_DIR) lib/dashboards.jsonnet
+	@touch $@
+
+# Find all libsonnet files in the rules directory
+RULES_SOURCES = $(shell find rules -name '*.libsonnet' 2>/dev/null)
+
+$(RULES_OUT_DIR)/.rules-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet lib/rules.jsonnet $(RULES_SOURCES)
+	@mkdir -p $(RULES_OUT_DIR)
+	@$(JSONNET_BIN) -J vendor -S lib/rules.jsonnet > $(RULES_OUT_DIR)/recording-rules.yaml
 	@touch $@
 
 .PHONY: lint

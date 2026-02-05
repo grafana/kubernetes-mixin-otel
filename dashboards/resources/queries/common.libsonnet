@@ -89,16 +89,20 @@ local activePodFilter(phaseFilters) =
     ),
 
   metricSumActiveOnly(metric, filters, phaseFilters, by='')::
-    sumExpr(
-      maxExpr('%s{%s}%s' % [metric, filters, activePodFilter(phaseFilters)], maxBy),
-      by
-    ),
+    '%s%s' % [
+      sumExpr(
+        maxExpr('%s{%s}' % [metric, filters], maxBy),
+        by
+      ),
+      activePodFilter(phaseFilters),
+    ],
 
   ratioSumActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, by='', useRate=false)::
     sumExpr(
-      '%s / %s' % [
+      '%s / (%s%s)' % [
         maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
-        maxExpr('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)], maxBy),
+        maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy),
+        activePodFilter(phaseFilters),
       ],
       by
     ),

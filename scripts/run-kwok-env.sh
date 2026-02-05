@@ -85,6 +85,8 @@ else
     -p 9090:9090 \
     -v "${SCRIPT_DIR}/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboards.yaml" \
     -v "${SCRIPT_DIR}/../dashboards_out:/kubernetes-mixin-otel/dashboards_out" \
+    -v "${SCRIPT_DIR}/../rules_out/recording-rules.yaml:/etc/prometheus/recording-rules.yaml" \
+    -v "${SCRIPT_DIR}/kwok-config/prometheus.yaml:/otel-lgtm/prometheus.yaml" \
     grafana/otel-lgtm:latest
 fi
 

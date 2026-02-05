@@ -3,6 +3,8 @@ local k8sAlertsConfig = (import 'github.com/kubernetes-monitoring/kubernetes-mix
 
 k8sMixinConfig {
   _config+:: {
+    // OpenTelemetry semantic conventions use k8s_cluster_name
+    clusterLabel: 'k8s_cluster_name',
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
   },
 }
