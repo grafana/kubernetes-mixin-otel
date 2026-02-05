@@ -63,17 +63,17 @@ processors:
     timeout: 2s
     override: true
 
-  batch:
-    send_batch_size: 1000
-    send_batch_max_size: 2000
-    timeout: 10s
-
 exporters:
   # Send metrics to local LGTM (grafana/otel-lgtm container)
   otlphttp/metrics:
     endpoint: http://host.docker.internal:4318
     tls:
       insecure: true
+    sending_queue:
+      enabled: true
+      batch:
+        sizer: bytes
+        max_size: 4194304  # 4MB gRPC limit
 
   # Prometheus debug exporter
   prometheus:
@@ -94,6 +94,5 @@ service:
         - resourcedetection
         - k8sattributes
         - resource/k8sclustername
-        - batch
       exporters: [otlphttp/metrics, prometheus]
 
