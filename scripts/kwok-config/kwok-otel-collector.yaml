@@ -64,6 +64,7 @@ processors:
     override: true
 
   batch: {}
+
 exporters:
   # Send metrics to local LGTM (grafana/otel-lgtm container)
   otlphttp/metrics:
