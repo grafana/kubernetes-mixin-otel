@@ -21,7 +21,7 @@ config:
           endpoint: 0.0.0.0:4318
 
     k8s_cluster:
-      auth_type: kubeConfig
+      auth_type: serviceAccount
       collection_interval: 30s
       node_conditions_to_report:
         - Ready
