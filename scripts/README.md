@@ -66,6 +66,16 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/). Ou
 | **Deployment** | Single pod | Cluster-wide metrics (nodes, deployments, quotas) | Any node |
 | **DaemonSet** | Pod per node | Per-node metrics (kubelet stats, host metrics) | Every node |
 
+### Active series: dev vs KWOK
+
+Receiver config is aligned with KWOK (same `k8s_cluster`, `hostmetrics`, `kubeletstats` with `collection_interval: 30s` and `metric_groups: node, pod, container`). Active series counts can still differ because:
+
+- **Dev** has real system pods (CoreDNS, local-path-provisioner, etc.) in `kube-system`. Kubelet reports metrics for all of them, so you get more container/pod series than in KWOK.
+- **KWOK** has only the simulated `kwok-test-*` pods (10 pods × 1 container when using `NODE_COUNT=1 POD_COUNT=10 KWOK_DEFAULT_NAMESPACE_PODS=3`).
+- **Dev** uses two collectors (deployment + daemonset); KWOK uses one. That can cause small differences in resource attributes (e.g. `service.instance.id`).
+
+To compare: `curl -s http://127.0.0.1:9090/api/v1/status/tsdb | jq '.data.headStats.numSeries'` (dev: port 9090 after `make dev-port-forward`; KWOK: 9090 on the host).
+
 ---
 
 # KWOK cluster

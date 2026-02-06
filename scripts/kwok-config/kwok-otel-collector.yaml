@@ -71,6 +71,11 @@ exporters:
     endpoint: http://host.docker.internal:4318
     tls:
       insecure: true
+    sending_queue:
+      enabled: true
+      batch:
+        sizer: bytes
+        max_size: 4194304  # 4MB gRPC limit
 
   # Prometheus debug exporter
   prometheus:

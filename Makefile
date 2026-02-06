@@ -79,6 +79,7 @@ kwok-beyla-rm:
 	@docker stop kwok-beyla --timeout 3 2>/dev/null || true
 	@docker rm -f kwok-beyla 2>/dev/null || true
 
+# To mimic dev (1 node, 10 pods, 3 in default + 7 in kube-system): make kwok NODE_COUNT=1 POD_COUNT=10 KWOK_DEFAULT_NAMESPACE_PODS=3
 NODE_COUNT ?= 50
 CLUSTER_NAME ?= queries-testing
 
@@ -102,7 +103,7 @@ kwok-annotate-nodes:
 .PHONY: kwok-setup
 kwok-setup:
 	@$(MAKE) kwok-nodes NODE_COUNT=$(NODE_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
-	@$(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
+	@KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) $(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-resource-usage CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-annotate-nodes CLUSTER_NAME=$(CLUSTER_NAME)
 
