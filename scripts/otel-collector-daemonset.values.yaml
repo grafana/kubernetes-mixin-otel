@@ -35,7 +35,18 @@ config:
         disk: {}
         filesystem: {}
         network: {}
-  
+
+    # Align with KWOK: same interval and metric_groups (node, pod, container only; no volume).
+    # Endpoint and auth_type must be set explicitly so we don't rely on preset merge order (k3d needs these for kubelet scraping).
+    kubeletstats:
+      auth_type: serviceAccount
+      endpoint: "${env:K8S_NODE_IP}:10250"
+      collection_interval: 30s
+      metric_groups:
+        - node
+        - pod
+        - container
+
   processors:
     transform/copy_node_name:
     # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
@@ -87,7 +98,7 @@ config:
     
     pipelines:
       metrics:
-        receivers: [otlp, hostmetrics]
+        receivers: [otlp, hostmetrics, kubeletstats]
         processors: [
           resourcedetection,
           k8sattributes,

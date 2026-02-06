@@ -19,7 +19,21 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-  
+
+    k8s_cluster:
+      auth_type: serviceAccount
+      collection_interval: 30s
+      node_conditions_to_report:
+        - Ready
+        - MemoryPressure
+        - DiskPressure
+        - PIDPressure
+      allocatable_types_to_report:
+        - cpu
+        - memory
+        - storage
+      metadata_collection_interval: 5m
+
   processors:
     transform/copy_node_name:
     # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
@@ -63,7 +77,7 @@ config:
     
     pipelines:
       metrics:
-        receivers: [otlp]
+        receivers: [otlp, k8s_cluster]
         processors: [
           k8sattributes,
           attributes/k8sclustername,
