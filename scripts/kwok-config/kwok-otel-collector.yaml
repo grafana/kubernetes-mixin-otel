@@ -71,6 +71,10 @@ exporters:
     endpoint: http://host.docker.internal:4318
     tls:
       insecure: true
+    sending_queue:
+      batch:
+        sizer: bytes
+        max_size: 4194304
 
   # Prometheus debug exporter
   prometheus:
