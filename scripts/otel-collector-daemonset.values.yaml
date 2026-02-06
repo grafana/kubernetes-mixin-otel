@@ -35,7 +35,15 @@ config:
         disk: {}
         filesystem: {}
         network: {}
-  
+
+    # Align with KWOK: same interval and metric_groups (node, pod, container only; no volume)
+    kubeletstats:
+      collection_interval: 30s
+      metric_groups:
+        - node
+        - pod
+        - container
+
   processors:
     transform/copy_node_name:
     # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
@@ -87,7 +95,7 @@ config:
     
     pipelines:
       metrics:
-        receivers: [otlp, hostmetrics]
+        receivers: [otlp, hostmetrics, kubeletstats]
         processors: [
           resourcedetection,
           k8sattributes,
