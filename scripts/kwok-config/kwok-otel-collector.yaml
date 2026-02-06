@@ -72,10 +72,9 @@ exporters:
     tls:
       insecure: true
     sending_queue:
-      enabled: true
       batch:
         sizer: bytes
-        max_size: 4194304  # 4MB gRPC limit
+        max_size: 4194304
 
   # Prometheus debug exporter
   prometheus:
