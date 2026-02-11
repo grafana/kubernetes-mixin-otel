@@ -160,39 +160,3 @@ Traces appear in **Grafana Tempo** (Explore → Tempo).
 | OTLP endpoint | `:4318` (standard) | `:9090/api/v1/otlp` (Mimir native) |
 | Prometheus port | Not exposed | Exposed (:9090) |
 | Use case | Dashboard query testing | Full integration testing |
-
-### Series parity with dev
-
-With default settings (`make kwok`, `POD_COUNT=0`), KWOK is tuned so **series-per-metric counts match dev** for most metrics:
-
-- **Pods/containers**: Only cluster workloads are created (no batch pods): 6 deployments (replicas=1), 2 daemonsets, 2 jobs → 10 pods, 11 containers. Resource requests/limits are set so `k8s_container_cpu_limit`=1, `k8s_container_cpu_request`=3, `k8s_container_memory_limit_bytes`=2, `k8s_container_memory_request_bytes`=3.
-- **Memory available**: `container_memory_available_bytes` and `k8s_pod_memory_available_bytes` are emitted only when a container/pod has a memory **limit** (stats-proxy mirrors real kubelet behavior).
-
-Remaining gaps (optional to fix):
-
-- **`otelcol_receiver_*`**: Dev has 1 (one collector scrape with one receiver in use); KWOK main collector has multiple receivers, so count is 2+. Matching would require a single-receiver collector config.
-- **`target_info`**: Dev has 32 (Prometheus scrape targets from the full LGTM/k3d setup); KWOK has 1. Matching would require configuring LGTM’s Prometheus with the same number of static scrape targets as dev (see below).
-
-#### What “32 scrape targets” means
-
-In **dev (k3d)**, Prometheus runs inside the LGTM pod and uses **Kubernetes service discovery** to find scrape targets: it discovers services/pods in the cluster (e.g. the OTel collector deployment, the OTel collector DaemonSet pods, LGTM itself, etc.). That adds up to **32 targets**. Each target produces one `target_info` series (with labels like `job`, `instance`).
-
-In **KWOK**, LGTM runs as a single Docker container. Metrics reach it mainly via **OTLP** (the collector pushes to `:4318`). Any Prometheus scrape inside LGTM typically has only **one** target (e.g. the collector’s `:8889` metrics endpoint), so you get **1** `target_info`.
-
-To match dev you’d have to make Prometheus inside LGTM scrape **32 targets**. That would mean:
-
-1. **Override Prometheus config** in the LGTM container (mount a custom config file; the exact path depends on the `grafana/otel-lgtm` image).
-2. **Define 32 targets** in that config. In Prometheus, each entry in `static_configs` is one target and one `target_info`. So you’d need something like:
-
-```yaml
-# Conceptual: 32 targets so target_info has 32 series (like dev)
-scrape_configs:
-  - job_name: 'parity-targets'
-    static_configs:
-      - targets: ['host.docker.internal:8889']   # target 1 (real collector)
-      - targets: ['host.docker.internal:8890']   # target 2 (need something listening)
-      - targets: ['host.docker.internal:8891']   # target 3
-      # ... 29 more targets
-```
-
-So you’d need **32 different endpoints** that expose Prometheus metrics (e.g. 32 ports, or 32 different hosts). The image doesn’t document a standard way to mount a custom Prometheus/Mimir config, so you’d be relying on internal paths and possible image changes. In practice, matching `target_info` this way is usually not worth it for KWOK.
