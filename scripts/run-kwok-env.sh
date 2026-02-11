@@ -28,7 +28,7 @@ echo "[kubectl] Using context ${KWOK_CONTEXT}..."
 kubectl config use-context "${KWOK_CONTEXT}"
 
 # 3. Setup KWOK nodes, pods, resource usage, and annotations
-make -C "${SCRIPT_DIR}/.." kwok-setup NODE_COUNT="${NODE_COUNT}" POD_COUNT="${POD_COUNT}"
+make -C "${SCRIPT_DIR}/.." kwok-setup NODE_COUNT="${NODE_COUNT}" POD_COUNT="${POD_COUNT}" KWOK_DEFAULT_NAMESPACE_PODS="${KWOK_DEFAULT_NAMESPACE_PODS:-}"
 
 # 4. Generate kubeconfig for Docker from template
   # KWOK stores TLS certs in this directory. Needed to connect to the KWOK API server
@@ -113,7 +113,35 @@ docker run -d \
   otel/opentelemetry-collector-contrib:latest \
   --config /etc/otelcol/config.yaml
 
-# 8. Start Beyla for auto-instrumentation tracing (optional)
+# 8. Start hostmetrics replicators (one per node) so series count matches mixin DaemonSet
+HOSTMETRICS_REPLICATOR_CONFIG="${SCRIPT_DIR}/kwok-config/kwok-hostmetrics-replicator.yaml"
+for c in $(docker ps -a -q --filter "name=kwok-hostmetrics-replicator" 2>/dev/null); do
+  docker rm -f "$c" 2>/dev/null || true
+done
+NODES=$(kubectl --context "${KWOK_CONTEXT}" get nodes -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
+FIRST_NODE=""
+for NODE in ${NODES}; do
+  # Skip first node (main collector already reports hostmetrics for the single-host case)
+  if [[ -z "${FIRST_NODE}" ]]; then
+    FIRST_NODE="${NODE}"
+    continue
+  fi
+  SAFE_NAME=$(echo "${NODE}" | tr '.' '_' | cut -c1-64)
+  CONTAINER_NAME="kwok-hostmetrics-replicator-${SAFE_NAME}"
+  if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    docker rm -f "${CONTAINER_NAME}" 2>/dev/null || true
+  fi
+  echo "[otel] Starting hostmetrics replicator for node ${NODE} (${CONTAINER_NAME})..."
+  docker run -d \
+    --name "${CONTAINER_NAME}" \
+    -e K8S_NODE_NAME="${NODE}" \
+    -e CLUSTER_NAME="${CLUSTER_NAME}" \
+    -v "${HOSTMETRICS_REPLICATOR_CONFIG}:/etc/otelcol/config.yaml" \
+    otel/opentelemetry-collector-contrib:latest \
+    --config /etc/otelcol/config.yaml
+done
+
+# 9. Start Beyla for auto-instrumentation tracing (optional)
 if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
   make -C "${SCRIPT_DIR}/.." kwok-beyla
 fi

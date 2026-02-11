@@ -43,7 +43,7 @@ dev-down:
 ENABLE_BEYLA ?= false
 .PHONY: kwok
 kwok: generate
-	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME) ENABLE_BEYLA=$(ENABLE_BEYLA) ./run-kwok-env.sh && \
+	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) CLUSTER_NAME=$(CLUSTER_NAME) ENABLE_BEYLA=$(ENABLE_BEYLA) ./run-kwok-env.sh && \
 	echo '' && \
 	echo '╔════════════════════════════════════════════════════════╗' && \
 	echo '║           🚀 KWOK Environment Ready! 🚀                ║' && \
@@ -62,6 +62,7 @@ kwok: generate
 .PHONY: kwok-down
 kwok-down:
 	@docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
+	@for c in $$(docker ps -a -q --filter "name=kwok-hostmetrics-replicator" 2>/dev/null); do docker rm -f $$c 2>/dev/null || true; done
 	@kwokctl delete cluster --name $(CLUSTER_NAME) 2>/dev/null || true
 	@echo "KWOK environment torn down"
 
@@ -78,18 +79,20 @@ kwok-beyla-rm:
 	@docker stop kwok-beyla --timeout 3 2>/dev/null || true
 	@docker rm -f kwok-beyla 2>/dev/null || true
 
-# To mimic dev (1 node, 10 pods, 3 in default + 7 in kube-system): make kwok NODE_COUNT=1 POD_COUNT=10 KWOK_DEFAULT_NAMESPACE_PODS=3
-NODE_COUNT ?= 50
+# Default scale: parity with dev (1 node, 10 pods, 11 containers from cluster-workloads only). Override for larger: make kwok NODE_COUNT=50 POD_COUNT=200
+NODE_COUNT ?= 1
 CLUSTER_NAME ?= queries-testing
+KWOK_DEFAULT_NAMESPACE_PODS ?= 2
 
 .PHONY: kwok-nodes
 kwok-nodes:
 	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./scale-kwok-nodes.sh $(NODE_COUNT)
 
-POD_COUNT ?= 200
+# POD_COUNT=0 uses only cluster-workloads for exact parity with dev
+POD_COUNT ?= 0
 .PHONY: kwok-pods
 kwok-pods:
-	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./create-kwok-pods.sh $(POD_COUNT)
+	@cd scripts && KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) CLUSTER_NAME=$(CLUSTER_NAME) ./create-kwok-pods.sh $(POD_COUNT)
 
 .PHONY: kwok-resource-usage
 kwok-resource-usage:
@@ -99,12 +102,17 @@ kwok-resource-usage:
 kwok-annotate-nodes:
 	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./annotate-kwok-nodes.sh
 
+.PHONY: kwok-cluster-workloads
+kwok-cluster-workloads:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./apply-kwok-cluster-workloads.sh
+
 .PHONY: kwok-setup
 kwok-setup:
 	@$(MAKE) kwok-nodes NODE_COUNT=$(NODE_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
 	@KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) $(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-resource-usage CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-annotate-nodes CLUSTER_NAME=$(CLUSTER_NAME)
+	@$(MAKE) kwok-cluster-workloads CLUSTER_NAME=$(CLUSTER_NAME)
 
 .PHONY: clean-dashboards
 clean-dashboards:

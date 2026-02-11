@@ -1,0 +1,2 @@
+# Empty recording rules (used when KWOK_RECORDING_RULES_PATH is not set or points to a missing file)
+groups: []

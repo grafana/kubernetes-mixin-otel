@@ -7,9 +7,12 @@ POD_COUNT="${1:-200}"
 POD_TEMPLATE="${SCRIPT_DIR}/kwok-config/kwok-pod-template.yaml"
 CLUSTER_NAME="${CLUSTER_NAME:-queries-testing}"
 CONTEXT="${KWOK_CONTEXT:-kwok-${CLUSTER_NAME}}"
-
-# Default: split pods across default and kube-system (half each). Override with KWOK_DEFAULT_NAMESPACE_PODS.
 DEFAULT_NAMESPACE_PODS="${KWOK_DEFAULT_NAMESPACE_PODS:-$((POD_COUNT / 2))}"
+
+if [[ "${POD_COUNT}" -eq 0 ]]; then
+  echo "[kwok] POD_COUNT=0: skipping batch pods (use cluster-workloads only for parity)"
+  exit 0
+fi
 
 echo "[kwok] Creating ${POD_COUNT} pods with resource requests (default: ${DEFAULT_NAMESPACE_PODS}, kube-system: $((POD_COUNT - DEFAULT_NAMESPACE_PODS)))..."
 
