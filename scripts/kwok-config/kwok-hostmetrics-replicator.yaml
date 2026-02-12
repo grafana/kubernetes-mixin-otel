@@ -50,7 +50,7 @@ processors:
 
 exporters:
   otlphttp/metrics:
-    endpoint: http://host.docker.internal:4318
+    endpoint: http://lgtm:4318
     tls:
       insecure: true
 

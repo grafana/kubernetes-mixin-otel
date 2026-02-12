@@ -31,7 +31,6 @@ receivers:
       - node
       - pod
       - container
-      - volume
 
   # Match dev: only Ready condition, no allocatable metrics
   k8s_cluster:
@@ -78,17 +77,14 @@ processors:
   batch: {}
 
 exporters:
-  # Send metrics to local LGTM (grafana/otel-lgtm container)
   otlphttp/metrics:
-    endpoint: http://host.docker.internal:4318
+    endpoint: http://lgtm:4318
     tls:
       insecure: true
     sending_queue:
       batch:
         sizer: bytes
         max_size: 4194304
-
-  # Prometheus debug exporter
   prometheus:
     endpoint: "0.0.0.0:8889"
     resource_to_telemetry_conversion:
