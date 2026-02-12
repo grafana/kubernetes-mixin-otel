@@ -3,3 +3,7 @@ tmp
 vendor
 
 /datasource/datasources.yaml
+
+# Binary files
+scripts/kwok-stats-proxy/kwok-stats-proxy
+kwok
