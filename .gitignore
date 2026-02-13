@@ -2,6 +2,8 @@ dashboards_out
 tmp
 vendor
 
+scripts/kwok-config/recording-rules-empty.yaml
+
 /datasource/datasources.yaml
 
 # Binary files
