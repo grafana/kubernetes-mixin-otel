@@ -19,7 +19,7 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-  
+
   processors:
     transform/copy_node_name:
     # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
@@ -33,8 +33,8 @@ config:
       extract:
         otel_annotations: true
 
-    attributes/k8sclustername:
-      actions:
+    resource/k8sclustername:
+      attributes:
         - key: k8s.cluster.name
           action: upsert
           value: kubernetes-mixin-otel
@@ -66,7 +66,7 @@ config:
         receivers: [otlp]
         processors: [
           k8sattributes,
-          attributes/k8sclustername,
+          resource/k8sclustername,
           resource/hostname,
           transform/copy_node_name,
           batch,

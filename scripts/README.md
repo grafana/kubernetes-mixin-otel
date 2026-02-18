@@ -106,8 +106,8 @@ Traces appear in **Grafana Tempo** (Explore → Tempo).
 │   │  KWOK Cluster         │       │   Docker                                      │ │
 │   │  (simulated K8s API)  │       │                                               │ │
 │   │                       │       │   ┌─────────────────────────────────────────┐ │ │
-│   │  - 50 fake nodes      │◀──────┼───│ stats-proxy                             │ │ │
-│   │  - 200 fake pods      │       │   │ (simulates kubelet /stats/summary)      │ │ │
+│   │  - 1 node (default)   │◀──────┼───│ stats-proxy                             │ │ │
+│   │  - 10 pods (parity)   │       │   │ (simulates kubelet /stats/summary)      │ │ │
 │   │  - No real containers │       │   └─────────────────────────────────────────┘ │ │
 │   │                       │       │                       ▲                       │ │
 │   └───────────▲───────────┘       │                       │ scrapes               │ │

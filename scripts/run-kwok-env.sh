@@ -9,9 +9,9 @@ OTEL_CONFIG="${SCRIPT_DIR}/kwok-config/kwok-otel-collector.yaml"
 KUBECONFIG_TEMPLATE="${SCRIPT_DIR}/kwok-config/otel-kwokconfig.yaml"
 KUBECONFIG_OUT="/tmp/kwok-kubeconfig"
 
-# Configurable node and pod counts (defaults: 50 nodes, 200 pods)
-NODE_COUNT="${NODE_COUNT:-50}"
-POD_COUNT="${POD_COUNT:-200}"
+# Configurable node and pod counts (defaults: 1 node, 0 batch pods for parity with dev)
+NODE_COUNT="${NODE_COUNT:-1}"
+POD_COUNT="${POD_COUNT:-0}"
 
 echo "=== KWOK + LGTM + OTel bootstrap for ${CLUSTER_NAME} ==="
 
@@ -28,7 +28,7 @@ echo "[kubectl] Using context ${KWOK_CONTEXT}..."
 kubectl config use-context "${KWOK_CONTEXT}"
 
 # 3. Setup KWOK nodes, pods, resource usage, and annotations
-make -C "${SCRIPT_DIR}/.." kwok-setup NODE_COUNT="${NODE_COUNT}" POD_COUNT="${POD_COUNT}"
+make -C "${SCRIPT_DIR}/.." kwok-setup NODE_COUNT="${NODE_COUNT}" POD_COUNT="${POD_COUNT}" KWOK_DEFAULT_NAMESPACE_PODS="${KWOK_DEFAULT_NAMESPACE_PODS:-}"
 
 # 4. Generate kubeconfig for Docker from template
   # KWOK stores TLS certs in this directory. Needed to connect to the KWOK API server
@@ -75,10 +75,10 @@ else
     echo "[lgtm] Removing stopped 'lgtm' container..."
     docker rm -f lgtm
   fi
-  # need to run a container because KWOK doesn't run real containers
   echo "[lgtm] Starting grafana/otel-lgtm container..."
   docker run -d \
     --name lgtm \
+    --network "${KWOK_NET}" \
     -p 3001:3000 \
     -p 4317:4317 \
     -p 4318:4318 \
@@ -99,21 +99,59 @@ elif docker ps -a --format '{{.Names}}' | grep -q '^kwok-otel-collector$'; then
   echo "[otel] Removing stopped kwok-otel-collector container..."
   docker rm -f kwok-otel-collector
 fi
-
-echo "[otel] Starting otel/opentelemetry-collector-contrib (kwok-otel-collector)..."
+echo "[otel] Starting main otel/opentelemetry-collector-contrib (kwok-otel-collector)..."
 docker run -d \
   --name kwok-otel-collector \
+  --network "${KWOK_NET}" \
+  --add-host=host.docker.internal:host-gateway \
   -v "${KUBECONFIG_OUT}:/kube/config" \
   -e KUBECONFIG=/kube/config \
   -e CLUSTER_NAME="${CLUSTER_NAME}" \
   -e K8S_NODE_NAME="${CLUSTER_NAME}" \
-  -e STATS_PROXY_ENDPOINT="http://${STATS_PROXY_IP}:10250" \
+  -e STATS_PROXY_ENDPOINT="http://host.docker.internal:10250" \
   -p 8889:8889 \
   -v "${OTEL_CONFIG}:/etc/otelcol/config.yaml" \
   otel/opentelemetry-collector-contrib:latest \
   --config /etc/otelcol/config.yaml
 
-# 8. Start Beyla for auto-instrumentation tracing (optional)
+# 8. Start hostmetrics faker (single lightweight container replaces N replicator containers).
+#     Generates fake hostmetrics OTLP data for all nodes (except the first, which the main
+#     collector already handles) and POSTs it to LGTM.
+HOSTMETRICS_FAKER_DIR="${SCRIPT_DIR}/kwok-hostmetrics-faker"
+for c in $(docker ps -a -q --filter "name=kwok-hostmetrics" 2>/dev/null); do
+  docker rm -f "$c" 2>/dev/null || true
+done
+NODES=$(kubectl --context "${KWOK_CONTEXT}" get nodes -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
+FIRST_NODE=""
+FAKER_NODES=""
+for NODE in ${NODES}; do
+  # Skip first node (main collector already reports hostmetrics for it)
+  if [[ -z "${FIRST_NODE}" ]]; then
+    FIRST_NODE="${NODE}"
+    continue
+  fi
+  if [[ -n "${FAKER_NODES}" ]]; then
+    FAKER_NODES="${FAKER_NODES},"
+  fi
+  FAKER_NODES="${FAKER_NODES}${NODE}"
+done
+
+if [[ -n "${FAKER_NODES}" ]]; then
+  echo "[hostmetrics] Building kwok-hostmetrics-faker image..."
+  docker build -t kwok-hostmetrics-faker:latest "${HOSTMETRICS_FAKER_DIR}"
+  echo "[hostmetrics] Starting faker for nodes: ${FAKER_NODES}"
+  docker run -d \
+    --name kwok-hostmetrics-faker \
+    --network "${KWOK_NET}" \
+    -e NODE_NAMES="${FAKER_NODES}" \
+    -e CLUSTER_NAME="${CLUSTER_NAME}" \
+    -e GATEWAY_ENDPOINT="http://lgtm:4318" \
+    kwok-hostmetrics-faker:latest
+else
+  echo "[hostmetrics] Single node only; main collector handles hostmetrics."
+fi
+
+# 9. Start Beyla for auto-instrumentation tracing (optional)
 if [[ "${ENABLE_BEYLA:-false}" == "true" ]]; then
   make -C "${SCRIPT_DIR}/.." kwok-beyla
 fi
