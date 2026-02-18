@@ -3,11 +3,12 @@
 // otel-collector containers (one per node) with a single lightweight process.
 //
 // Environment variables:
-//   NODE_NAMES        - comma-separated list of node names (required)
-//   GATEWAY_ENDPOINT  - OTLP HTTP endpoint (default: http://lgtm:4318)
-//   CLUSTER_NAME      - k8s.cluster.name attribute (default: queries-testing)
-//   NUM_CPUS          - number of simulated CPUs per node (default: 4)
-//   INTERVAL          - send interval (default: 30s)
+//
+//	NODE_NAMES        - comma-separated list of node names (required)
+//	GATEWAY_ENDPOINT  - OTLP HTTP endpoint (default: http://lgtm:4318)
+//	CLUSTER_NAME      - k8s.cluster.name attribute (default: queries-testing)
+//	NUM_CPUS          - number of simulated CPUs per node (default: 4)
+//	INTERVAL          - send interval (default: 30s)
 package main
 
 import (
@@ -19,6 +20,95 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
+	"go.opentelemetry.io/otel/semconv/v1.39.0/systemconv"
+)
+
+// ---------------------------------------------------------------------------
+// Semantic-convention attribute keys
+// Sourced from go.opentelemetry.io/otel/semconv/v1.39.0.
+// https://opentelemetry.io/docs/specs/semconv/system/system-metrics/
+// ---------------------------------------------------------------------------
+
+// Resource-level attribute keys.
+var (
+	attrK8SNodeName = string(semconv.K8SNodeNameKey)
+	attrHostName    = string(semconv.HostNameKey)
+	attrOSType      = string(semconv.OSTypeKey)
+	attrK8SCluster  = string(semconv.K8SClusterNameKey)
+)
+
+// Datapoint-level attribute keys shared across multiple scrapers.
+var (
+	attrDevice       = string(semconv.SystemDeviceKey)
+	attrNetTransport = string(semconv.NetworkTransportKey)
+)
+
+// CPU scraper attribute keys.
+var (
+	attrCPULogicalNumber = string(semconv.CPULogicalNumberKey)
+	attrCPUMode          = string(semconv.CPUModeKey)
+)
+
+// Memory scraper attribute keys.
+var attrMemoryState = string(semconv.SystemMemoryStateKey)
+
+// Disk scraper attribute keys.
+var attrDiskIODirection = string(semconv.DiskIODirectionKey)
+
+// Filesystem scraper attribute keys.
+var (
+	attrFSMountpoint = string(semconv.SystemFilesystemMountpointKey)
+	attrFSType       = string(semconv.SystemFilesystemTypeKey)
+	attrFSMode       = string(semconv.SystemFilesystemModeKey)
+	attrFSState      = string(semconv.SystemFilesystemStateKey)
+)
+
+// Network scraper attribute keys.
+var (
+	attrNetIODirection    = string(semconv.NetworkIODirectionKey)
+	attrNetConnState      = string(semconv.NetworkConnectionStateKey)
+)
+
+// ---------------------------------------------------------------------------
+// Metric names
+// Sourced from go.opentelemetry.io/otel/semconv/v1.39.0/systemconv where
+// available; remaining constants track the spec manually.
+// https://opentelemetry.io/docs/specs/semconv/system/system-metrics/
+// ---------------------------------------------------------------------------
+
+var (
+	metricCPUTime        = systemconv.CPUTime{}.Name()
+	metricCPUUtilization = systemconv.CPUUtilization{}.Name()
+	metricCPULogicalCount = systemconv.CPULogicalCount{}.Name()
+
+	metricMemoryUsage       = systemconv.MemoryUsage{}.Name()
+	metricMemoryUtilization = systemconv.MemoryUtilization{}.Name()
+	metricMemoryLimit       = systemconv.MemoryLimit{}.Name()
+
+	metricDiskIO            = systemconv.DiskIO{}.Name()
+	metricDiskOperations    = systemconv.DiskOperations{}.Name()
+	metricDiskIOTime        = systemconv.DiskIOTime{}.Name()
+	metricDiskOperationTime = systemconv.DiskOperationTime{}.Name()
+
+	metricFSUsage       = systemconv.FilesystemUsage{}.Name()
+	metricFSUtilization = systemconv.FilesystemUtilization{}.Name()
+
+	metricNetIO          = systemconv.NetworkIO{}.Name()
+	metricNetPackets     = systemconv.NetworkPacketCount{}.Name()
+	metricNetErrors      = systemconv.NetworkErrors{}.Name()
+	metricNetDropped     = systemconv.NetworkPacketDropped{}.Name()
+	metricNetConnections = systemconv.NetworkConnectionCount{}.Name()
+)
+
+// Metric names not yet exported by the systemconv package.
+const (
+	metricLoadAvg1m  = "system.cpu.load_average.1m"
+	metricLoadAvg5m  = "system.cpu.load_average.5m"
+	metricLoadAvg15m = "system.cpu.load_average.15m"
+
+	metricDiskPendingOps = "system.disk.pending_operations"
 )
 
 // ---------------------------------------------------------------------------
@@ -77,7 +167,8 @@ type keyValue struct {
 }
 
 type anyValue struct {
-	StringValue *string `json:"stringValue,omitempty"`
+	StringValue *string  `json:"stringValue,omitempty"`
+	IntValue    *string  `json:"intValue,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +177,11 @@ type anyValue struct {
 
 func strAttr(key, val string) keyValue {
 	return keyValue{Key: key, Value: anyValue{StringValue: &val}}
+}
+
+func intAttr(key string, val int) keyValue {
+	s := strconv.Itoa(val)
+	return keyValue{Key: key, Value: anyValue{IntValue: &s}}
 }
 
 func nanos(t time.Time) string {
@@ -160,7 +256,6 @@ func main() {
 	log.Printf("kwok-hostmetrics-faker: nodes=%d cpus=%d interval=%s endpoint=%s",
 		len(nodeNames), numCPUs, interval, endpoint)
 
-	// Send immediately, then on each tick.
 	send(endpoint, nodeNames, clusterName, numCPUs, startTime)
 	ticker := time.NewTicker(interval)
 	for range ticker.C {
@@ -212,22 +307,21 @@ func send(endpoint string, nodes []string, cluster string, numCPUs int, start ti
 }
 
 func buildNodeMetrics(node, cluster string, numCPUs int, start, now time.Time, elapsed float64) resourceMetrics {
-	// Resource attributes (match resourcedetection + resource/hostname processors).
 	res := resource{
 		Attributes: []keyValue{
-			strAttr("k8s.node.name", node),
-			strAttr("host.name", node),
-			strAttr("os.type", "linux"),
+			strAttr(attrK8SNodeName, node),
+			strAttr(attrHostName, node),
+			strAttr(attrOSType, "linux"),
 		},
 	}
 
 	// Datapoint-level base attributes matching:
 	//   transform/copy_node_name  -> k8s.node.name, host.name
-	//   attributes/k8sclustername -> k8s.cluster.name
+	//   resource/k8sclustername   -> k8s.cluster.name
 	base := []keyValue{
-		strAttr("k8s.node.name", node),
-		strAttr("host.name", node),
-		strAttr("k8s.cluster.name", cluster),
+		strAttr(attrK8SNodeName, node),
+		strAttr(attrHostName, node),
+		strAttr(attrK8SCluster, cluster),
 	}
 
 	sn := nanos(start)
@@ -254,16 +348,23 @@ func buildNodeMetrics(node, cluster string, numCPUs int, start, now time.Time, e
 // CPU scraper metrics
 // ---------------------------------------------------------------------------
 
-var cpuStates = []string{"user", "system", "idle", "nice", "softirq", "steal", "wait", "interrupt"}
+var cpuModes = []string{
+	string(systemconv.CPUModeUser),
+	string(systemconv.CPUModeSystem),
+	string(systemconv.CPUModeIdle),
+	string(systemconv.CPUModeNice),
+	string(systemconv.CPUModeIOWait),
+	string(systemconv.CPUModeInterrupt),
+	string(systemconv.CPUModeSteal),
+}
 
-// cpuRate returns a realistic CPU time accumulation rate (seconds/second).
-func cpuRate(state string) float64 {
-	switch state {
-	case "idle":
+func cpuRate(mode string) float64 {
+	switch mode {
+	case string(systemconv.CPUModeIdle):
 		return 0.85
-	case "user":
+	case string(systemconv.CPUModeUser):
 		return 0.10
-	case "system":
+	case string(systemconv.CPUModeSystem):
 		return 0.04
 	default:
 		return 0.002
@@ -273,20 +374,18 @@ func cpuRate(state string) float64 {
 func cpuMetrics(base []keyValue, numCPUs int, startNano, nowNano string, elapsed float64) []metric {
 	var timeDP, utilDP []numberDataPoint
 	for i := 0; i < numCPUs; i++ {
-		cpu := strconv.Itoa(i)
-		for _, state := range cpuStates {
-			rate := cpuRate(state)
-			attrs := withAttrs(base, strAttr("cpu", cpu), strAttr("state", state))
+		for _, mode := range cpuModes {
+			rate := cpuRate(mode)
+			attrs := withAttrs(base, intAttr(attrCPULogicalNumber, i), strAttr(attrCPUMode, mode))
 			timeDP = append(timeDP, counterPoint(attrs, startNano, nowNano, rate*elapsed))
-			utilDP = append(utilDP, gaugePoint(
-				withAttrs(base, strAttr("cpu", cpu), strAttr("state", state)), nowNano, rate))
+			utilDP = append(utilDP, gaugePoint(attrs, nowNano, rate))
 		}
 	}
 
 	return []metric{
-		cumulativeSum("system.cpu.time", "s", true, timeDP),
-		gaugeMetric("system.cpu.utilization", "1", utilDP),
-		gaugeMetric("system.cpu.logical.count", "{cpus}",
+		cumulativeSum(metricCPUTime, "s", true, timeDP),
+		gaugeMetric(metricCPUUtilization, "1", utilDP),
+		gaugeMetric(metricCPULogicalCount, "{cpus}",
 			[]numberDataPoint{gaugePoint(withAttrs(base), nowNano, float64(numCPUs))}),
 	}
 }
@@ -297,11 +396,11 @@ func cpuMetrics(base []keyValue, numCPUs int, startNano, nowNano string, elapsed
 
 func loadMetrics(base []keyValue, nowNano string) []metric {
 	return []metric{
-		gaugeMetric("system.cpu.load_average.1m", "",
+		gaugeMetric(metricLoadAvg1m, "",
 			[]numberDataPoint{gaugePoint(withAttrs(base), nowNano, 1.5)}),
-		gaugeMetric("system.cpu.load_average.5m", "",
+		gaugeMetric(metricLoadAvg5m, "",
 			[]numberDataPoint{gaugePoint(withAttrs(base), nowNano, 1.2)}),
-		gaugeMetric("system.cpu.load_average.15m", "",
+		gaugeMetric(metricLoadAvg15m, "",
 			[]numberDataPoint{gaugePoint(withAttrs(base), nowNano, 0.9)}),
 	}
 }
@@ -328,14 +427,14 @@ func memoryMetrics(base []keyValue, nowNano string) []metric {
 	var usageDP, utilDP []numberDataPoint
 	for _, state := range memStates {
 		usageDP = append(usageDP,
-			gaugePoint(withAttrs(base, strAttr("state", state)), nowNano, memUsage[state]))
+			gaugePoint(withAttrs(base, strAttr(attrMemoryState, state)), nowNano, memUsage[state]))
 		utilDP = append(utilDP,
-			gaugePoint(withAttrs(base, strAttr("state", state)), nowNano, memUsage[state]/totalMemBytes))
+			gaugePoint(withAttrs(base, strAttr(attrMemoryState, state)), nowNano, memUsage[state]/totalMemBytes))
 	}
 	return []metric{
-		gaugeMetric("system.memory.usage", "By", usageDP),
-		gaugeMetric("system.memory.utilization", "1", utilDP),
-		gaugeMetric("system.memory.limit", "By",
+		gaugeMetric(metricMemoryUsage, "By", usageDP),
+		gaugeMetric(metricMemoryUtilization, "1", utilDP),
+		gaugeMetric(metricMemoryLimit, "By",
 			[]numberDataPoint{gaugePoint(withAttrs(base), nowNano, totalMemBytes)}),
 	}
 }
@@ -348,36 +447,31 @@ func diskMetrics(base []keyValue, startNano, nowNano string, elapsed float64) []
 	dev := "sda"
 	dirs := []string{"read", "write"}
 
-	ioRate := map[string]float64{"read": 50e6, "write": 30e6}       // bytes/sec
-	opsRate := map[string]float64{"read": 100, "write": 50}         // ops/sec
-	opTimeRate := map[string]float64{"read": 0.01, "write": 0.02}   // sec/sec
+	ioRate := map[string]float64{"read": 50e6, "write": 30e6}
+	opsRate := map[string]float64{"read": 100, "write": 50}
+	opTimeRate := map[string]float64{"read": 0.01, "write": 0.02}
 
 	var ioDP, opsDP, opTimeDP []numberDataPoint
 	for _, d := range dirs {
-		ioDP = append(ioDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, ioRate[d]*elapsed))
-		opsDP = append(opsDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, opsRate[d]*elapsed))
-		opTimeDP = append(opTimeDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, opTimeRate[d]*elapsed))
+		attrs := withAttrs(base, strAttr(attrDevice, dev), strAttr(attrDiskIODirection, d))
+		ioDP = append(ioDP, counterPoint(attrs, startNano, nowNano, ioRate[d]*elapsed))
+		opsDP = append(opsDP, counterPoint(attrs, startNano, nowNano, opsRate[d]*elapsed))
+		opTimeDP = append(opTimeDP, counterPoint(attrs, startNano, nowNano, opTimeRate[d]*elapsed))
 	}
 
 	ioTimeDP := []numberDataPoint{
-		counterPoint(withAttrs(base, strAttr("device", dev)), startNano, nowNano, 0.03*elapsed),
+		counterPoint(withAttrs(base, strAttr(attrDevice, dev)), startNano, nowNano, 0.03*elapsed),
 	}
 	pendingDP := []numberDataPoint{
-		gaugePoint(withAttrs(base, strAttr("device", dev)), nowNano, 0),
+		gaugePoint(withAttrs(base, strAttr(attrDevice, dev)), nowNano, 0),
 	}
 
 	return []metric{
-		cumulativeSum("system.disk.io", "By", true, ioDP),
-		cumulativeSum("system.disk.operations", "{operations}", true, opsDP),
-		cumulativeSum("system.disk.io_time", "s", true, ioTimeDP),
-		cumulativeSum("system.disk.operation_time", "s", true, opTimeDP),
-		gaugeMetric("system.disk.pending_operations", "{operations}", pendingDP),
+		cumulativeSum(metricDiskIO, "By", true, ioDP),
+		cumulativeSum(metricDiskOperations, "{operations}", true, opsDP),
+		cumulativeSum(metricDiskIOTime, "s", true, ioTimeDP),
+		cumulativeSum(metricDiskOperationTime, "s", true, opTimeDP),
+		gaugeMetric(metricDiskPendingOps, "{operations}", pendingDP),
 	}
 }
 
@@ -395,17 +489,17 @@ func filesystemMetrics(base []keyValue, nowNano string) []metric {
 	}
 
 	fsBase := withAttrs(base,
-		strAttr("device", dev),
-		strAttr("mountpoint", mp),
-		strAttr("type", fsType),
-		strAttr("mode", mode),
+		strAttr(attrDevice, dev),
+		strAttr(attrFSMountpoint, mp),
+		strAttr(attrFSType, fsType),
+		strAttr(attrFSMode, mode),
 	)
 
 	states := []string{"used", "free", "reserved"}
 	var usageDP []numberDataPoint
 	for _, s := range states {
 		usageDP = append(usageDP,
-			gaugePoint(withAttrs(fsBase, strAttr("state", s)), nowNano, usage[s]))
+			gaugePoint(withAttrs(fsBase, strAttr(attrFSState, s)), nowNano, usage[s]))
 	}
 
 	utilDP := []numberDataPoint{
@@ -413,8 +507,8 @@ func filesystemMetrics(base []keyValue, nowNano string) []metric {
 	}
 
 	return []metric{
-		gaugeMetric("system.filesystem.usage", "By", usageDP),
-		gaugeMetric("system.filesystem.utilization", "1", utilDP),
+		gaugeMetric(metricFSUsage, "By", usageDP),
+		gaugeMetric(metricFSUtilization, "1", utilDP),
 	}
 }
 
@@ -431,32 +525,25 @@ func networkMetrics(base []keyValue, startNano, nowNano string, elapsed float64)
 
 	var ioDP, pktDP, errDP, dropDP []numberDataPoint
 	for _, d := range dirs {
-		attrs := withAttrs(base, strAttr("device", dev), strAttr("direction", d))
+		attrs := withAttrs(base, strAttr(attrDevice, dev), strAttr(attrNetIODirection, d))
 		ioDP = append(ioDP, counterPoint(attrs, startNano, nowNano, ioRate[d]*elapsed))
-		pktDP = append(pktDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, pktRate[d]*elapsed))
-		errDP = append(errDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, 0))
-		dropDP = append(dropDP, counterPoint(
-			withAttrs(base, strAttr("device", dev), strAttr("direction", d)),
-			startNano, nowNano, 0))
+		pktDP = append(pktDP, counterPoint(attrs, startNano, nowNano, pktRate[d]*elapsed))
+		errDP = append(errDP, counterPoint(attrs, startNano, nowNano, 0))
+		dropDP = append(dropDP, counterPoint(attrs, startNano, nowNano, 0))
 	}
 
-	// Connections: common TCP states.
 	connStates := []string{"ESTABLISHED", "LISTEN", "TIME_WAIT"}
 	var connDP []numberDataPoint
 	for _, s := range connStates {
 		connDP = append(connDP,
-			gaugePoint(withAttrs(base, strAttr("protocol", "tcp"), strAttr("state", s)), nowNano, 10))
+			gaugePoint(withAttrs(base, strAttr(attrNetTransport, "tcp"), strAttr(attrNetConnState, s)), nowNano, 10))
 	}
 
 	return []metric{
-		cumulativeSum("system.network.io", "By", true, ioDP),
-		cumulativeSum("system.network.packets", "{packets}", true, pktDP),
-		cumulativeSum("system.network.errors", "{errors}", true, errDP),
-		cumulativeSum("system.network.dropped", "{packets}", true, dropDP),
-		gaugeMetric("system.network.connections", "{connections}", connDP),
+		cumulativeSum(metricNetIO, "By", true, ioDP),
+		cumulativeSum(metricNetPackets, "{packets}", true, pktDP),
+		cumulativeSum(metricNetErrors, "{errors}", true, errDP),
+		cumulativeSum(metricNetDropped, "{packets}", true, dropDP),
+		gaugeMetric(metricNetConnections, "{connections}", connDP),
 	}
 }

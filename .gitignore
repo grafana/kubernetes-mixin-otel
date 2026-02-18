@@ -8,4 +8,5 @@ scripts/kwok-config/recording-rules-empty.yaml
 
 # Binary files
 scripts/kwok-stats-proxy/kwok-stats-proxy
+scripts/kwok-hostmetrics-faker/kwok-hostmetrics-faker
 kwok
