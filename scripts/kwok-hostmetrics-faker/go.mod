@@ -1,6 +1,6 @@
 module github.com/grafana/opentelemetry-mixin/kwok-hostmetrics-faker
 
-go 1.24.0
+go 1.26.0
 
 require go.opentelemetry.io/otel v1.40.0
 

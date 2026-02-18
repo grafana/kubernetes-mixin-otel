@@ -1,6 +1,6 @@
 module _
 
-go 1.25.1
+go 1.26.0
 
 require (
 	github.com/google/go-jsonnet v0.21.0
