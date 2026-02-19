@@ -1,0 +1,62 @@
+# Minimal collector: hostmetrics only, with k8s.node.name from env.
+# Run one container per Kwok node (same image as main collector) so hostmetrics
+# series count matches the mixin's DaemonSet (one hostmetrics set per node).
+receivers:
+  hostmetrics:
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.logical.count:
+            enabled: true
+      load: {}
+      memory:
+        metrics:
+          system.memory.limit:
+            enabled: true
+      disk: {}
+      filesystem: {}
+      network: {}
+
+processors:
+  resourcedetection:
+    detectors: [system]
+    timeout: 2s
+    override: true
+
+  resource/hostname:
+    attributes:
+      - key: k8s.node.name
+        action: upsert
+        value: ${env:K8S_NODE_NAME}
+      - key: host.name
+        action: upsert
+        from_attribute: k8s.node.name
+
+  attributes/k8sclustername:
+    attributes:
+      - key: k8s.cluster.name
+        action: upsert
+        value: ${env:CLUSTER_NAME}
+
+  # Match dev DaemonSet: copy to datapoint for Prometheus OTLP
+  transform/copy_node_name:
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
+          - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+
+  batch: {}
+
+exporters:
+  otlphttp/metrics:
+    endpoint: http://lgtm:4318
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      processors: [resourcedetection, resource/hostname, attributes/k8sclustername, transform/copy_node_name, batch]
+      exporters: [otlphttp/metrics]
