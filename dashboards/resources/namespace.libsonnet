@@ -17,6 +17,16 @@ local merged = {
   },
 } + k8sMixinNamespace;
 
+// Helper to update joinByField transformation from 'pod' to 'k8s_pod_name'
+local updateTransformations(transformations) =
+  [
+    if t.id == 'joinByField' then
+      t { options+: { byField: 'k8s_pod_name' } }
+    else
+      t
+    for t in transformations
+  ];
+
 {
   _config: config._config,
   grafanaDashboards+:: {
@@ -28,7 +38,12 @@ local merged = {
             type: 'datasource',
             uid: '${datasource}',
           },
-        }
+        } + (
+          if std.objectHas(panel, 'transformations') then
+            { transformations: updateTransformations(panel.transformations) }
+          else
+            {}
+        )
         for panel in merged.grafanaDashboards['k8s-resources-namespace.json'].panels
       ],
     },

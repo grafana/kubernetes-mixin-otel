@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate config for kubernetes-opentelemetry-mixin",
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "github-actions",
+    "gomod",
+    "jsonnet-bundler"
+  ],
+  "gomod": {
+    "matchPaths": ["scripts/go.mod"]
+  },
+  "packageRules": [
+    {
+      "description": "Group Go minor and patch updates in scripts",
+      "matchManagers": ["gomod"],
+      "matchPaths": ["scripts/go.mod"],
+      "groupName": "go scripts",
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "description": "Pin GitHub Actions to full-length SHA",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    }
+  ],
+  "schedule": ["before 10am on monday"]
+}

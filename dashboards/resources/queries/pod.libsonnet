@@ -22,13 +22,13 @@ local b = import './common.libsonnet';
     b.metricSum('k8s_container_cpu_request', filters, by='k8s_container_name'),
 
   cpuUsageVsRequests(config)::
-    b.ratioSum('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, by='k8s_pod_name', useRate=true),
+    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', filters, by='k8s_pod_name', useRate=true),
 
   cpuLimitsByContainer(config)::
     b.metricSum('k8s_container_cpu_limit', filters, by='k8s_container_name'),
 
   cpuUsageVsLimits(config)::
-    b.ratioSum('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, by='k8s_pod_name', useRate=true),
+    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', filters, by='k8s_pod_name', useRate=true),
 
   // Memory Queries
   memoryUsageWSS(config)::
@@ -45,13 +45,13 @@ local b = import './common.libsonnet';
     b.metricSum('k8s_container_memory_request_bytes', filters, by='k8s_container_name'),
 
   memoryUsageVsRequests(config)::
-    b.ratioSum('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters, by='k8s_pod_name'),
+    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', filters, by='k8s_pod_name'),
 
   memoryLimitsByContainer(config)::
     b.metricSum('k8s_container_memory_limit_bytes', filters, by='k8s_container_name'),
 
   memoryUsageVsLimits(config)::
-    b.ratioSum('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters, by='k8s_pod_name'),
+    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', filters, by='k8s_pod_name'),
 
   memoryUsageRSS(config)::
     b.metricSum('k8s_pod_memory_rss_bytes', filters, by='k8s_pod_name'),

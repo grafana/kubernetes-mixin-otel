@@ -12,7 +12,7 @@ SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
 
 # Find all libsonnet files recursively in the dashboards directory
-DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet' 2>/dev/null)
+DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
 
 .PHONY: dev
 dev: generate lint
@@ -40,43 +40,59 @@ dev-port-forward:
 dev-down:
 	k3d cluster delete kubernetes-mixin-otel
 
+ENABLE_BEYLA ?= false
 .PHONY: kwok
 kwok: generate
-	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME) ./run-kwok-env.sh && \
+	@cd scripts && NODE_COUNT=$(NODE_COUNT) POD_COUNT=$(POD_COUNT) KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) CLUSTER_NAME=$(CLUSTER_NAME) ENABLE_BEYLA=$(ENABLE_BEYLA) ./run-kwok-env.sh && \
 	echo '' && \
-	echo '╔═══════════════════════════════════════════════════════════════╗' && \
-	echo '║             🚀 KWOK Environment Ready! 🚀                     ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Grafana:    http://localhost:3000                           ║' && \
-	echo '║   Prometheus: http://localhost:8889/metrics                   ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Cluster: $(CLUSTER_NAME) ($(NODE_COUNT) nodes, $(POD_COUNT) pods)                  ║' && \
-	echo '║   Context: kwok-$(CLUSTER_NAME)                                  ║' && \
-	echo '║                                                               ║' && \
-	echo '║   Run `make kwok-down` to tear down                           ║' && \
-	echo '╚═══════════════════════════════════════════════════════════════╝'
+	echo '╔════════════════════════════════════════════════════════╗' && \
+	echo '║           🚀 KWOK Environment Ready! 🚀                ║' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	echo '║  Grafana:     http://localhost:3001                    ║' && \
+	echo '║  Prometheus:  http://localhost:8889/metrics            ║' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	printf '║  Cluster:     %-40s ║\n' '$(CLUSTER_NAME)' && \
+	printf '║  Nodes/Pods:  %-40s ║\n' '$(NODE_COUNT) nodes, $(POD_COUNT) pods' && \
+	printf '║  Context:     %-40s ║\n' 'kwok-$(CLUSTER_NAME)' && \
+	printf '║  Beyla:       %-40s ║\n' '$(ENABLE_BEYLA)' && \
+	echo '╠════════════════════════════════════════════════════════╣' && \
+	echo '║  Run `make kwok-down` to tear down                     ║' && \
+	echo '╚════════════════════════════════════════════════════════╝'
 
 .PHONY: kwok-down
 kwok-down:
-	docker rm -f kwok-otel-collector kwok-stats-proxy lgtm || true
-	kwokctl delete cluster --name $(CLUSTER_NAME) || true
+	@docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
+	@for c in $$(docker ps -a -q --filter "name=kwok-hostmetrics-replicator" 2>/dev/null); do docker rm -f $$c 2>/dev/null || true; done
+	@kwokctl delete cluster --name $(CLUSTER_NAME) 2>/dev/null || true
 	@echo "KWOK environment torn down"
 
 .PHONY: kwok-stats-proxy-rm
 kwok-stats-proxy-rm:
-	@docker rm -f kwok-stats-proxy || true
+	@docker rm -f kwok-stats-proxy 2>/dev/null || true
 
-NODE_COUNT ?= 50
+.PHONY: kwok-beyla
+kwok-beyla:
+	@cd scripts && ./run-kwok-beyla.sh
+
+.PHONY: kwok-beyla-rm
+kwok-beyla-rm:
+	@docker stop kwok-beyla --timeout 3 2>/dev/null || true
+	@docker rm -f kwok-beyla 2>/dev/null || true
+
+# Default scale: parity with dev (1 node, 10 pods, 11 containers from cluster-workloads only). Override for larger: make kwok NODE_COUNT=50 POD_COUNT=200
+NODE_COUNT ?= 1
 CLUSTER_NAME ?= queries-testing
+KWOK_DEFAULT_NAMESPACE_PODS ?= 2
 
 .PHONY: kwok-nodes
 kwok-nodes:
 	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./scale-kwok-nodes.sh $(NODE_COUNT)
 
-POD_COUNT ?= 200
+# POD_COUNT=0 uses only cluster-workloads for exact parity with dev
+POD_COUNT ?= 0
 .PHONY: kwok-pods
 kwok-pods:
-	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./create-kwok-pods.sh $(POD_COUNT)
+	@cd scripts && KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) CLUSTER_NAME=$(CLUSTER_NAME) ./create-kwok-pods.sh $(POD_COUNT)
 
 .PHONY: kwok-resource-usage
 kwok-resource-usage:
@@ -86,12 +102,17 @@ kwok-resource-usage:
 kwok-annotate-nodes:
 	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./annotate-kwok-nodes.sh
 
+.PHONY: kwok-cluster-workloads
+kwok-cluster-workloads:
+	@cd scripts && CLUSTER_NAME=$(CLUSTER_NAME) ./apply-kwok-cluster-workloads.sh
+
 .PHONY: kwok-setup
 kwok-setup:
 	@$(MAKE) kwok-nodes NODE_COUNT=$(NODE_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
-	@$(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
+	@KWOK_DEFAULT_NAMESPACE_PODS=$(KWOK_DEFAULT_NAMESPACE_PODS) $(MAKE) kwok-pods POD_COUNT=$(POD_COUNT) CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-resource-usage CLUSTER_NAME=$(CLUSTER_NAME)
 	@$(MAKE) kwok-annotate-nodes CLUSTER_NAME=$(CLUSTER_NAME)
+	@$(MAKE) kwok-cluster-workloads CLUSTER_NAME=$(CLUSTER_NAME)
 
 .PHONY: clean-dashboards
 clean-dashboards:
@@ -147,6 +168,6 @@ test: test-jsonnet
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@echo "Running jsonnet query tests..."
-	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet > /dev/null
-	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet > /dev/null
+	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet
+	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
 	@echo "All tests passed!"

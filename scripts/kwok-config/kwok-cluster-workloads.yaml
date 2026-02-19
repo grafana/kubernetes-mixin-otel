@@ -1,0 +1,206 @@
+# Cluster workloads for exact parity with dev series counts:
+# 6 deployments (replicas=1), 2 daemonsets, 2 jobs → 10 pods, 11 containers.
+# Resources: 1 cpu limit, 3 cpu request, 2 memory limit, 3 memory request (match dev).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-1
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-1
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-1
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+          resources:
+            requests: { cpu: "10m", memory: "32Mi" }
+            limits: { cpu: "100m", memory: "64Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-2
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-2
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-2
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+          resources:
+            requests: { cpu: "10m", memory: "32Mi" }
+            limits: { memory: "64Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-3
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-3
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-3
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+          resources:
+            requests: { cpu: "10m", memory: "32Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-4
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-4
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-4
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-5
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-5
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-5
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwok-mixin-deploy-6
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwok-mixin-deploy-6
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-deploy-6
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kwok-mixin-daemonset-1
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: kwok-mixin-daemonset-1
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-daemonset-1
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+        - name: sidecar
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kwok-mixin-daemonset-2
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: kwok-mixin-daemonset-2
+  template:
+    metadata:
+      labels:
+        app: kwok-mixin-daemonset-2
+    spec:
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["sleep", "infinity"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kwok-mixin-job-1
+  namespace: default
+spec:
+  completions: 1
+  parallelism: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["true"]
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kwok-mixin-job-2
+  namespace: default
+spec:
+  completions: 1
+  parallelism: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: main
+          image: busybox:latest
+          command: ["true"]
