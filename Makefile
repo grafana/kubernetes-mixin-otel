@@ -61,8 +61,9 @@ kwok: generate
 
 .PHONY: kwok-down
 kwok-down:
-	@docker rm -f kwok-otel-collector kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
-	@for c in $$(docker ps -a -q --filter "name=kwok-hostmetrics-replicator" 2>/dev/null); do docker rm -f $$c 2>/dev/null || true; done
+	@docker rm -f kwok-otel-collector kwok-otel-gateway kwok-stats-proxy kwok-beyla lgtm 2>/dev/null || true
+	@for c in $$(docker ps -a -q --filter "name=kwok-hostmetrics" 2>/dev/null); do docker rm -f $$c 2>/dev/null || true; done
+	@for c in $$(docker network inspect kwok-$(CLUSTER_NAME) --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null); do docker rm -f $$c 2>/dev/null || true; done
 	@kwokctl delete cluster --name $(CLUSTER_NAME) 2>/dev/null || true
 	@echo "KWOK environment torn down"
 
