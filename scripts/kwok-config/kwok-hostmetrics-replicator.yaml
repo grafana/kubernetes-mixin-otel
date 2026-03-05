@@ -32,7 +32,7 @@ processors:
         action: upsert
         from_attribute: k8s.node.name
 
-  attributes/k8sclustername:
+  resource/k8sclustername:
     attributes:
       - key: k8s.cluster.name
         action: upsert
@@ -58,5 +58,5 @@ service:
   pipelines:
     metrics:
       receivers: [hostmetrics]
-      processors: [resourcedetection, resource/hostname, attributes/k8sclustername, transform/copy_node_name, batch]
+      processors: [resourcedetection, resource/hostname, resource/k8sclustername, transform/copy_node_name, batch]
       exporters: [otlphttp/metrics]

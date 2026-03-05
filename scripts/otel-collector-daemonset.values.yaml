@@ -57,12 +57,12 @@ config:
 
     resource/hostname:
       attributes:
-      - key: k8s.node.name
-        action: upsert
-        value: ${env:K8S_NODE_NAME}
-      - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
+        - key: k8s.node.name
+          action: upsert
+          value: ${env:K8S_NODE_NAME}
+        - key: host.name
+          action: upsert
+          from_attribute: k8s.node.name
 
     resourcedetection:
       detectors: [system]
