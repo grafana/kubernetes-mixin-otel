@@ -41,9 +41,9 @@ config:
 
     resource/hostname:
       attributes:
-      - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
+        - key: host.name
+          action: upsert
+          from_attribute: k8s.node.name
 
     batch: {}
 

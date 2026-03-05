@@ -49,20 +49,20 @@ config:
       extract:
         otel_annotations: true
 
-    attributes/k8sclustername:
-      actions:
+    resource/k8sclustername:
+      attributes:
         - key: k8s.cluster.name
           action: upsert
           value: kubernetes-mixin-otel
 
     resource/hostname:
       attributes:
-      - key: k8s.node.name
-        action: upsert
-        value: ${env:K8S_NODE_NAME}
-      - key: host.name
-        action: upsert
-        from_attribute: k8s.node.name
+        - key: k8s.node.name
+          action: upsert
+          value: ${env:K8S_NODE_NAME}
+        - key: host.name
+          action: upsert
+          from_attribute: k8s.node.name
 
     resourcedetection:
       detectors: [system]
@@ -91,7 +91,7 @@ config:
         processors: [
           resourcedetection,
           k8sattributes,
-          attributes/k8sclustername,
+          resource/k8sclustername,
           resource/hostname,
           transform/copy_node_name,
           batch,
