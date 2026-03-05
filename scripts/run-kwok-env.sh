@@ -50,9 +50,10 @@ fi
 KWOK_API_SERVER="${SERVER_URL/127.0.0.1/host.docker.internal}"
 KWOK_API_SERVER="${KWOK_API_SERVER/localhost/host.docker.internal}"
 
-# Base64 encode cert and key (macOS: -b 0 = no wrapping)
-CLIENT_CERT_DATA="$(base64 -b 0 -i "${PKI_DIR}/admin.crt")"
-CLIENT_KEY_DATA="$(base64 -b 0 -i "${PKI_DIR}/admin.key")"
+# Base64 encode cert and key
+CLIENT_CERT_DATA="$(base64 -w 0 -i "${PKI_DIR}/admin.crt")"
+CLIENT_KEY_DATA="$(base64 -w 0 -i "${PKI_DIR}/admin.key")"
+
 
 if [[ ! -f "${KUBECONFIG_TEMPLATE}" ]]; then
   echo "ERROR: kubeconfig template not found at ${KUBECONFIG_TEMPLATE}"
