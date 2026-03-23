@@ -1,10 +1,10 @@
-FROM golang:1.26-alpine@sha256:d4c4845f5d60c6a974c6000ce58ae079328d03ab7f721a0734277e69905473e5 AS builder
+FROM golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 AS builder
 WORKDIR /app
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 RUN go build -o kwok-hostmetrics-faker .
 
-FROM alpine:3.20
+FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
 COPY --from=builder /app/kwok-hostmetrics-faker /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/kwok-hostmetrics-faker"]
