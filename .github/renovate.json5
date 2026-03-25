@@ -15,5 +15,9 @@
       matchManagers: ["gomod"],
       groupName: "go",
     },
+    {
+      matchManagers: ["jsonnet-bundler"],
+      groupName: "jsonnet",
+    },
   ],
 }
