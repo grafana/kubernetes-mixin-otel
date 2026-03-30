@@ -3,7 +3,7 @@ module _
 go 1.26.0
 
 require (
-	github.com/google/go-jsonnet v0.21.0
+	github.com/google/go-jsonnet v0.22.0
 	github.com/grafana/dashboard-linter v0.0.0-20250428211052-5e22d6dc65a1
 	github.com/jsonnet-bundler/jsonnet-bundler v0.6.0
 )
