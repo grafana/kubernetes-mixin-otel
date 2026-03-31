@@ -28,7 +28,7 @@
           "subdir": "doc-util"
         }
       },
-      "version": "6ac6c69685b8c29c54515448eaca583da2d88150",
+      "version": "bf6f08ae02a51c48bdcec4629b1c1a5a62c6f803",
       "sum": "BrAL/k23jq+xy9oA7TWIhUx07dsA/QLm3g7ktCwe//U="
     },
     {
@@ -48,8 +48,8 @@
           "subdir": ""
         }
       },
-      "version": "644bc5c6ab9dd5583bb04f76ef3d320fc3f0f2b3",
-      "sum": "XJNzVA/gK8R4ORRKQXJomW56T3QloPmbgSqi/R4cxJ0="
+      "version": "545cf332028b3022d19ec4af481f38c499460056",
+      "sum": "1oi8tZmgiZcn1f1kLQVXv0iJ9xf/BK0JKS/kR864Ia8="
     }
   ],
   "legacyImports": false
