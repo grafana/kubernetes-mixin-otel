@@ -69,7 +69,7 @@ require (
 	github.com/grafana/gomemcache v0.0.0-20241016125027-0a5bcc5aef40 // indirect
 	github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675 // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20241220083700-6c49cc07305e // indirect
-	github.com/grafana/loki/v3 v3.3.2 // indirect
+	github.com/grafana/loki/v3 v3.6.4 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/hashicorp/consul/api v1.30.0 // indirect
