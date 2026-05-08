@@ -2,11 +2,27 @@ BIN_DIR ?= $(shell pwd)/tmp/bin
 
 JSONNET_VENDOR=vendor
 GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter
+GRAFANA_DASHBOARD_LINTER_VERSION ?= 0.1.0
 JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
 JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
-TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN) $(GRAFANA_DASHBOARD_LINTER_BIN)
+TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN)
+
+# OS/ARCH detection for the dashboard-linter precompiled release.
+DASHBOARD_LINTER_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+DASHBOARD_LINTER_RAW_ARCH := $(shell uname -m)
+ifeq ($(DASHBOARD_LINTER_RAW_ARCH),x86_64)
+DASHBOARD_LINTER_ARCH := amd64
+else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),aarch64)
+DASHBOARD_LINTER_ARCH := arm64
+else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),arm64)
+DASHBOARD_LINTER_ARCH := arm64
+else
+DASHBOARD_LINTER_ARCH := $(DASHBOARD_LINTER_RAW_ARCH)
+endif
+DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH).tar.gz
+DASHBOARD_LINTER_BASE_URL := https://github.com/grafana/dashboard-linter/releases/download/v$(GRAFANA_DASHBOARD_LINTER_VERSION)
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
 SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
@@ -132,6 +148,17 @@ $(BIN_DIR):
 $(TOOLING): $(BIN_DIR)
 	@echo Installing tools from scripts/tools.go
 	@cd scripts && go list -e -mod=mod -tags tools -f '{{ range .Imports }}{{ printf "%s\n" .}}{{end}}' ./ | xargs -tI % go build -mod=mod -o $(BIN_DIR) %
+
+# Install dashboard-linter from the precompiled release (upstream-recommended path).
+# Verifies the archive against the published checksums.txt before extracting.
+$(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
+	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH))"
+	@tmp=$$(mktemp -d) && \
+		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/$(DASHBOARD_LINTER_TARBALL)" -o "$$tmp/$(DASHBOARD_LINTER_TARBALL)" && \
+		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/checksums.txt" -o "$$tmp/checksums.txt" && \
+		(cd "$$tmp" && grep " $(DASHBOARD_LINTER_TARBALL)$$" checksums.txt | shasum -a 256 -c -) && \
+		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C $(BIN_DIR) dashboard-linter && \
+		rm -rf "$$tmp"
 
 .PHONY: fmt
 fmt: jsonnet-fmt
