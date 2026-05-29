@@ -32,7 +32,7 @@ docker run -d \
   -e BEYLA_TRACES_EXPORTER=otlp \
   -e OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
   -e OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318" \
-  grafana/beyla:latest
+  grafana/beyla:3.15.0
 
 echo "[beyla] Beyla tracing enabled - query traces will appear in Grafana Tempo"
 

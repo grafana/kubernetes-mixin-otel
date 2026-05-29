@@ -7,7 +7,7 @@
           "remote": "https://github.com/kubernetes-monitoring/kubernetes-mixin.git"
         }
       },
-      "version": "master"
+      "version": "ca6936ebb8653337c9d8e024ed781113a8b007d6"
     }
   ],
   "legacyImports": true

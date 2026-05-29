@@ -87,7 +87,7 @@ else
     -p 9090:9090 \
     -v "${SCRIPT_DIR}/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboards.yaml" \
     -v "${SCRIPT_DIR}/../dashboards_out:/kubernetes-mixin-otel/dashboards_out" \
-    grafana/otel-lgtm:latest
+    grafana/otel-lgtm:0.28.0
 fi
 
 # 6. Build and start kwok-stats-proxy (provides /stats/summary for kubeletstatsreceiver)
@@ -113,7 +113,7 @@ docker run -d \
   -e STATS_PROXY_ENDPOINT="http://host.docker.internal:10250" \
   -p 8889:8889 \
   -v "${OTEL_CONFIG}:/etc/otelcol/config.yaml" \
-  otel/opentelemetry-collector-contrib:latest \
+  otel/opentelemetry-collector-contrib:0.153.0 \
   --config /etc/otelcol/config.yaml
 
 # 8. Start hostmetrics faker (single lightweight container replaces N replicator containers).
