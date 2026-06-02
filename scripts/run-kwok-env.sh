@@ -10,6 +10,11 @@ OTEL_CONFIG="${SCRIPT_DIR}/kwok-config/kwok-otel-collector.yaml"
 KUBECONFIG_TEMPLATE="${SCRIPT_DIR}/kwok-config/otel-kwokconfig.yaml"
 KUBECONFIG_OUT="/tmp/kwok-kubeconfig"
 
+# renovate: datasource=docker depName=grafana/otel-lgtm
+LGTM_IMAGE="grafana/otel-lgtm:0.28.0@sha256:74bd8c8be4344dd51fb76f2030522e5c886bc585d4e965234a68b49960c98c5e"
+# renovate: datasource=docker depName=otel/opentelemetry-collector-contrib
+OTELCOL_IMAGE="otel/opentelemetry-collector-contrib:0.153.0@sha256:2e9646ff882e043b5e046dbad14cf76b59f6cc108053e1e3a863b14d532b43ec"
+
 # Configurable node and pod counts (defaults: 1 node, 0 batch pods for parity with dev)
 NODE_COUNT="${NODE_COUNT:-1}"
 POD_COUNT="${POD_COUNT:-0}"
@@ -87,7 +92,7 @@ else
     -p 9090:9090 \
     -v "${SCRIPT_DIR}/provisioning/dashboards/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboards.yaml" \
     -v "${SCRIPT_DIR}/../dashboards_out:/kubernetes-mixin-otel/dashboards_out" \
-    grafana/otel-lgtm:latest
+    "${LGTM_IMAGE}"
 fi
 
 # 6. Build and start kwok-stats-proxy (provides /stats/summary for kubeletstatsreceiver)
@@ -113,7 +118,7 @@ docker run -d \
   -e STATS_PROXY_ENDPOINT="http://host.docker.internal:10250" \
   -p 8889:8889 \
   -v "${OTEL_CONFIG}:/etc/otelcol/config.yaml" \
-  otel/opentelemetry-collector-contrib:latest \
+  "${OTELCOL_IMAGE}" \
   --config /etc/otelcol/config.yaml
 
 # 8. Start hostmetrics faker (single lightweight container replaces N replicator containers).
