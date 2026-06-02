@@ -9,7 +9,7 @@
       groupName: "github actions",
     },
     {
-      matchManagers: ["dockerfile", "docker-compose"],
+      matchManagers: ["dockerfile", "docker-compose", "shell"],
       groupName: "docker",
     },
     {
