@@ -34,6 +34,15 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
+    kubeletstats:
+      # The `volume` group is not collected by default; it provides the
+      # k8s.volume.* metrics used by the Persistent Volumes dashboard.
+      metric_groups: [container, pod, node, volume]
+      # Emits k8s.volume.type and, for PVC-backed volumes, the
+      # k8s.persistentvolumeclaim.name resource attribute.
+      # Requires `get` on nodes/proxy (see clusterRole below).
+      extra_metadata_labels:
+        - k8s.volume.type
     host_metrics:
       scrapers:
         cpu:
@@ -57,6 +66,15 @@ config:
           statements:
             - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
             - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+
+    transform/copy_volume_attributes:
+    # workaround: volume resource attributes are not promoted by the Prometheus OTLP endpoint
+      metric_statements:
+        - context: datapoint
+          statements:
+            - set(attributes["k8s.volume.name"], resource.attributes["k8s.volume.name"]) where resource.attributes["k8s.volume.name"] != nil
+            - set(attributes["k8s.volume.type"], resource.attributes["k8s.volume.type"]) where resource.attributes["k8s.volume.type"] != nil
+            - set(attributes["k8s.persistentvolumeclaim.name"], resource.attributes["k8s.persistentvolumeclaim.name"]) where resource.attributes["k8s.persistentvolumeclaim.name"] != nil
 
     memory_limiter:
       check_interval: 1s
@@ -124,6 +142,7 @@ config:
           resource/k8sclustername,
           resource/hostname,
           transform/promote_resource_attributes,
+          transform/copy_volume_attributes,
           batch,
         ]
         exporters: [otlp_http/metrics, prometheus]
@@ -134,3 +153,11 @@ ports:
     containerPort: 8889
     servicePort: 8889
     protocol: TCP
+
+clusterRole:
+  rules:
+    # The kubelet /pods endpoint (used by kubeletstats extra_metadata_labels
+    # to resolve PVC references) authorizes as `get` on nodes/proxy.
+    - apiGroups: ['']
+      resources: ['nodes/proxy']
+      verbs: ['get']

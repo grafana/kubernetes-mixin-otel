@@ -12,6 +12,11 @@ kubectl --context k3d-kubernetes-mixin-otel wait --for=condition=Ready nodes --a
 # Deploy the LGTM stack
 kubectl --context k3d-kubernetes-mixin-otel apply -f lgtm.yaml
 
+# Create the backing directory for the static local PersistentVolume, then
+# deploy a PVC-backed workload so the Persistent Volumes dashboard has data.
+docker exec k3d-kubernetes-mixin-otel-server-0 mkdir -p /var/lib/kubernetes-mixin-otel/pv-writer
+kubectl --context k3d-kubernetes-mixin-otel apply -f pv-workload.yaml
+
 # Disabled until Git Sync supports local rendering without requiring a public instance.
 # kubectl --context k3d-kubernetes-mixin-otel apply -f grafana-image-renderer.yaml
 
