@@ -47,7 +47,7 @@ local commonVariables = import '../resources/variables/common.libsonnet';
       + var.query.withDatasourceFromVariable(self.datasource)
       + var.query.queryTypes.withLabelValues(
         'k8s_persistentvolumeclaim_name',
-        'k8s_volume_capacity_bytes{k8s_cluster_name="$cluster", k8s_namespace_name="$namespace"}',
+        'k8s_volume_capacity_bytes{k8s_cluster_name="$cluster", k8s_namespace_name="$namespace", k8s_persistentvolumeclaim_name!=""}',
       )
       + var.query.generalOptions.withLabel('PersistentVolumeClaim')
       + var.query.refresh.onTime()
