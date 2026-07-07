@@ -12,9 +12,15 @@ kubectl --context k3d-kubernetes-mixin-otel wait --for=condition=Ready nodes --a
 # Deploy the LGTM stack
 kubectl --context k3d-kubernetes-mixin-otel apply -f lgtm.yaml
 
-# Create the backing directory for the static local PersistentVolume, then
+# Back the static local PersistentVolume with a small tmpfs mount, then
 # deploy a PVC-backed workload so the Persistent Volumes dashboard has data.
-docker exec k3d-kubernetes-mixin-otel-server-0 mkdir -p /var/lib/kubernetes-mixin-otel/pv-writer
+# A plain directory would sit on the node's overlayfs root: capacity would
+# report the whole node disk, and inode stats would be zero when the Docker
+# backing filesystem is btrfs (statfs f_files=0). tmpfs reports a real 1Gi
+# capacity and real inode counts; nr_inodes is kept small so the writer's
+# ~20 files register as visible inode utilisation on the dashboard.
+docker exec k3d-kubernetes-mixin-otel-server-0 sh -c \
+    'mkdir -p /var/lib/kubernetes-mixin-otel/pv-writer && mount -t tmpfs -o size=1g,nr_inodes=512 tmpfs /var/lib/kubernetes-mixin-otel/pv-writer'
 kubectl --context k3d-kubernetes-mixin-otel apply -f pv-workload.yaml
 
 # Disabled until Git Sync supports local rendering without requiring a public instance.
