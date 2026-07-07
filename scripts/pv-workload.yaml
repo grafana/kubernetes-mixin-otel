@@ -6,8 +6,9 @@
 # has no metrics provider). `local` volumes report stats via statfs, which
 # the kubeletstats receiver picks up as k8s.volume.* metrics.
 #
-# The PV path is created on the node by lgtm.sh before this manifest is
-# applied. Node affinity is pinned to the single k3d server node.
+# The PV path is a tmpfs mount created on the node by lgtm.sh before this
+# manifest is applied (see lgtm.sh for why tmpfs and not a plain directory).
+# Node affinity is pinned to the single k3d server node.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
