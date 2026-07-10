@@ -24,6 +24,16 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/grafana/tsqtsq.git",
+          "subdir": "jsonnet"
+        }
+      },
+      "version": "b6240b86ed496db94d4a3f203224000a3bed1239",
+      "sum": "7ixhNUIY0E76CdIzqy77vGzh4LJ056Ufr0+guAPqE6U="
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/jsonnet-libs/docsonnet.git",
           "subdir": "doc-util"
         }
