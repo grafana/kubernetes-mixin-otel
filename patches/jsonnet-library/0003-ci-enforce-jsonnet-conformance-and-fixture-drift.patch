@@ -1,0 +1,75 @@
+From 711e778a2b4fa8a4e2a4cbe61dc8188748fe1ec8 Mon Sep 17 00:00:00 2001
+From: Stephen Lang <skl@users.noreply.github.com>
+Date: Fri, 10 Jul 2026 01:57:32 +0000
+Subject: [PATCH 3/3] ci: enforce jsonnet conformance and fixture drift
+
+Add a jsonnet-conformance job that regenerates the conformance corpus
+from the jest suite and fails on any diff (fixtures must always reflect
+TypeScript behaviour), then replays the corpus against the jsonnet
+implementation with go-jsonnet and checks jsonnet formatting.
+
+A TypeScript behaviour change therefore cannot land without regenerated
+fixtures, and cannot land if the jsonnet port no longer matches.
+---
+ .github/workflows/ci.yaml | 48 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/.github/workflows/ci.yaml b/.github/workflows/ci.yaml
+index ee5d3c2..474ce85 100644
+--- a/.github/workflows/ci.yaml
++++ b/.github/workflows/ci.yaml
+@@ -29,3 +29,51 @@ jobs:
+ 
+       - name: Run tests
+         run: pnpm run test
++
++  # The jsonnet implementation (jsonnet/) must stay behaviourally identical to
++  # the TypeScript source of truth (src/). The contract is the conformance
++  # corpus in spec/fixtures/, generated from the jest suite: this job fails if
++  # the committed corpus drifts from TypeScript behaviour, or if the jsonnet
++  # implementation diverges from the corpus.
++  jsonnet-conformance:
++    runs-on: ubuntu-latest
++
++    steps:
++      - name: Checkout code
++        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
++        with:
++          persist-credentials: false
++
++      - name: Install pnpm
++        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
++
++      - name: Use Node.js
++        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
++        with:
++          node-version-file: package.json
++          cache: pnpm
++
++      - name: Install dependencies
++        run: pnpm install --frozen-lockfile
++
++      - name: Regenerate conformance fixtures from the jest suite
++        run: pnpm run generate:fixtures
++
++      - name: Fail if committed fixtures drifted from TypeScript behaviour
++        run: git diff --exit-code -- spec/fixtures
++
++      - name: Set up Go
++        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
++        with:
++          go-version: stable
++          cache: false
++
++      - name: Install go-jsonnet
++        run: go install github.com/google/go-jsonnet/cmd/jsonnet@v0.22.0 github.com/google/go-jsonnet/cmd/jsonnetfmt@v0.22.0
++
++      - name: Check jsonnet formatting
++        run: |
++          jsonnetfmt --test jsonnet/promql.libsonnet jsonnet/test/*.jsonnet jsonnet/test/*.libsonnet
++
++      - name: Replay conformance corpus against the jsonnet implementation
++        run: ./scripts/test-jsonnet.sh
+-- 
+2.43.0
+

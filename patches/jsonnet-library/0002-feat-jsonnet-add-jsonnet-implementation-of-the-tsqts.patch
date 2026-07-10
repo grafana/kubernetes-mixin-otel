@@ -1,0 +1,537 @@
+From ebf5469f72739c6d24334128139869ed07002294 Mon Sep 17 00:00:00 2001
+From: Stephen Lang <skl@users.noreply.github.com>
+Date: Fri, 10 Jul 2026 01:57:22 +0000
+Subject: [PATCH 2/3] feat(jsonnet): add jsonnet implementation of the tsqtsq
+ API
+
+Hand-written port of src/promql.ts and src/expression.ts for jsonnet
+consumers (monitoring mixins in particular). The API mirrors TypeScript
+one-to-one: single params objects with the same field names, plain string
+returns, so consumer code reads near-identically in both languages.
+
+Behavioural equivalence is enforced by replaying the recorder-generated
+conformance corpus (spec/fixtures/) via scripts/test-jsonnet.sh; error
+cases are asserted per-case since jsonnet has no try/catch.
+
+Two ordering behaviours are pinned as deterministic spec decisions
+(jsonnet objects have no insertion order): Expression applies values in
+lexicographic label order, and offset() emits units in canonical
+descending order. Both are documented in jsonnet/README.md.
+
+Install as a jb dependency:
+  jb install https://github.com/grafana/tsqtsq/jsonnet@main
+---
+ CLAUDE.md                        |   6 +
+ README.md                        |   5 +
+ jsonnet/README.md                |  91 ++++++++++++
+ jsonnet/jsonnetfile.json         |   5 +
+ jsonnet/promql.libsonnet         | 237 +++++++++++++++++++++++++++++++
+ jsonnet/test/conformance.jsonnet |  32 +++++
+ jsonnet/test/error_case.jsonnet  |  10 ++
+ jsonnet/test/invoke.libsonnet    |  13 ++
+ scripts/test-jsonnet.sh          |  30 ++++
+ 9 files changed, 429 insertions(+)
+ create mode 100644 jsonnet/README.md
+ create mode 100644 jsonnet/jsonnetfile.json
+ create mode 100644 jsonnet/promql.libsonnet
+ create mode 100644 jsonnet/test/conformance.jsonnet
+ create mode 100644 jsonnet/test/error_case.jsonnet
+ create mode 100644 jsonnet/test/invoke.libsonnet
+ create mode 100755 scripts/test-jsonnet.sh
+
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 79e4c9d..4ec5473 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -18,6 +18,12 @@ tsqtsq is a TypeScript library for creating reusable, type-safe PromQL (Promethe
+ - `src/expression.ts` — `Expression` class for composable metric selectors
+ - `src/types.ts` — All TypeScript type/interface/enum definitions
+ - `src/utils.ts` — Utility functions (e.g., `buildOffsetString`)
++- `jsonnet/promql.libsonnet` — Hand-written Jsonnet port of the same API (for monitoring mixins); kept in sync via the conformance corpus
++- `spec/fixtures/conformance.json` — GENERATED conformance corpus (`pnpm run generate:fixtures`); never edit by hand
++- `scripts/generate-fixtures.mjs` — Records public API calls made by the jest suite into the conformance corpus
++- `scripts/test-jsonnet.sh` — Replays the conformance corpus against the Jsonnet port (needs go-jsonnet + jq)
++
++When changing `src/promql.ts`, `src/expression.ts` or `src/utils.ts` behaviour: update the jest specs, run `pnpm run generate:fixtures`, commit the fixtures diff, and mirror the change in `jsonnet/promql.libsonnet` (CI enforces all of this).
+ 
+ ## Code Conventions
+ 
+diff --git a/README.md b/README.md
+index f28eb00..39980ca 100644
+--- a/README.md
++++ b/README.md
+@@ -2,6 +2,11 @@
+ 
+ [**API Docs**](https://grafana.github.io/tsqtsq/)
+ 
++> Looking for Jsonnet? The same API is available as a Jsonnet library for
++> monitoring mixins: see [`jsonnet/`](./jsonnet/). It is kept behaviourally
++> identical to the TypeScript implementation by a conformance corpus generated
++> from this repo's test suite.
++
+ `tsqtsq` aims to make hard-coded PromQL queries easier to read and maintain. Wide-ranging changes and common "query snippets" have varying approaches and often impact query readability. By introducing typed, templated queries, changing common expressions and debugging becomes much easier.
+ 
+ Consider the following use cases:
+diff --git a/jsonnet/README.md b/jsonnet/README.md
+new file mode 100644
+index 0000000..ea0619e
+--- /dev/null
++++ b/jsonnet/README.md
+@@ -0,0 +1,91 @@
++# tsqtsq for Jsonnet
++
++A hand-written Jsonnet port of the [tsqtsq](https://github.com/grafana/tsqtsq)
++PromQL query library, primarily intended for
++[monitoring mixins](https://monitoring.mixins.dev/) and other jsonnet-based
++dashboard/alert pipelines.
++
++The API mirrors the TypeScript API one-to-one: every function takes a single
++params object with the same field names as the TypeScript types, and returns a
++plain string. Consumer code looks nearly identical in both languages, so the
++same mental model (and documentation) applies everywhere.
++
++Behavioural equivalence with the TypeScript implementation is enforced in CI
++by replaying the conformance corpus in [`../spec/fixtures/`](../spec/fixtures/),
++which is generated from the TypeScript jest suite. See
++[Keeping implementations in sync](#keeping-implementations-in-sync).
++
++## Install
++
++```console
++jb install https://github.com/grafana/tsqtsq/jsonnet@main
++```
++
++## Usage
++
++```jsonnet
++local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
++local promql = tsqtsq.promql;
++
++// sum by (foo, bar, baz) (test_metric{foo="bar"})
++promql.sum({ expr: 'test_metric{foo="bar"}', by: ['foo', 'bar', 'baz'] })
++```
++
++`Expression` composes reusable metric selectors, exactly like the TypeScript
++class:
++
++```jsonnet
++local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
++
++// test_metric{baz!="", arg1=~"foo", arg2=~"bar"}
++tsqtsq.Expression({
++  metric: 'test_metric',
++  values: {
++    arg1: 'foo',
++    arg2: 'bar',
++  },
++  defaultOperator: tsqtsq.MatchingOperator.regexMatch,
++  defaultSelectors: [
++    { label: 'baz', operator: tsqtsq.MatchingOperator.notEqual, value: '' },
++  ],
++}).toString()
++```
++
++Because jsonnet values are immutable, `setSelector()` returns a new expression
++instead of mutating in place; chain it or reassign:
++
++```jsonnet
++expr.setSelector({ label: 'env', operator: tsqtsq.MatchingOperator.equal, value: 'prod' }).toString()
++```
++
++## Divergences from the TypeScript implementation
++
++Jsonnet objects have no insertion order, so two ordering behaviours are
++defined as deterministic spec decisions:
++
++1. `Expression` applies `values` in lexicographic label order (TypeScript
++   applies them in object insertion order). `defaultSelectors` keep their
++   declared order and always precede value-only labels, as in TypeScript.
++2. `promql.offset` emits units in canonical descending order
++   (`y w d h m s ms`). PromQL requires descending order, so callers should
++   already be passing units this way.
++
++`prettify` is TypeScript-only (it wraps the lezer PromQL parser) and is not
++part of this port.
++
++## Keeping implementations in sync
++
++TypeScript (`src/`) is the source of truth; development, testing and review
++happen there, in TypeScript, with jest. The jsonnet port follows via a
++recorded conformance corpus:
++
++1. `pnpm run generate:fixtures` runs the real jest spec files with the public
++   API wrapped in recording proxies, and writes every call the suite makes as
++   a case in `spec/fixtures/conformance.json`.
++2. `scripts/test-jsonnet.sh` replays every case against this port and fails on
++   any mismatch (including cases that must raise errors).
++3. CI regenerates the corpus and fails if the committed fixtures drift from
++   TypeScript behaviour, then replays the corpus against this port.
++
++So: a TypeScript behaviour change lands with regenerated fixtures (visible in
++review as a fixtures diff), and CI refuses the change until this port matches.
+diff --git a/jsonnet/jsonnetfile.json b/jsonnet/jsonnetfile.json
+new file mode 100644
+index 0000000..4388812
+--- /dev/null
++++ b/jsonnet/jsonnetfile.json
+@@ -0,0 +1,5 @@
++{
++  "version": 1,
++  "dependencies": [],
++  "legacyImports": true
++}
+diff --git a/jsonnet/promql.libsonnet b/jsonnet/promql.libsonnet
+new file mode 100644
+index 0000000..cba7291
+--- /dev/null
++++ b/jsonnet/promql.libsonnet
+@@ -0,0 +1,237 @@
++// tsqtsq - A PromQL Query Library (Jsonnet implementation)
++//
++// This is a hand-written port of the TypeScript implementation in ../src.
++// The API deliberately mirrors the TypeScript API one-to-one: every function
++// takes a single params object with the same field names as the TypeScript
++// types, and returns a plain string. A call like
++//
++//   promql.sum({ expr: 'up', by: ['job'] })
++//
++// is valid in both languages, modulo quote style.
++//
++// Behavioural equivalence with the TypeScript implementation is enforced by
++// replaying the recorder-generated conformance corpus in spec/fixtures/
++// (see jsonnet/test/conformance.jsonnet and scripts/test-jsonnet.sh).
++//
++// Documented divergences from JavaScript semantics (both are deliberate
++// spec decisions, chosen so that output is deterministic in jsonnet, which
++// has no insertion-ordered objects):
++//
++//   1. Expression applies `values` in lexicographic label order. The
++//      TypeScript implementation applies them in object insertion order.
++//   2. offset() emits units in canonical descending order (y w d h m s ms).
++//      The TypeScript implementation emits them in object insertion order.
++//      PromQL requires descending order, so callers should already be
++//      passing units this way.
++
++local str(v) = if std.type(v) == 'string' then v else std.toString(v);
++
++// PromQL label matching operators (=, !=, =~, !~).
++// Mirrors the MatchingOperator enum in src/types.ts.
++local matchingOperator = {
++  equal: '=',
++  notEqual: '!=',
++  regexMatch: '=~',
++  notRegexMatch: '!~',
++};
++
++local offsetUnitOrder = ['y', 'w', 'd', 'h', 'm', 's', 'ms'];
++
++// Mirrors buildOffsetString() in src/utils.ts.
++local buildOffsetString(units) =
++  local unitString = std.join('', [
++    str(units[u]) + u
++    for u in offsetUnitOrder
++    if std.objectHas(units, u) && units[u] > 0
++  ]);
++  if std.length(unitString) > 0 then 'offset ' + unitString else '';
++
++// Query builder with methods for composing PromQL queries.
++// All methods return plain strings. Mirrors `promql` in src/promql.ts.
++local promql = {
++  // Helper for *_over_time functions.
++  x_over_time(x, q, range='$__range', interval='')::
++    '%s_over_time((%s)[%s:%s])' % [x, q, range, interval],
++
++  local overTime(fn) = function(params)
++    promql.x_over_time(
++      fn,
++      params.expr,
++      std.get(params, 'range', '$__range'),
++      std.get(params, 'interval', ''),
++    ),
++
++  // Aggregation over time
++  avg_over_time: overTime('avg'),
++  count_over_time: overTime('count'),
++  last_over_time: overTime('last'),
++  max_over_time: overTime('max'),
++  min_over_time: overTime('min'),
++  present_over_time: overTime('present'),
++  stddev_over_time: overTime('stddev'),
++  stdvar_over_time: overTime('stdvar'),
++  sum_over_time: overTime('sum'),
++  quantile_over_time: overTime('quantile'),
++
++  offset(params):: buildOffsetString(params.units),
++
++  by(labels=null):: if labels != null then ' by (%s) ' % std.join(', ', labels) else '',
++  without(labels=null):: if labels != null then ' without (%s) ' % std.join(', ', labels) else '',
++  byOrWithout(params)::
++    local by = std.get(params, 'by');
++    if by != null then self.by(by) else self.without(std.get(params, 'without')),
++
++  // Aggregation
++  local aggregation(op) = function(params)
++    '%s%s(%s)' % [op, promql.byOrWithout(params), params.expr],
++
++  sum: aggregation('sum'),
++  min: aggregation('min'),
++  max: aggregation('max'),
++  avg: aggregation('avg'),
++  group: aggregation('group'),
++  count: aggregation('count'),
++  stddev: aggregation('stddev'),
++  stdvar: aggregation('stdvar'),
++
++  local aggregationWithParameter(op) = function(params)
++    '%s%s(%s, %s)' % [op, promql.byOrWithout(params), str(params.parameter), params.expr],
++
++  count_values: aggregationWithParameter('count_values'),
++  bottomk: aggregationWithParameter('bottomk'),
++  topk: aggregationWithParameter('topk'),
++  quantile: aggregationWithParameter('quantile'),
++
++  and(params):: self.binaryOp('and', params),
++  or(params):: self.binaryOp('or', params),
++  unless(params):: self.binaryOp('unless', params),
++
++  rate(params):: 'rate(%s[%s])' % [params.expr, std.get(params, 'interval', '$__rate_interval')],
++  increase(params):: 'increase(%s[%s])' % [params.expr, std.get(params, 'interval', '$__range')],
++
++  // Labels
++  label_replace(params)::
++    'label_replace(%s, "%s", "%s", "%s", "%s")' % [
++      params.expr,
++      params.newLabel,
++      std.get(params, 'replacement', '$1'),
++      params.existingLabel,
++      std.get(params, 'regex', '(.*)'),
++    ],
++
++  label_join(params)::
++    'label_join(%s, "%s", "%s", %s)' % [
++      params.expr,
++      params.newLabel,
++      std.get(params, 'separator', ','),
++      std.join(', ', ['"%s"' % label for label in params.labels]),
++    ],
++
++  // Shared helper for arithmetic, logical and comparison binary operators
++  // with vector matching.
++  binaryOp(op, params)::
++    local on = std.get(params, 'on');
++    local ignoring = std.get(params, 'ignoring');
++    local groupLeft = std.get(params, 'groupLeft');
++    local groupRight = std.get(params, 'groupRight');
++    local bool = std.get(params, 'bool', false);
++    local hasOn = on != null && std.length(on) > 0;
++    local hasIgnoring = ignoring != null && std.length(ignoring) > 0;
++
++    if (groupLeft != null || groupRight != null) && !hasOn && !hasIgnoring then
++      error 'group_left/group_right require an "on" or "ignoring" clause'
++    else
++      local matching =
++        (
++          if hasOn then ' on (%s)' % std.join(', ', on)
++          else if hasIgnoring then ' ignoring (%s)' % std.join(', ', ignoring)
++          else ''
++        )
++        + (
++          if groupLeft != null then
++            (if std.length(groupLeft) > 0 then ' group_left (%s)' % std.join(', ', groupLeft) else ' group_left()')
++          else if groupRight != null then
++            (if std.length(groupRight) > 0 then ' group_right (%s)' % std.join(', ', groupRight) else ' group_right()')
++          else ''
++        );
++      '%s %s%s%s %s' % [params.left, op, if bool == true then ' bool' else '', matching, params.right],
++
++  add(params):: self.binaryOp('+', params),
++  sub(params):: self.binaryOp('-', params),
++  mul(params):: self.binaryOp('*', params),
++  div(params):: self.binaryOp('/', params),
++  mod(params):: self.binaryOp('%', params),
++  pow(params):: self.binaryOp('^', params),
++
++  eq(params):: self.binaryOp('==', params),
++  neq(params):: self.binaryOp('!=', params),
++  gt(params):: self.binaryOp('>', params),
++  lt(params):: self.binaryOp('<', params),
++  gte(params):: self.binaryOp('>=', params),
++  lte(params):: self.binaryOp('<=', params),
++};
++
++// Composable PromQL metric selector with label matching.
++// Mirrors the Expression class in src/expression.ts: construct with
++// Expression({ metric, values, defaultOperator, defaultSelectors }), chain
++// setSelector() calls, and call toString() to produce the selector string.
++//
++// Unlike the TypeScript class, setSelector() returns a NEW expression
++// (jsonnet values are immutable), so calls must be chained or reassigned:
++//
++//   Expression({ ... }).setSelector({ ... }).toString()
++local expressionObject(metric, entries) = {
++  setSelector(selector)::
++    local hasLabel = std.any([e.label == selector.label for e in entries]);
++    local newEntries =
++      if hasLabel then [
++        if e.label == selector.label then e { selectors: e.selectors + [selector] } else e
++        for e in entries
++      ]
++      else entries + [{ label: selector.label, selectors: [selector] }];
++    expressionObject(metric, newEntries),
++
++  toString()::
++    '%s{%s}' % [
++      metric,
++      std.join(', ', [
++        '%s%s"%s"' % [e.label, s.operator, s.value]
++        for e in entries
++        for s in e.selectors
++      ]),
++    ],
++};
++
++local expression(opts) =
++  // set default selectors first
++  local withDefaults = std.foldl(
++    function(acc, selector)
++      if std.any([e.label == selector.label for e in acc]) then [
++        if e.label == selector.label then e { selectors: e.selectors + [selector] } else e
++        for e in acc
++      ]
++      else acc + [{ label: selector.label, selectors: [selector] }],
++    std.get(opts, 'defaultSelectors', []),
++    [],
++  );
++
++  // override default selectors with actual values (lexicographic label order)
++  local entries = std.foldl(
++    function(acc, label)
++      local selector = { operator: opts.defaultOperator, label: label, value: opts.values[label] };
++      if std.any([e.label == label for e in acc]) then [
++        if e.label == label then e { selectors: [selector] } else e
++        for e in acc
++      ]
++      else acc + [{ label: label, selectors: [selector] }],
++    [l for l in std.objectFields(opts.values) if opts.values[l] != null],
++    withDefaults,
++  );
++
++  expressionObject(opts.metric, entries);
++
++{
++  promql: promql,
++  Expression: expression,
++  MatchingOperator: matchingOperator,
++}
+diff --git a/jsonnet/test/conformance.jsonnet b/jsonnet/test/conformance.jsonnet
+new file mode 100644
+index 0000000..889fc6c
+--- /dev/null
++++ b/jsonnet/test/conformance.jsonnet
+@@ -0,0 +1,32 @@
++// Replays the recorder-generated conformance corpus (spec/fixtures/) against
++// the jsonnet implementation. Cases with an `error` field assert that the
++// implementation raises; jsonnet has no try/catch, so those are checked by
++// scripts/test-jsonnet.sh via per-case invocations of error_case.jsonnet.
++local fixtures = import '../../spec/fixtures/conformance.json';
++local invoke = import './invoke.libsonnet';
++
++local stringCases = [c for c in fixtures.cases if std.objectHas(c, 'expected')];
++local errorCases = [c for c in fixtures.cases if std.objectHas(c, 'error')];
++
++local results = [
++  {
++    case: c,
++    actual: invoke(c.fn, c.params),
++    pass: self.actual == c.expected,
++  }
++  for c in stringCases
++];
++
++local failures = [r for r in results if !r.pass];
++
++if std.length(failures) == 0 then
++  'PASS: %d/%d conformance cases (%d error cases checked separately)' % [
++    std.length(results),
++    std.length(results),
++    std.length(errorCases),
++  ]
++else
++  error '%d/%d conformance cases FAILED:\n\n' % [std.length(failures), std.length(results)] + std.join('\n\n', [
++    '[%s] %s\n  expected: %s\n  actual:   %s' % [f.case.suite, f.case.fn, f.case.expected, f.actual]
++    for f in failures
++  ])
+diff --git a/jsonnet/test/error_case.jsonnet b/jsonnet/test/error_case.jsonnet
+new file mode 100644
+index 0000000..f0736c7
+--- /dev/null
++++ b/jsonnet/test/error_case.jsonnet
+@@ -0,0 +1,10 @@
++// Evaluates a single error-case fixture by index; expected to FAIL with the
++// fixture's error message. Driven by scripts/test-jsonnet.sh, which asserts
++// on the non-zero exit and the message.
++local fixtures = import '../../spec/fixtures/conformance.json';
++local invoke = import './invoke.libsonnet';
++
++function(index)
++  local errorCases = [c for c in fixtures.cases if std.objectHas(c, 'error')];
++  local case = errorCases[index];
++  invoke(case.fn, case.params)
+diff --git a/jsonnet/test/invoke.libsonnet b/jsonnet/test/invoke.libsonnet
+new file mode 100644
+index 0000000..2b9be23
+--- /dev/null
++++ b/jsonnet/test/invoke.libsonnet
+@@ -0,0 +1,13 @@
++// Dispatches a conformance fixture case to the jsonnet implementation.
++local tsqtsq = import '../promql.libsonnet';
++
++function(fn, params)
++  if fn == 'Expression' then
++    local expr = std.foldl(
++      function(acc, selector) acc.setSelector(selector),
++      std.get(params, 'setSelectors', []),
++      tsqtsq.Expression(params),
++    );
++    expr.toString()
++  else
++    tsqtsq.promql[fn](params)
+diff --git a/scripts/test-jsonnet.sh b/scripts/test-jsonnet.sh
+new file mode 100755
+index 0000000..e8ca87f
+--- /dev/null
++++ b/scripts/test-jsonnet.sh
+@@ -0,0 +1,30 @@
++#!/usr/bin/env bash
++# Replays the recorder-generated conformance corpus (spec/fixtures/) against
++# the jsonnet implementation. Requires `jsonnet` (go-jsonnet) and `jq`.
++set -euo pipefail
++
++cd "$(dirname "$0")/.."
++
++JSONNET="${JSONNET:-jsonnet}"
++FIXTURES=spec/fixtures/conformance.json
++
++# String-producing cases: replayed in one evaluation.
++"$JSONNET" jsonnet/test/conformance.jsonnet
++
++# Error cases: jsonnet has no try/catch, so each one is evaluated separately
++# and must fail with the recorded message.
++error_count=$(jq '[.cases[] | select(.error != null)] | length' "$FIXTURES")
++for ((i = 0; i < error_count; i++)); do
++  expected=$(jq -r "[.cases[] | select(.error != null)][$i].error" "$FIXTURES")
++  if output=$("$JSONNET" --tla-code "index=$i" jsonnet/test/error_case.jsonnet 2>&1); then
++    echo "FAIL: error case $i did not raise. Expected error: $expected" >&2
++    exit 1
++  fi
++  if ! grep -qF "$expected" <<<"$output"; then
++    echo "FAIL: error case $i raised the wrong error." >&2
++    echo "  expected: $expected" >&2
++    echo "  actual:   $output" >&2
++    exit 1
++  fi
++done
++echo "PASS: $error_count/$error_count error cases"
+-- 
+2.43.0
+

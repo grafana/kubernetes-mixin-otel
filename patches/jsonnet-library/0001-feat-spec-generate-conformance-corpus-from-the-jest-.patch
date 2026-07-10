@@ -1,0 +1,1687 @@
+From 1ac04852463ba32e0fd8ea6bdca3c143783449de Mon Sep 17 00:00:00 2001
+From: Stephen Lang <skl@users.noreply.github.com>
+Date: Fri, 10 Jul 2026 01:57:07 +0000
+Subject: [PATCH 1/3] feat(spec): generate conformance corpus from the jest
+ suite
+
+Run the real, unmodified jest spec files with the public API wrapped in
+recording proxies, and write every promql.* call and Expression usage the
+suite makes to spec/fixtures/conformance.json as language-agnostic cases
+of the form { fn, params, expected | error }.
+
+This corpus is the behavioural contract for non-TypeScript implementations
+of the tsqtsq API: TypeScript stays the source of truth, developed and
+tested idiomatically with jest, and other implementations replay the
+recorded corpus to prove equivalence.
+
+Regenerate with: pnpm run generate:fixtures (deterministic output).
+prettify is excluded: it wraps the lezer PromQL parser and is
+TypeScript-only by design.
+---
+ package.json                     |    1 +
+ scripts/generate-fixtures.mjs    |   79 ++
+ scripts/lib/jest-shim.ts         |   44 +
+ scripts/lib/record-expression.ts |   47 +
+ scripts/lib/record-promql.ts     |   33 +
+ scripts/lib/recorder-state.ts    |   31 +
+ spec/fixtures/conformance.json   | 1367 ++++++++++++++++++++++++++++++
+ 7 files changed, 1602 insertions(+)
+ create mode 100644 scripts/generate-fixtures.mjs
+ create mode 100644 scripts/lib/jest-shim.ts
+ create mode 100644 scripts/lib/record-expression.ts
+ create mode 100644 scripts/lib/record-promql.ts
+ create mode 100644 scripts/lib/recorder-state.ts
+ create mode 100644 spec/fixtures/conformance.json
+
+diff --git a/package.json b/package.json
+index ad26f3e..d3afb20 100644
+--- a/package.json
++++ b/package.json
+@@ -37,6 +37,7 @@
+   "scripts": {
+     "test": "jest",
+     "test:watch": "jest --watch",
++    "generate:fixtures": "node scripts/generate-fixtures.mjs",
+     "build": "tsc",
+     "deploy": "pnpm run build && pnpm publish",
+     "docs": "rm -rf docs && typedoc"
+diff --git a/scripts/generate-fixtures.mjs b/scripts/generate-fixtures.mjs
+new file mode 100644
+index 0000000..1aa8e18
+--- /dev/null
++++ b/scripts/generate-fixtures.mjs
+@@ -0,0 +1,79 @@
++// Generates the language-agnostic conformance corpus in spec/fixtures/ by
++// running the real jest spec files (unmodified) with the public API wrapped
++// in recording proxies. Every `promql.*` call and every `Expression` usage
++// the suite makes becomes a fixture case: { fn, params, expected | error }.
++//
++// Other implementations of the tsqtsq API (currently jsonnet/) replay these
++// fixtures to prove behavioural equivalence with the TypeScript source of
++// truth. Regenerate with: pnpm run generate:fixtures
++import * as esbuild from 'esbuild';
++import { mkdirSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
++import { dirname, join, resolve } from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++
++const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++
++// prettify is TypeScript-only (it wraps the lezer PromQL parser) and is
++// deliberately out of scope for the cross-language conformance corpus.
++const EXCLUDED_SPECS = new Set(['prettify.spec.ts']);
++
++const specs = [
++  ...readdirSync(join(root, 'src/test'))
++    .filter((f) => f.endsWith('.spec.ts') && !EXCLUDED_SPECS.has(f))
++    .sort()
++    .map((f) => ({ suite: f.replace('.spec.ts', ''), path: `./src/test/${f}` })),
++  { suite: 'expression', path: './src/expression.spec.ts' },
++];
++
++const entry = [
++  `import './scripts/lib/jest-shim';`,
++  `import { setSuite, recorded } from './scripts/lib/recorder-state';`,
++  `import { stats } from './scripts/lib/jest-shim';`,
++  ...specs.map(({ suite, path }) => `setSuite(${JSON.stringify(suite)});\nawait import(${JSON.stringify(path)});`),
++  `export { recorded, stats };`,
++].join('\n');
++
++// The spec files import the implementation under test; redirect those imports
++// to the recording wrappers. Everything else resolves normally.
++const redirectToRecorder = {
++  name: 'redirect-to-recorder',
++  setup(build) {
++    build.onResolve({ filter: /^\.\.?\/promql$/ }, (args) =>
++      args.importer.endsWith('.spec.ts') ? { path: join(root, 'scripts/lib/record-promql.ts') } : undefined
++    );
++    build.onResolve({ filter: /^\.\.?\/expression$/ }, (args) =>
++      args.importer.endsWith('.spec.ts') ? { path: join(root, 'scripts/lib/record-expression.ts') } : undefined
++    );
++  },
++};
++
++const outDir = join(root, 'node_modules/.cache/tsqtsq-fixtures');
++const outFile = join(outDir, 'record.mjs');
++mkdirSync(outDir, { recursive: true });
++
++await esbuild.build({
++  stdin: { contents: entry, resolveDir: root, loader: 'ts' },
++  bundle: true,
++  platform: 'node',
++  format: 'esm',
++  outfile: outFile,
++  plugins: [redirectToRecorder],
++  logLevel: 'silent',
++});
++
++const { recorded, stats } = await import(pathToFileURL(outFile).href);
++rmSync(outDir, { recursive: true, force: true });
++
++const fixtures = {
++  '//': 'GENERATED by scripts/generate-fixtures.mjs from the jest suite -- DO NOT EDIT.',
++  cases: recorded,
++};
++
++mkdirSync(join(root, 'spec/fixtures'), { recursive: true });
++writeFileSync(join(root, 'spec/fixtures/conformance.json'), JSON.stringify(fixtures, null, 2) + '\n');
++
++const errors = recorded.filter((c) => c.error !== undefined).length;
++console.log(
++  `ran ${stats.assertions} assertions, recorded ${recorded.length} conformance cases ` +
++    `(${recorded.length - errors} expressions, ${errors} errors) -> spec/fixtures/conformance.json`
++);
+diff --git a/scripts/lib/jest-shim.ts b/scripts/lib/jest-shim.ts
+new file mode 100644
+index 0000000..019c176
+--- /dev/null
++++ b/scripts/lib/jest-shim.ts
+@@ -0,0 +1,44 @@
++// Minimal jest shim so the real spec files can run unmodified outside jest
++// while the recorder captures their public API calls. Only the matchers the
++// suite actually uses are implemented; anything else fails loudly.
++
++export const stats = { assertions: 0 };
++
++type SpecFn = (arg?: unknown) => void;
++
++const describe = (_name: string, fn: () => void) => fn();
++
++const it = (_name: string, fn: SpecFn) => fn();
++it.each =
++  (cases: unknown[]) =>
++  (_title: string, fn: SpecFn) =>
++    cases.forEach((c) => fn(c));
++
++const expect = (actual: unknown) => ({
++  toStrictEqual: (expected: unknown) => {
++    stats.assertions++;
++    if (actual !== expected) {
++      throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
++    }
++  },
++  toEqual(expected: unknown) {
++    this.toStrictEqual(expected);
++  },
++  toThrow: (message?: string) => {
++    stats.assertions++;
++    let thrown: Error | undefined;
++    try {
++      (actual as () => unknown)();
++    } catch (e) {
++      thrown = e as Error;
++    }
++    if (thrown === undefined) {
++      throw new Error('expected function to throw');
++    }
++    if (message !== undefined && !thrown.message.includes(message)) {
++      throw new Error(`expected error containing ${JSON.stringify(message)}, got ${JSON.stringify(thrown.message)}`);
++    }
++  },
++});
++
++Object.assign(globalThis, { describe, it, test: it, expect });
+diff --git a/scripts/lib/record-expression.ts b/scripts/lib/record-expression.ts
+new file mode 100644
+index 0000000..2d600e7
+--- /dev/null
++++ b/scripts/lib/record-expression.ts
+@@ -0,0 +1,47 @@
++// Recording wrapper around the real Expression class. The fixture generator
++// aliases the spec files' `import { Expression } from './expression'` to this
++// module. Construction options and setSelector() calls are captured, and the
++// case is recorded when toString() is called (which is when the output that
++// the spec asserts on is produced).
++import { Expression as RealExpression } from '../../src/expression';
++import { LabelSelector, LabelsWithValues, MatchingOperator } from '../../src/types';
++import { record } from './recorder-state';
++
++type ExpressionOpts = {
++  metric: string;
++  values: LabelsWithValues;
++  defaultOperator: MatchingOperator;
++  defaultSelectors?: LabelSelector[];
++};
++
++export class Expression extends RealExpression {
++  private readonly opts: ExpressionOpts;
++  private readonly extraSelectors: LabelSelector[] = [];
++
++  constructor(opts: ExpressionOpts) {
++    super(opts);
++    this.opts = opts;
++  }
++
++  setSelector(selector: LabelSelector) {
++    // The base constructor applies defaultSelectors through setSelector before
++    // this subclass's fields initialize; those are already captured via opts.
++    if (this.extraSelectors !== undefined) {
++      this.extraSelectors.push(selector);
++    }
++    return super.setSelector(selector);
++  }
++
++  toString(): string {
++    const result = super.toString();
++    record({
++      fn: 'Expression',
++      params: {
++        ...this.opts,
++        ...(this.extraSelectors.length > 0 ? { setSelectors: this.extraSelectors } : {}),
++      },
++      expected: result,
++    });
++    return result;
++  }
++}
+diff --git a/scripts/lib/record-promql.ts b/scripts/lib/record-promql.ts
+new file mode 100644
+index 0000000..5488442
+--- /dev/null
++++ b/scripts/lib/record-promql.ts
+@@ -0,0 +1,33 @@
++// Recording wrapper around the real `promql` object. The fixture generator
++// aliases the spec files' `import { promql } from '../promql'` to this module,
++// so every public API call made by the jest suite is captured as a fixture.
++import { promql as real } from '../../src/promql';
++import { record } from './recorder-state';
++
++export const promql: typeof real = new Proxy(real, {
++  get(target, prop: string) {
++    const orig = (target as Record<string, unknown>)[prop];
++    if (typeof orig !== 'function') {
++      return orig;
++    }
++    return (...args: unknown[]) => {
++      // Public API functions take a single params object. Internal helpers
++      // (x_over_time, binaryOp, by, without, byOrWithout) take positional
++      // arguments and are not part of the cross-language contract.
++      const isPublic =
++        args.length === 1 && typeof args[0] === 'object' && args[0] !== null && !Array.isArray(args[0]);
++      try {
++        const result = (orig as (...a: unknown[]) => unknown).apply(target, args);
++        if (isPublic && typeof result === 'string') {
++          record({ fn: prop, params: args[0], expected: result });
++        }
++        return result;
++      } catch (e) {
++        if (isPublic && e instanceof Error) {
++          record({ fn: prop, params: args[0], error: e.message });
++        }
++        throw e;
++      }
++    };
++  },
++});
+diff --git a/scripts/lib/recorder-state.ts b/scripts/lib/recorder-state.ts
+new file mode 100644
+index 0000000..70d58fd
+--- /dev/null
++++ b/scripts/lib/recorder-state.ts
+@@ -0,0 +1,31 @@
++// Shared state for the fixture recorder. Public API calls made by the spec
++// files are recorded here as conformance cases and written to spec/fixtures/.
++
++export type FixtureCase = {
++  suite: string;
++  fn: string;
++  params: unknown;
++  expected?: string;
++  error?: string;
++};
++
++export const recorded: FixtureCase[] = [];
++
++const seen = new Set<string>();
++let currentSuite = '';
++
++export const setSuite = (suite: string) => {
++  currentSuite = suite;
++};
++
++export const record = (entry: Omit<FixtureCase, 'suite'>) => {
++  // params are JSON round-tripped so the dedupe key and the emitted fixture
++  // are exactly what a replaying implementation will see.
++  const params = JSON.parse(JSON.stringify(entry.params));
++  const key = JSON.stringify([entry.fn, params, entry.expected ?? null, entry.error ?? null]);
++  if (seen.has(key)) {
++    return;
++  }
++  seen.add(key);
++  recorded.push({ suite: currentSuite, ...entry, params });
++};
+diff --git a/spec/fixtures/conformance.json b/spec/fixtures/conformance.json
+new file mode 100644
+index 0000000..fbbc3e1
+--- /dev/null
++++ b/spec/fixtures/conformance.json
+@@ -0,0 +1,1367 @@
++{
++  "//": "GENERATED by scripts/generate-fixtures.mjs from the jest suite -- DO NOT EDIT.",
++  "cases": [
++    {
++      "suite": "aggregate",
++      "fn": "sum",
++      "params": {
++        "expr": ""
++      },
++      "expected": "sum()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "min",
++      "params": {
++        "expr": ""
++      },
++      "expected": "min()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "max",
++      "params": {
++        "expr": ""
++      },
++      "expected": "max()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "avg",
++      "params": {
++        "expr": ""
++      },
++      "expected": "avg()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "group",
++      "params": {
++        "expr": ""
++      },
++      "expected": "group()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "count",
++      "params": {
++        "expr": ""
++      },
++      "expected": "count()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "stddev",
++      "params": {
++        "expr": ""
++      },
++      "expected": "stddev()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "stdvar",
++      "params": {
++        "expr": ""
++      },
++      "expected": "stdvar()"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "count_values",
++      "params": {
++        "parameter": 1,
++        "expr": ""
++      },
++      "expected": "count_values(1, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "count_values",
++      "params": {
++        "parameter": "$limit",
++        "expr": ""
++      },
++      "expected": "count_values($limit, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "bottomk",
++      "params": {
++        "parameter": 1,
++        "expr": ""
++      },
++      "expected": "bottomk(1, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "bottomk",
++      "params": {
++        "parameter": "$limit",
++        "expr": ""
++      },
++      "expected": "bottomk($limit, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "topk",
++      "params": {
++        "parameter": 1,
++        "expr": ""
++      },
++      "expected": "topk(1, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "topk",
++      "params": {
++        "parameter": "$limit",
++        "expr": ""
++      },
++      "expected": "topk($limit, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "quantile",
++      "params": {
++        "parameter": 1,
++        "expr": ""
++      },
++      "expected": "quantile(1, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "quantile",
++      "params": {
++        "parameter": "$limit",
++        "expr": ""
++      },
++      "expected": "quantile($limit, )"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "sum",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}"
++      },
++      "expected": "sum(test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "sum",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "without": [
++          "foo"
++        ]
++      },
++      "expected": "sum without (foo) (test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "sum",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "by": [
++          "foo",
++          "bar",
++          "baz"
++        ]
++      },
++      "expected": "sum by (foo, bar, baz) (test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "sum",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "without": [
++          "foo"
++        ],
++        "by": [
++          "bar"
++        ]
++      },
++      "expected": "sum by (bar) (test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "stddev",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}"
++      },
++      "expected": "stddev(test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregate",
++      "fn": "stddev",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "by": [
++          "foo"
++        ]
++      },
++      "expected": "stddev by (foo) (test_metric{foo=\"bar\"})"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "avg_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "avg_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "count_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "count_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "last_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "last_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "max_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "max_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "min_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "min_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "present_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "present_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "stddev_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "stddev_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "stdvar_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "stdvar_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "sum_over_time",
++      "params": {
++        "expr": ""
++      },
++      "expected": "sum_over_time(()[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "sum_over_time",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}"
++      },
++      "expected": "sum_over_time((test_metric{foo=\"bar\"})[$__range:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "sum_over_time",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "range": "1h"
++      },
++      "expected": "sum_over_time((test_metric{foo=\"bar\"})[1h:])"
++    },
++    {
++      "suite": "aggregateOverTime",
++      "fn": "sum_over_time",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "range": "1h",
++        "interval": "1m"
++      },
++      "expected": "sum_over_time((test_metric{foo=\"bar\"})[1h:1m])"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "add",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a + metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "sub",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a - metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mul",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a * metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a / metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mod",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a % metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "pow",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a ^ metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ]
++      },
++      "expected": "metric_a / on (instance) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mul",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance",
++          "job"
++        ]
++      },
++      "expected": "metric_a * on (instance, job) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job"
++        ]
++      },
++      "expected": "metric_a / ignoring (job) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "sub",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job",
++          "env"
++        ]
++      },
++      "expected": "metric_a - ignoring (job, env) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "ignoring": [
++          "job"
++        ]
++      },
++      "expected": "metric_a / on (instance) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": []
++      },
++      "expected": "metric_a / on (instance) group_left() metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job"
++        ]
++      },
++      "expected": "metric_a / on (instance) group_left (job) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mul",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job",
++          "env"
++        ]
++      },
++      "expected": "metric_a * on (instance) group_left (job, env) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mul",
++      "params": {
++        "left": "kube_pod_info",
++        "right": "(k8s_pod_phase{phase=\"Running\"} <= bool 2)",
++        "on": [
++          "pod",
++          "namespace"
++        ],
++        "groupLeft": []
++      },
++      "expected": "kube_pod_info * on (pod, namespace) group_left() (k8s_pod_phase{phase=\"Running\"} <= bool 2)"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupRight": []
++      },
++      "expected": "metric_a / on (instance) group_right() metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "mul",
++      "params": {
++        "left": "kube_pod_info",
++        "right": "(k8s_pod_phase{phase=\"Running\"} <= bool 2)",
++        "on": [
++          "pod",
++          "namespace"
++        ],
++        "groupRight": []
++      },
++      "expected": "kube_pod_info * on (pod, namespace) group_right() (k8s_pod_phase{phase=\"Running\"} <= bool 2)"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "add",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job"
++        ],
++        "groupRight": [
++          "env"
++        ]
++      },
++      "expected": "metric_a + ignoring (job) group_right (env) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job"
++        ],
++        "groupRight": [
++          "env"
++        ]
++      },
++      "expected": "metric_a / on (instance) group_left (job) metric_b"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "rate",
++      "params": {
++        "expr": "http_requests_total{code=\"200\"}"
++      },
++      "expected": "rate(http_requests_total{code=\"200\"}[$__rate_interval])"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "rate",
++      "params": {
++        "expr": "http_requests_total"
++      },
++      "expected": "rate(http_requests_total[$__rate_interval])"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "rate(http_requests_total{code=\"200\"}[$__rate_interval])",
++        "right": "rate(http_requests_total[$__rate_interval])",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": []
++      },
++      "expected": "rate(http_requests_total{code=\"200\"}[$__rate_interval]) / on (instance) group_left() rate(http_requests_total[$__rate_interval])"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "a",
++        "right": "b",
++        "groupLeft": []
++      },
++      "error": "group_left/group_right require an \"on\" or \"ignoring\" clause"
++    },
++    {
++      "suite": "arithmeticBinaryOp",
++      "fn": "div",
++      "params": {
++        "left": "a",
++        "right": "b",
++        "groupRight": [
++          "job"
++        ]
++      },
++      "error": "group_left/group_right require an \"on\" or \"ignoring\" clause"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "eq",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a == metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "neq",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a != metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a > metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a < metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gte",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a >= metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lte",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a <= metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "eq",
++      "params": {
++        "left": "metric_a",
++        "right": "1",
++        "bool": true
++      },
++      "expected": "metric_a == bool 1"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "neq",
++      "params": {
++        "left": "metric_a",
++        "right": "0",
++        "bool": true
++      },
++      "expected": "metric_a != bool 0"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "0",
++        "bool": true
++      },
++      "expected": "metric_a > bool 0"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "metric_a",
++        "right": "0",
++        "bool": true
++      },
++      "expected": "metric_a < bool 0"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gte",
++      "params": {
++        "left": "metric_a",
++        "right": "1",
++        "bool": true
++      },
++      "expected": "metric_a >= bool 1"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lte",
++      "params": {
++        "left": "metric_a",
++        "right": "2",
++        "bool": true
++      },
++      "expected": "metric_a <= bool 2"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "0",
++        "bool": false
++      },
++      "expected": "metric_a > 0"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ]
++      },
++      "expected": "metric_a > on (instance) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance",
++          "job"
++        ]
++      },
++      "expected": "metric_a < on (instance, job) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gte",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job"
++        ]
++      },
++      "expected": "metric_a >= ignoring (job) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lte",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job",
++          "env"
++        ]
++      },
++      "expected": "metric_a <= ignoring (job, env) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "eq",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "ignoring": [
++          "job"
++        ]
++      },
++      "expected": "metric_a == on (instance) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "eq",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "bool": true,
++        "on": [
++          "instance"
++        ]
++      },
++      "expected": "metric_a == bool on (instance) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gte",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "bool": true,
++        "ignoring": [
++          "job",
++          "env"
++        ]
++      },
++      "expected": "metric_a >= bool ignoring (job, env) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": []
++      },
++      "expected": "metric_a > on (instance) group_left() metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job"
++        ]
++      },
++      "expected": "metric_a > on (instance) group_left (job) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job",
++          "env"
++        ]
++      },
++      "expected": "metric_a < on (instance) group_left (job, env) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gte",
++      "params": {
++        "left": "kube_pod_info",
++        "right": "(k8s_pod_phase{phase=\"Running\"} <= bool 2)",
++        "on": [
++          "pod",
++          "namespace"
++        ],
++        "groupLeft": []
++      },
++      "expected": "kube_pod_info >= on (pod, namespace) group_left() (k8s_pod_phase{phase=\"Running\"} <= bool 2)"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupRight": []
++      },
++      "expected": "metric_a < on (instance) group_right() metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lte",
++      "params": {
++        "left": "kube_pod_info",
++        "right": "(k8s_pod_phase{phase=\"Running\"} <= bool 2)",
++        "on": [
++          "pod",
++          "namespace"
++        ],
++        "groupRight": []
++      },
++      "expected": "kube_pod_info <= on (pod, namespace) group_right() (k8s_pod_phase{phase=\"Running\"} <= bool 2)"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "neq",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "ignoring": [
++          "job"
++        ],
++        "groupRight": [
++          "env"
++        ]
++      },
++      "expected": "metric_a != ignoring (job) group_right (env) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "instance"
++        ],
++        "groupLeft": [
++          "job"
++        ],
++        "groupRight": [
++          "env"
++        ]
++      },
++      "expected": "metric_a > on (instance) group_left (job) metric_b"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "gt",
++      "params": {
++        "left": "a",
++        "right": "b",
++        "groupLeft": []
++      },
++      "error": "group_left/group_right require an \"on\" or \"ignoring\" clause"
++    },
++    {
++      "suite": "comparisonBinaryOp",
++      "fn": "lt",
++      "params": {
++        "left": "a",
++        "right": "b",
++        "groupRight": [
++          "job"
++        ]
++      },
++      "error": "group_left/group_right require an \"on\" or \"ignoring\" clause"
++    },
++    {
++      "suite": "increase",
++      "fn": "increase",
++      "params": {
++        "expr": "foo{bar=\"baz\"}"
++      },
++      "expected": "increase(foo{bar=\"baz\"}[$__range])"
++    },
++    {
++      "suite": "increase",
++      "fn": "increase",
++      "params": {
++        "expr": "foo{bar=\"baz\"}",
++        "interval": "5m"
++      },
++      "expected": "increase(foo{bar=\"baz\"}[5m])"
++    },
++    {
++      "suite": "label",
++      "fn": "label_replace",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "newLabel": "baz",
++        "existingLabel": "foo"
++      },
++      "expected": "label_replace(test_metric{foo=\"bar\"}, \"baz\", \"$1\", \"foo\", \"(.*)\")"
++    },
++    {
++      "suite": "label",
++      "fn": "label_replace",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "newLabel": "baz",
++        "existingLabel": "foo",
++        "regex": ".+",
++        "replacement": ""
++      },
++      "expected": "label_replace(test_metric{foo=\"bar\"}, \"baz\", \"\", \"foo\", \".+\")"
++    },
++    {
++      "suite": "label",
++      "fn": "label_join",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "newLabel": "baz",
++        "labels": [
++          "foo",
++          "bar"
++        ]
++      },
++      "expected": "label_join(test_metric{foo=\"bar\"}, \"baz\", \",\", \"foo\", \"bar\")"
++    },
++    {
++      "suite": "label",
++      "fn": "label_join",
++      "params": {
++        "expr": "test_metric{foo=\"bar\"}",
++        "newLabel": "baz",
++        "labels": [
++          "foo",
++          "bar"
++        ],
++        "separator": "/"
++      },
++      "expected": "label_join(test_metric{foo=\"bar\"}, \"baz\", \"/\", \"foo\", \"bar\")"
++    },
++    {
++      "suite": "logicalOp",
++      "fn": "and",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a and metric_b"
++    },
++    {
++      "suite": "logicalOp",
++      "fn": "or",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a or metric_b"
++    },
++    {
++      "suite": "logicalOp",
++      "fn": "unless",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b"
++      },
++      "expected": "metric_a unless metric_b"
++    },
++    {
++      "suite": "logicalOp",
++      "fn": "or",
++      "params": {
++        "left": "metric_a",
++        "right": "metric_b",
++        "on": [
++          "cluster",
++          "namespace"
++        ]
++      },
++      "expected": "metric_a or on (cluster, namespace) metric_b"
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {}
++      },
++      "expected": ""
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {
++          "d": 42
++        }
++      },
++      "expected": "offset 42d"
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {
++          "h": 42
++        }
++      },
++      "expected": "offset 42h"
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {
++          "d": 1,
++          "h": 42
++        }
++      },
++      "expected": "offset 1d42h"
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {
++          "y": 2,
++          "d": 1,
++          "h": 42
++        }
++      },
++      "expected": "offset 2y1d42h"
++    },
++    {
++      "suite": "offset",
++      "fn": "offset",
++      "params": {
++        "units": {
++          "y": 2,
++          "d": 1,
++          "h": 42,
++          "m": 2,
++          "s": 3
++        }
++      },
++      "expected": "offset 2y1d42h2m3s"
++    },
++    {
++      "suite": "rate",
++      "fn": "rate",
++      "params": {
++        "expr": "foo{bar=\"baz\"}"
++      },
++      "expected": "rate(foo{bar=\"baz\"}[$__rate_interval])"
++    },
++    {
++      "suite": "rate",
++      "fn": "rate",
++      "params": {
++        "expr": "foo{bar=\"baz\"}",
++        "interval": "5m"
++      },
++      "expected": "rate(foo{bar=\"baz\"}[5m])"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "",
++        "values": {},
++        "defaultOperator": "=",
++        "defaultSelectors": []
++      },
++      "expected": "{}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {},
++        "defaultOperator": "=",
++        "defaultSelectors": []
++      },
++      "expected": "test_metric{}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster"
++        },
++        "defaultOperator": "="
++      },
++      "expected": "test_metric{cluster=\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster"
++        },
++        "defaultOperator": "!="
++      },
++      "expected": "test_metric{cluster!=\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster"
++        },
++        "defaultOperator": "=~"
++      },
++      "expected": "test_metric{cluster=~\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster"
++        },
++        "defaultOperator": "!~"
++      },
++      "expected": "test_metric{cluster!~\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {},
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "!=",
++            "label": "container",
++            "value": ""
++          }
++        ]
++      },
++      "expected": "test_metric{container!=\"\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster"
++        },
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "!=",
++            "label": "container",
++            "value": ""
++          }
++        ]
++      },
++      "expected": "test_metric{container!=\"\", cluster=\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "test/cluster",
++          "container": "test-container"
++        },
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "!=",
++            "label": "container",
++            "value": ""
++          }
++        ]
++      },
++      "expected": "test_metric{container=\"test-container\", cluster=\"test/cluster\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {},
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "=",
++            "label": "env",
++            "value": "prod"
++          },
++          {
++            "operator": "!=",
++            "label": "env",
++            "value": "staging"
++          }
++        ]
++      },
++      "expected": "test_metric{env=\"prod\", env!=\"staging\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {},
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "=",
++            "label": "env",
++            "value": "prod"
++          }
++        ],
++        "setSelectors": [
++          {
++            "operator": "!=",
++            "label": "env",
++            "value": "staging"
++          },
++          {
++            "operator": "=~",
++            "label": "env",
++            "value": "test.*"
++          }
++        ]
++      },
++      "expected": "test_metric{env=\"prod\", env!=\"staging\", env=~\"test.*\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "env": "development"
++        },
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "=",
++            "label": "env",
++            "value": "prod"
++          },
++          {
++            "operator": "!=",
++            "label": "env",
++            "value": "staging"
++          }
++        ]
++      },
++      "expected": "test_metric{env=\"development\"}"
++    },
++    {
++      "suite": "expression",
++      "fn": "Expression",
++      "params": {
++        "metric": "test_metric",
++        "values": {
++          "cluster": "prod-cluster"
++        },
++        "defaultOperator": "=",
++        "defaultSelectors": [
++          {
++            "operator": "=",
++            "label": "env",
++            "value": "prod"
++          },
++          {
++            "operator": "!=",
++            "label": "env",
++            "value": "staging"
++          },
++          {
++            "operator": "!=",
++            "label": "container",
++            "value": ""
++          }
++        ]
++      },
++      "expected": "test_metric{env=\"prod\", env!=\"staging\", container!=\"\", cluster=\"prod-cluster\"}"
++    }
++  ]
++}
+-- 
+2.43.0
+
