@@ -7,6 +7,8 @@ JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
 JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
+PROMTOOL_BIN=$(BIN_DIR)/promtool
+PROMTOOL_VERSION ?= 3.0.0
 TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN)
 
 # OS/ARCH detection for the dashboard-linter precompiled release.
@@ -23,9 +25,14 @@ DASHBOARD_LINTER_ARCH := $(DASHBOARD_LINTER_RAW_ARCH)
 endif
 DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH).tar.gz
 DASHBOARD_LINTER_BASE_URL := https://github.com/grafana/dashboard-linter/releases/download/v$(GRAFANA_DASHBOARD_LINTER_VERSION)
+PROMTOOL_TARBALL := prometheus-$(PROMTOOL_VERSION).$(DASHBOARD_LINTER_OS)-$(DASHBOARD_LINTER_ARCH).tar.gz
+PROMTOOL_BASE_URL := https://github.com/prometheus/prometheus/releases/download/v$(PROMTOOL_VERSION)
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
 SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
+
+# Find all libsonnet files recursively in the rules directory
+RULES_SOURCES = $(shell find rules -name '*.libsonnet')
 
 # Find all libsonnet files recursively in the dashboards directory
 DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
@@ -160,6 +167,15 @@ $(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
 		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C $(BIN_DIR) dashboard-linter && \
 		rm -rf "$$tmp"
 
+$(PROMTOOL_BIN): $(BIN_DIR)
+	@echo "Installing promtool v$(PROMTOOL_VERSION) ($(DASHBOARD_LINTER_OS)-$(DASHBOARD_LINTER_ARCH))"
+	@tmp=$$(mktemp -d) && \
+		curl -sSfL "$(PROMTOOL_BASE_URL)/$(PROMTOOL_TARBALL)" -o "$$tmp/$(PROMTOOL_TARBALL)" && \
+		tar -xzf "$$tmp/$(PROMTOOL_TARBALL)" -C $(BIN_DIR) \
+			--strip-components=1 \
+			"prometheus-$(PROMTOOL_VERSION).$(DASHBOARD_LINTER_OS)-$(DASHBOARD_LINTER_ARCH)/promtool" && \
+		rm -rf "$$tmp"
+
 .PHONY: fmt
 fmt: jsonnet-fmt
 
@@ -191,11 +207,20 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
 
 .PHONY: test
-test: test-jsonnet
+test: test-jsonnet test-rules
 
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@echo "Running jsonnet query tests..."
 	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
-	@echo "All tests passed!"
+	@echo "All jsonnet tests passed!"
+
+tests/rules.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet tests/rules.jsonnet $(RULES_SOURCES)
+	@$(JSONNET_BIN) -J vendor -S tests/rules.jsonnet > $@
+
+.PHONY: test-rules
+test-rules: $(PROMTOOL_BIN) tests/rules.yaml
+	@echo "Running promtool rule tests..."
+	@$(PROMTOOL_BIN) test rules tests/rules-workload-test.yaml
+	@echo "All rule tests passed!"

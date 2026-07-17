@@ -1,0 +1,77 @@
+rule_files:
+  - rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # Deployment wins over ReplicaSet (highest precedence).
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_pod_name="nginx-abc",k8s_node_name="node-1",k8s_replicaset_name="nginx-rs",k8s_deployment_name="nginx"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_deployment_name="nginx",k8s_namespace_name="default",k8s_node_name="node-1",k8s_pod_name="nginx-abc",k8s_replicaset_name="nginx-rs",namespace="default",node="node-1",pod="nginx-abc",workload="nginx",workload_type="Deployment"}'
+            value: 1
+
+  # Standalone ReplicaSet — no Deployment present, so ReplicaSet is used.
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_pod_name="rs-pod",k8s_node_name="node-1",k8s_replicaset_name="standalone-rs"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_node_name="node-1",k8s_pod_name="rs-pod",k8s_replicaset_name="standalone-rs",namespace="default",node="node-1",pod="rs-pod",workload="standalone-rs",workload_type="ReplicaSet"}'
+            value: 1
+
+  # DaemonSet.
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="kube-system",k8s_pod_name="kube-proxy-abc",k8s_node_name="node-1",k8s_daemonset_name="kube-proxy"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_daemonset_name="kube-proxy",k8s_namespace_name="kube-system",k8s_node_name="node-1",k8s_pod_name="kube-proxy-abc",namespace="kube-system",node="node-1",pod="kube-proxy-abc",workload="kube-proxy",workload_type="DaemonSet"}'
+            value: 1
+
+  # StatefulSet.
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_pod_name="redis-0",k8s_node_name="node-1",k8s_statefulset_name="redis"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_node_name="node-1",k8s_pod_name="redis-0",k8s_statefulset_name="redis",namespace="default",node="node-1",pod="redis-0",workload="redis",workload_type="StatefulSet"}'
+            value: 1
+
+  # CronJob wins over Job.
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_pod_name="backup-xyz",k8s_node_name="node-1",k8s_job_name="backup-12345",k8s_cronjob_name="backup"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_cronjob_name="backup",k8s_job_name="backup-12345",k8s_namespace_name="default",k8s_node_name="node-1",k8s_pod_name="backup-xyz",namespace="default",node="node-1",pod="backup-xyz",workload="backup",workload_type="CronJob"}'
+            value: 1
+
+  # Standalone Job — no CronJob present, so Job is used.
+  - interval: 1m
+    input_series:
+      - series: 'k8s_pod_phase{job="monitoring/otel-collector",k8s_cluster_name="cluster1",k8s_namespace_name="default",k8s_pod_name="migrate-xyz",k8s_node_name="node-1",k8s_job_name="migrate"}'
+        values: '1+0x5'
+    promql_expr_test:
+      - expr: cluster_namespace_workload_pod_node:k8s_pod_phase:relabel
+        eval_time: 5m
+        exp_samples:
+          - labels: '{__name__="cluster_namespace_workload_pod_node:k8s_pod_phase:relabel",cluster="cluster1",k8s_cluster_name="cluster1",k8s_job_name="migrate",k8s_namespace_name="default",k8s_node_name="node-1",k8s_pod_name="migrate-xyz",namespace="default",node="node-1",pod="migrate-xyz",workload="migrate",workload_type="Job"}'
+            value: 1
