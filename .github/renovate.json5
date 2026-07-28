@@ -17,6 +17,13 @@
       groupName: "go",
     },
     {
+      // v2.3.0+ tags declare module path github.com/alecthomas/kingpin/v2,
+      // so bumps of the gopkg.in import path are invalid and break go build.
+      // jsonnet-bundler still imports gopkg.in/alecthomas/kingpin.v2.
+      matchPackageNames: ["gopkg.in/alecthomas/kingpin.v2"],
+      allowedVersions: "<=2.2.6",
+    },
+    {
       matchManagers: ["jsonnet-bundler"],
       groupName: "jsonnet",
     },
