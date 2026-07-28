@@ -1,115 +1,137 @@
-// Shared query builders for all resource dashboards
-local maxBy = 'k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name';
-local podMaxBy = 'k8s_cluster_name, k8s_namespace_name, k8s_pod_name';
+// Shared query builders for all resource dashboards, built on the tsqtsq
+// jsonnet library (the same PromQL query API as the TypeScript tsqtsq).
+//
+// The helpers here encode this mixin's conventions -- OTel semantic
+// convention labels, and de-duplication of series via max by the container
+// identity labels -- expressed through the shared tsqtsq primitives.
+local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
-local withRate(expr, filters, useRate) =
-  if useRate then
-    'rate(%s{%s}[$__rate_interval])' % [expr, filters]
-  else
-    '%s{%s}' % [expr, filters];
+local promql = tsqtsq.promql;
 
-local sumExpr(inner, by) =
-  if by == '' then
-    'sum(%s)' % inner
-  else
-    'sum by (%s) (%s)' % [by, inner];
+local maxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'];
+local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 
-local avgExpr(inner, by) =
-  if by == '' then
-    'avg(%s)' % inner
-  else
-    'avg by (%s) (%s)' % [by, inner];
+// Metric selector: dashboard variable filters (regex-matched values) plus
+// optional extra selectors (e.g. direction="receive").
+local selector(metric, values, selectors=[]) =
+  tsqtsq.Expression({
+    metric: metric,
+    values: values,
+    defaultOperator: tsqtsq.MatchingOperator.regexMatch,
+    defaultSelectors: selectors,
+  }).toString();
 
-local maxExpr(inner, by) =
-  'max by (%s) (%s)' % [by, inner];
+local maybeRate(expr, useRate) =
+  if useRate then promql.rate({ expr: expr }) else expr;
+
+local clampMax(expr) =
+  // TODO(tsqtsq): replace with promql.clamp_max once available upstream.
+  'clamp_max(%s, 1)' % expr;
 
 // Active pod filter (Pending=1 or Running=2), normalized to 1
 // pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
 // known issue here: https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36819
-local activePodFilter(phaseFilters) =
-  |||
-    * on (%(podMaxBy)s)
-    group_left() clamp_max(
-      max by (%(podMaxBy)s) (
-        (k8s_pod_phase{%(filters)s} == 1) or (k8s_pod_phase{%(filters)s} == 2)
-      ), 1
-    )
-  ||| % { podMaxBy: podMaxBy, filters: phaseFilters };
+local phaseActive(phaseValues) =
+  local phaseSelector = selector('k8s_pod_phase', phaseValues);
+  clampMax(promql.max({
+    by: podMaxBy,
+    expr: promql.or({
+      left: '(%s)' % promql.eq({ left: phaseSelector, right: '1' }),
+      right: '(%s)' % promql.eq({ left: phaseSelector, right: '2' }),
+    }),
+  }));
+
+// Joins expr against the active-pod filter: expr * on (...) group_left() ...
+local activeOnly(expr, phaseValues) =
+  promql.mul({
+    left: expr,
+    right: phaseActive(phaseValues),
+    on: podMaxBy,
+    groupLeft: [],
+  });
 
 {
-  metricSum(metric, filters, by='')::
-    sumExpr(
-      maxExpr('%s{%s}' % [metric, filters], maxBy),
-      by
-    ),
+  metricSum(metric, values, by=null, selectors=[])::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: maxBy, expr: selector(metric, values, selectors) }),
+    }),
 
-  rateSum(metric, filters, by='')::
-    sumExpr(
-      maxExpr(withRate(metric, filters, true), maxBy),
-      by
-    ),
+  rateSum(metric, values, by=null, selectors=[])::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+    }),
 
-  rateSumPodLevel(metric, filters, by='')::
-    sumExpr(
-      maxExpr(withRate(metric, filters, true), podMaxBy),
-      by
-    ),
+  rateSumPodLevel(metric, values, by=null, selectors=[])::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+    }),
 
-  rateAvg(metric, filters, by='')::
-    avgExpr(
-      maxExpr(withRate(metric, filters, true), maxBy),
-      by
-    ),
+  rateAvg(metric, values, by=null, selectors=[])::
+    promql.avg({
+      by: by,
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+    }),
 
-  ratioSum(numeratorMetric, denominatorMetric, filters, by='', useRate=false)::
-    sumExpr(
-      '%s / %s' % [
-        maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
-        maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy),
-      ],
-      by
-    ),
+  ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false)::
+    promql.sum({
+      by: by,
+      expr: promql.div({
+        left: promql.max({ by: maxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        right: promql.max({ by: maxBy, expr: selector(denominatorMetric, values) }),
+      }),
+    }),
 
-  ratioSumPodLevel(numeratorMetric, denominatorMetric, filters, by='', useRate=false)::
-    sumExpr(
-      '%s / %s' % [
-        maxExpr(withRate(numeratorMetric, filters, useRate), podMaxBy),
-        sumExpr(maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy), podMaxBy),
-      ],
-      by
-    ),
+  ratioSumPodLevel(numeratorMetric, denominatorMetric, values, by=null, useRate=false)::
+    promql.sum({
+      by: by,
+      expr: promql.div({
+        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        right: promql.sum({
+          by: podMaxBy,
+          expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values) }),
+        }),
+      }),
+    }),
 
-  differenceSum(metric1, metric2, filters, by='')::
-    sumExpr(
-      '%s - %s' % [
-        maxExpr('%s{%s}' % [metric1, filters], maxBy),
-        maxExpr('%s{%s}' % [metric2, filters], maxBy),
-      ],
-      by
-    ),
+  differenceSum(metric1, metric2, values, by=null)::
+    promql.sum({
+      by: by,
+      expr: promql.sub({
+        left: promql.max({ by: maxBy, expr: selector(metric1, values) }),
+        right: promql.max({ by: maxBy, expr: selector(metric2, values) }),
+      }),
+    }),
 
-  metricSumActiveOnly(metric, filters, phaseFilters, by='')::
-    sumExpr(
-      maxExpr('%s{%s}%s' % [metric, filters, activePodFilter(phaseFilters)], maxBy),
-      by
-    ),
+  metricSumActiveOnly(metric, values, phaseValues, by=null)::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: maxBy, expr: activeOnly(selector(metric, values), phaseValues) }),
+    }),
 
-  ratioSumActiveOnly(numeratorMetric, denominatorMetric, filters, phaseFilters, by='', useRate=false)::
-    sumExpr(
-      '%s / %s' % [
-        maxExpr(withRate(numeratorMetric, filters, useRate), maxBy),
-        maxExpr('%s{%s}%s' % [denominatorMetric, filters, activePodFilter(phaseFilters)], maxBy),
-      ],
-      by
-    ),
+  ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false)::
+    promql.sum({
+      by: by,
+      expr: promql.div({
+        left: promql.max({ by: maxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        right: promql.max({ by: maxBy, expr: activeOnly(selector(denominatorMetric, values), phaseValues) }),
+      }),
+    }),
 
-  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, filters, phaseFilters, by='', useRate=false)::
-    sumExpr(
-      '%s / (%s%s)' % [
-        maxExpr(withRate(numeratorMetric, filters, useRate), podMaxBy),
-        sumExpr(maxExpr('%s{%s}' % [denominatorMetric, filters], maxBy), podMaxBy),
-        activePodFilter(phaseFilters),
-      ],
-      by
-    ),
+  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false)::
+    promql.sum({
+      by: by,
+      expr: promql.div({
+        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        right: '(%s)' % activeOnly(
+          promql.sum({
+            by: podMaxBy,
+            expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values) }),
+          }),
+          phaseValues,
+        ),
+      }),
+    }),
 }

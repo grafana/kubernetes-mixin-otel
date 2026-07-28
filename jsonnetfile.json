@@ -4,6 +4,15 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/grafana/tsqtsq.git",
+          "subdir": "jsonnet"
+        }
+      },
+      "version": "b6240b86ed496db94d4a3f203224000a3bed1239"
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/kubernetes-monitoring/kubernetes-mixin.git"
         }
       },
