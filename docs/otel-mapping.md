@@ -161,6 +161,18 @@ cAdvisor-specific and require the cAdvisor endpoint.
 | `kubelet_volume_stats_inodes_free` | `k8s.volume.inodes.free` | `k8s.pod.volume.inode.free` | Name mismatch |
 | `kubelet_volume_stats_inodes_used` | `k8s.volume.inodes.used` | `k8s.pod.volume.inode.used` | Name mismatch |
 
+Volume metric collection notes:
+
+- The kubeletstats `volume` metric group is **not collected by default**;
+  it must be enabled via `metric_groups: [container, pod, node, volume]`.
+- The `k8s.persistentvolumeclaim.name` resource attribute (needed to filter
+  volumes by PVC) requires `extra_metadata_labels: [k8s.volume.type]` and
+  `get` on `nodes/proxy` RBAC (kubelet `/pods` endpoint).
+- The inode metrics have unit `1`, so the Prometheus OTLP translation
+  appends a `_ratio` suffix to these dimensionless gauges: query them as
+  `k8s_volume_inodes_ratio`, `k8s_volume_inodes_used_ratio` and
+  `k8s_volume_inodes_free_ratio` even though they are absolute counts.
+
 ### PodDisruptionBudgets / ResourceQuotas
 
 | Prometheus metric | OTel receiver metric | OTel semconv metric | Notes |
