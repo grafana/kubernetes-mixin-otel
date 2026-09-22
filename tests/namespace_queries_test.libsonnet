@@ -4,6 +4,10 @@ local config = {
   extraAttributes: [],
 };
 
+local configWithExtraAttributes = config {
+  extraAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+};
+
 local expectedCpuUsageByPod =
   'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}[$__rate_interval])))';
 
@@ -40,6 +44,12 @@ local expectedMemoryUtilisationFromRequests =
     assert result == expectedMemoryUtilisationFromRequests :
            'memoryUtilisationFromRequests failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUtilisationFromRequests, result];
     'PASS: memoryUtilisationFromRequests',
+
+  testExtraAttributes:
+    local result = namespace.cpuUsageByPod(configWithExtraAttributes);
+    assert std.length(std.findSubstr('env="prod"', result)) > 0 :
+           'extraAttributes not applied to query.\nGot:\n%s' % result;
+    'PASS: extraAttributes applied to query',
 
   testAllRatioQueries:
     local queries = [
