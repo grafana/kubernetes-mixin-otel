@@ -1,7 +1,7 @@
 local namespace = import '../dashboards/resources/queries/namespace.libsonnet';
 
 local config = {
-  _config: {},
+  extraAttributes: [],
 };
 
 local expectedCpuUsageByPod =

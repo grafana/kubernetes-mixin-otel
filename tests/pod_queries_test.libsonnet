@@ -1,7 +1,7 @@
 local pod = import '../dashboards/resources/queries/pod.libsonnet';
 
 local config = {
-  _config: {},
+  extraAttributes: [],
 };
 
 local expectedWithRate =

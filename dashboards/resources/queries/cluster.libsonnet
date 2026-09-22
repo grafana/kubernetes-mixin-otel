@@ -3,11 +3,12 @@ local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
 
-local selector(metric, values) =
+local selector(metric, values, extraAttributes=[]) =
   tsqtsq.Expression({
     metric: metric,
     values: values,
     defaultOperator: tsqtsq.MatchingOperator.regexMatch,
+    defaultSelectors: extraAttributes,
   }).toString();
 
 local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
@@ -24,7 +25,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
       expr: promql.sum({
         by: clusterBy,
         expr: promql.rate({
-          expr: selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }),
+          expr: selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }, config.extraAttributes),
         }),
       }),
     }),
@@ -45,7 +46,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   memoryUsageByNamespace(config)::
     promql.sum({
       by: clusterBy,
-      expr: selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }),
+      expr: selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }, config.extraAttributes),
     }),
 
   memoryRequestsByNamespace(config):: '0',
