@@ -28,10 +28,14 @@ local expectedWithoutRate =
     'PASS: ratio with useRate=false',
 
   testExtraAttributes:
-    local result = pod.cpuUsageByContainer(configWithExtraAttributes);
-    assert std.length(std.findSubstr('env="prod"', result)) > 0 :
-           'extraAttributes not applied to query.\nGot:\n%s' % result;
-    'PASS: extraAttributes applied to query',
+    local queries = [
+      pod.cpuUsageByContainer(configWithExtraAttributes),  // normal (rateSum)
+      pod.networkReceiveBandwidth(configWithExtraAttributes),  // directional (selectors + extraAttributes)
+      pod.cpuUsageVsRequests(configWithExtraAttributes),  // ratio (ratioSumPodLevel)
+    ];
+    assert std.all([std.length(std.findSubstr('env="prod"', q)) > 0 for q in queries]) :
+           'extraAttributes not applied to one or more query paths.\nGot:\n%s' % std.toString(queries);
+    'PASS: extraAttributes applied to normal, directional, and ratio query paths',
 
   testAllRatioQueries:
     local queries = [
