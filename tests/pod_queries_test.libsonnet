@@ -2,10 +2,15 @@ local pod = import '../dashboards/resources/queries/pod.libsonnet';
 
 local config = {
   extraAttributes: [],
+  extraGroupingAttributes: [],
 };
 
 local configWithExtraAttributes = config {
   extraAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+};
+
+local configWithExtraGroupingAttributes = config {
+  extraGroupingAttributes: ['asserts_env'],
 };
 
 local expectedWithRate =
@@ -36,6 +41,16 @@ local expectedWithoutRate =
     assert std.all([std.length(std.findSubstr('env="prod"', q)) > 0 for q in queries]) :
            'extraAttributes not applied to one or more query paths.\nGot:\n%s' % std.toString(queries);
     'PASS: extraAttributes applied to normal, directional, and ratio query paths',
+
+  testExtraGroupingAttributes:
+    local queries = [
+      pod.cpuUsageByContainer(configWithExtraGroupingAttributes),  // normal (rateSum)
+      pod.networkReceiveBandwidth(configWithExtraGroupingAttributes),  // directional (selectors + extraGroupingAttributes)
+      pod.cpuUsageVsRequests(configWithExtraGroupingAttributes),  // ratio (ratioSumPodLevel)
+    ];
+    assert std.all([std.length(std.findSubstr('asserts_env)', q)) >= 2 for q in queries]) :
+           'extraGroupingAttributes not widening both by(...) levels on one or more query paths.\nGot:\n%s' % std.toString(queries);
+    'PASS: extraGroupingAttributes widens by(...) on normal, directional, and ratio query paths',
 
   testAllRatioQueries:
     local queries = [

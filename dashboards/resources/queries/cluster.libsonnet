@@ -11,7 +11,7 @@ local selector(metric, values, extraAttributes=[]) =
     defaultSelectors: extraAttributes,
   }).toString();
 
-local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
+local clusterGroupingAttributes(extra=[]) = ['k8s_cluster_name', 'k8s_namespace_name'] + extra;
 
 {
   // CPU stat queries
@@ -22,8 +22,9 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   // CPU usage and namespace queries
   cpuUsageByNamespace(config)::
     promql.sum({
+      by: if config.extraGroupingAttributes == [] then null else config.extraGroupingAttributes,
       expr: promql.sum({
-        by: clusterBy,
+        by: clusterGroupingAttributes(config.extraGroupingAttributes),
         expr: promql.rate({
           expr: selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }, config.extraAttributes),
         }),
@@ -45,7 +46,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   // Memory usage and namespace queries
   memoryUsageByNamespace(config)::
     promql.sum({
-      by: clusterBy,
+      by: clusterGroupingAttributes(config.extraGroupingAttributes),
       expr: selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }, config.extraAttributes),
     }),
 

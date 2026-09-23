@@ -5,5 +5,6 @@ k8sMixinConfig {
   _config+:: {
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
     extraAttributes: [],
+    extraGroupingAttributes: [],
   },
 }

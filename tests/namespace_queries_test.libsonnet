@@ -2,10 +2,15 @@ local namespace = import '../dashboards/resources/queries/namespace.libsonnet';
 
 local config = {
   extraAttributes: [],
+  extraGroupingAttributes: [],
 };
 
 local configWithExtraAttributes = config {
   extraAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+};
+
+local configWithExtraGroupingAttributes = config {
+  extraGroupingAttributes: ['asserts_env'],
 };
 
 local expectedCpuUsageByPod =
@@ -53,6 +58,21 @@ local expectedMemoryUtilisationFromRequests =
     assert std.all([std.length(std.findSubstr('env="prod"', q)) > 0 for q in queries]) :
            'extraAttributes not applied to one or more query paths.\nGot:\n%s' % std.toString(queries);
     'PASS: extraAttributes applied to normal and active-phase query paths',
+
+  testExtraGroupingAttributesActivePhaseJoinLockstep:
+    local result = namespace.cpuRequestsByPod(configWithExtraGroupingAttributes);
+    assert std.length(std.findSubstr(
+      'on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, asserts_env) group_left() clamp_max(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, asserts_env)',
+      result
+    )) > 0 :
+           'on(...) and its paired max by(...) drifted out of lockstep.\nGot:\n%s' % result;
+    'PASS: extraGroupingAttributes keeps on(...) and max by(...) in lockstep in the active-phase join',
+
+  testExtraGroupingAttributesScalarBecomesGrouped:
+    local result = namespace.cpuUtilisationFromRequests(configWithExtraGroupingAttributes);
+    assert std.startsWith(result, 'sum by (asserts_env)') :
+           'a previously scalar (by=null) query did not switch to sum by(extraGroupingAttributes).\nGot:\n%s' % result;
+    'PASS: extraGroupingAttributes turns a scalar (by=null) query into sum by(extraGroupingAttributes)',
 
   testAllRatioQueries:
     local queries = [
