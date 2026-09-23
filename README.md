@@ -71,9 +71,9 @@ mixin {
 ```
 
 - `extraAttributes` — `{label, operator, value}` selectors appended to every query's label matchers.
-- `extraGroupingAttributes` — label names appended to every `by(...)`/`on(...)` clause, so the attribute survives aggregation.
+- `extraGroupingAttributes` — label names appended to every `by(...)`/`on(...)` clause, so the attribute survives aggregation. Scalar stat panels (no `by(...)`) are left as a single value and are unaffected.
 
-The attribute must be a resource attribute on the underlying metrics (e.g. a `resource` processor, see `resource/k8sclustername` in the values files) present on **both** the daemonset and deployment collector pipelines — some queries join across them, and a one-sided attribute makes the join match nothing.
+The attribute must be a resource attribute on the underlying metrics (e.g. a `resource` processor, see `resource/k8sclustername` in the values files) present on **both** the daemonset and deployment collector pipelines — some queries join across them, and a one-sided attribute makes the join match nothing. This also applies to the cluster/node/namespace/pod dashboard variables, which are built from `k8s_node_condition_ready`, `k8s_namespace_phase`, and `k8s_pod_phase` — all emitted by the **deployment** collector's `k8s_cluster` receiver. If `extraAttributes` isn't also present there, the variable dropdowns will come back empty rather than merely too broad.
 
 ## Architecture
 

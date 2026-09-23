@@ -29,12 +29,10 @@ local maybeRate(expr, useRate) =
   if useRate then promql.rate({ expr: expr }) else expr;
 
 // Merges user-supplied extraGroupingAttributes (from _config.extraGroupingAttributes)
-// into an outer by(...) clause, which may otherwise be null (scalar aggregation).
+// into an outer by(...) clause. Scalar aggregations (by=null) stay scalar --
+// extraGroupingAttributes only widens queries that already group by something.
 local outerGroupingAttributes(by, extra=[]) =
-  if by == null then
-    (if extra == [] then null else extra)
-  else
-    by + extra;
+  if by == null then null else by + extra;
 
 local clampMax(expr) =
   // TODO(tsqtsq): replace with promql.clamp_max once available upstream.

@@ -1,5 +1,6 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local var = g.dashboard.variable;
+local queries = import '../queries/common.libsonnet';
 
 {
   datasource(config)::
@@ -15,12 +16,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  cluster(datasource)::
+  cluster(config, datasourceVar)::
     var.query.new('cluster')
-    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.withDatasourceFromVariable(datasourceVar)
     + var.query.queryTypes.withLabelValues(
       'k8s_cluster_name',
-      'k8s_node_condition_ready',
+      queries.selector('k8s_node_condition_ready', {}, extraAttributes=config.extraAttributes),
     )
     + var.query.generalOptions.withLabel('cluster')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -36,13 +37,13 @@ local var = g.dashboard.variable;
         value: '$__all',
       },
     },
-  
-  node(datasource)::
+
+  node(config, datasourceVar)::
     var.query.new('node')
-    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.withDatasourceFromVariable(datasourceVar)
     + var.query.queryTypes.withLabelValues(
       'k8s_node_name',
-      'k8s_node_condition_ready',
+      queries.selector('k8s_node_condition_ready', {}, extraAttributes=config.extraAttributes),
     )
     + var.query.generalOptions.withLabel('node')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -59,12 +60,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  namespace(datasource)::
+  namespace(config, datasourceVar)::
     var.query.new('namespace')
-    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.withDatasourceFromVariable(datasourceVar)
     + var.query.queryTypes.withLabelValues(
       'k8s_namespace_name',
-      'k8s_namespace_phase',
+      queries.selector('k8s_namespace_phase', {}, extraAttributes=config.extraAttributes),
     )
     + var.query.generalOptions.withLabel('namespace')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -81,12 +82,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  pod(datasource)::
+  pod(config, datasourceVar)::
     var.query.new('pod')
-    + var.query.withDatasourceFromVariable(datasource)
+    + var.query.withDatasourceFromVariable(datasourceVar)
     + var.query.queryTypes.withLabelValues(
       'k8s_pod_name',
-      'k8s_pod_phase',
+      queries.selector('k8s_pod_phase', {}, extraAttributes=config.extraAttributes),
     )
     + var.query.generalOptions.withLabel('pod')
     + var.query.selectionOptions.withIncludeAll(true)

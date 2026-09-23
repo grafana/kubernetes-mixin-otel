@@ -68,11 +68,11 @@ local expectedMemoryUtilisationFromRequests =
            'on(...) and its paired max by(...) drifted out of lockstep.\nGot:\n%s' % result;
     'PASS: extraGroupingAttributes keeps on(...) and max by(...) in lockstep in the active-phase join',
 
-  testExtraGroupingAttributesScalarBecomesGrouped:
+  testExtraGroupingAttributesScalarStaysScalar:
     local result = namespace.cpuUtilisationFromRequests(configWithExtraGroupingAttributes);
-    assert std.startsWith(result, 'sum by (asserts_env)') :
-           'a previously scalar (by=null) query did not switch to sum by(extraGroupingAttributes).\nGot:\n%s' % result;
-    'PASS: extraGroupingAttributes turns a scalar (by=null) query into sum by(extraGroupingAttributes)',
+    assert std.startsWith(result, 'sum(') :
+           'a scalar (by=null) query unexpectedly grouped by extraGroupingAttributes.\nGot:\n%s' % result;
+    'PASS: extraGroupingAttributes leaves a scalar (by=null) query scalar',
 
   testAllRatioQueries:
     local queries = [
