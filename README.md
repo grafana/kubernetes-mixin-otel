@@ -55,6 +55,26 @@ To delete the KWOK environment:
 ```shell
 make kwok-down
 ```
+## Configuration
+
+Override `_config` when importing `mixin.libsonnet`:
+
+```jsonnet
+local mixin = import 'github.com/grafana/opentelemetry-mixin/mixin.libsonnet';
+
+mixin {
+  _config+:: {
+    extraAttributes: [{ label: 'asserts_env', operator: '=', value: 'prod' }],
+    extraGroupingAttributes: ['asserts_env', 'asserts_site'],
+  },
+}
+```
+
+- `extraAttributes` — `{label, operator, value}` selectors appended to every query's label matchers.
+- `extraGroupingAttributes` — label names appended to every `by(...)`/`on(...)` clause, so the attribute survives aggregation.
+
+The attribute must be a resource attribute on the underlying metrics (e.g. a `resource` processor, see `resource/k8sclustername` in the values files) present on **both** the daemonset and deployment collector pipelines — some queries join across them, and a one-sided attribute makes the join match nothing.
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
