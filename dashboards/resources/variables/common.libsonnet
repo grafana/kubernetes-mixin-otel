@@ -1,6 +1,6 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
-local var = g.dashboard.variable;
 local queries = import '../queries/common.libsonnet';
+local var = g.dashboard.variable;
 
 {
   datasource(config)::

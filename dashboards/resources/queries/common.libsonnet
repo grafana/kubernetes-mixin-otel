@@ -28,9 +28,7 @@ local selector(metric, values, selectors=[], extraAttributes=[]) =
 local maybeRate(expr, useRate) =
   if useRate then promql.rate({ expr: expr }) else expr;
 
-// Merges user-supplied extraGroupingAttributes (from _config.extraGroupingAttributes)
-// into an outer by(...) clause. Scalar aggregations (by=null) stay scalar --
-// extraGroupingAttributes only widens queries that already group by something.
+// Scalar aggregations (by=null) stay scalar; extraGroupingAttributes only widens an existing by(...).
 local outerGroupingAttributes(by, extra=[]) =
   if by == null then null else by + extra;
 

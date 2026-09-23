@@ -198,5 +198,6 @@ JSONNET_TESTS = $(wildcard tests/*_test.libsonnet)
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@echo "Running jsonnet tests..."
+	@test -n "$(JSONNET_TESTS)" || { echo "no tests found in tests/*_test.libsonnet"; exit 1; }
 	@for f in $(JSONNET_TESTS); do $(JSONNET_BIN) -J vendor $$f || exit 1; done
 	@echo "All tests passed!"

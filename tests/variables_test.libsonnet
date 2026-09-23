@@ -25,11 +25,23 @@ local datasource = commonVariables.datasource(config);
            'cluster variable query did not apply extraAttributes.\nGot:\n%s' % result;
     'PASS: cluster variable query applies extraAttributes',
 
+  testNamespaceVariableDefault:
+    local result = commonVariables.namespace(config, datasource).query;
+    assert result == 'label_values(k8s_namespace_phase{}, k8s_namespace_name)' :
+           'namespace variable query changed.\nGot:\n%s' % result;
+    'PASS: namespace variable query unchanged with no extraAttributes',
+
   testNamespaceVariableWithExtraAttributes:
     local result = commonVariables.namespace(configWithExtraAttributes, datasource).query;
     assert result == 'label_values(k8s_namespace_phase{asserts_env="prod", asserts_site=~"us.*"}, k8s_namespace_name)' :
            'namespace variable query did not apply extraAttributes.\nGot:\n%s' % result;
     'PASS: namespace variable query applies extraAttributes',
+
+  testPodVariableDefault:
+    local result = commonVariables.pod(config, datasource).query;
+    assert result == 'label_values(k8s_pod_phase{}, k8s_pod_name)' :
+           'pod variable query changed.\nGot:\n%s' % result;
+    'PASS: pod variable query unchanged with no extraAttributes',
 
   testPodVariableWithExtraAttributes:
     local result = commonVariables.pod(configWithExtraAttributes, datasource).query;

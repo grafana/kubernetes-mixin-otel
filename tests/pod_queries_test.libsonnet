@@ -10,7 +10,7 @@ local configWithExtraAttributes = config {
 };
 
 local configWithExtraGroupingAttributes = config {
-  extraGroupingAttributes: ['asserts_env'],
+  extraGroupingAttributes: ['asserts_env', 'asserts_site'],
 };
 
 local expectedWithRate =
@@ -48,7 +48,7 @@ local expectedWithoutRate =
       pod.networkReceiveBandwidth(configWithExtraGroupingAttributes),  // directional (selectors + extraGroupingAttributes)
       pod.cpuUsageVsRequests(configWithExtraGroupingAttributes),  // ratio (ratioSumPodLevel)
     ];
-    assert std.all([std.length(std.findSubstr('asserts_env)', q)) >= 2 for q in queries]) :
+    assert std.all([std.length(std.findSubstr(', asserts_env, asserts_site)', q)) >= 2 for q in queries]) :
            'extraGroupingAttributes not widening both by(...) levels on one or more query paths.\nGot:\n%s' % std.toString(queries);
     'PASS: extraGroupingAttributes widens by(...) on normal, directional, and ratio query paths',
 
