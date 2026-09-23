@@ -15,6 +15,9 @@ local podGroupingAttributes(extra=[]) = ['k8s_cluster_name', 'k8s_namespace_name
 // optional extra selectors (e.g. direction="receive") and user-supplied
 // extraAttributes (from _config.extraAttributes).
 local selector(metric, values, selectors=[], extraAttributes=[]) =
+  local existingAttributes = std.objectFields(values) + [s.label for s in selectors];
+  local duplicateAttributes = [a.label for a in extraAttributes if std.member(existingAttributes, a.label)];
+  assert duplicateAttributes == [] : 'extraAttributes label(s) %s collide with existing matchers on %s' % [duplicateAttributes, metric];
   tsqtsq.Expression({
     metric: metric,
     values: values,
@@ -60,6 +63,9 @@ local activeOnly(expr, phaseValues, extraAttributes=[], extraGroupingAttributes=
   });
 
 {
+  selector:: selector,
+  outerGroupingAttributes:: outerGroupingAttributes,
+
   metricSum(metric, values, by=null, selectors=[], extraAttributes=[], extraGroupingAttributes=[])::
     promql.sum({
       by: outerGroupingAttributes(by, extraGroupingAttributes),
