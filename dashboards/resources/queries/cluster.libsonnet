@@ -1,16 +1,10 @@
 // queries path must match the path in the kubernetes-mixin template
+local b = import './common.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
 
-local selector(metric, values) =
-  tsqtsq.Expression({
-    metric: metric,
-    values: values,
-    defaultOperator: tsqtsq.MatchingOperator.regexMatch,
-  }).toString();
-
-local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
+local clusterGroupingAttributes(extra=[]) = ['k8s_cluster_name', 'k8s_namespace_name'] + extra;
 
 {
   // CPU stat queries
@@ -21,10 +15,11 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   // CPU usage and namespace queries
   cpuUsageByNamespace(config)::
     promql.sum({
+      by: b.outerGroupingAttributes(null, config.extraGroupingAttributes),
       expr: promql.sum({
-        by: clusterBy,
+        by: clusterGroupingAttributes(config.extraGroupingAttributes),
         expr: promql.rate({
-          expr: selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }),
+          expr: b.selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }, extraAttributes=config.extraAttributes),
         }),
       }),
     }),
@@ -44,8 +39,8 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   // Memory usage and namespace queries
   memoryUsageByNamespace(config)::
     promql.sum({
-      by: clusterBy,
-      expr: selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }),
+      by: clusterGroupingAttributes(config.extraGroupingAttributes),
+      expr: b.selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }, extraAttributes=config.extraAttributes),
     }),
 
   memoryRequestsByNamespace(config):: '0',

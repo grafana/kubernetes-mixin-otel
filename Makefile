@@ -193,9 +193,11 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 .PHONY: test
 test: test-jsonnet
 
+JSONNET_TESTS = $(wildcard tests/*_test.libsonnet)
+
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
-	@echo "Running jsonnet query tests..."
-	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet
-	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
+	@echo "Running jsonnet tests..."
+	@test -n "$(JSONNET_TESTS)" || { echo "no tests found in tests/*_test.libsonnet"; exit 1; }
+	@for f in $(JSONNET_TESTS); do $(JSONNET_BIN) -J vendor $$f || exit 1; done
 	@echo "All tests passed!"

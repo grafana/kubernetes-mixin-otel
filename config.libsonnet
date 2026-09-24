@@ -4,5 +4,7 @@ local k8sAlertsConfig = (import 'github.com/kubernetes-sigs/kubernetes-mixin/ale
 k8sMixinConfig {
   _config+:: {
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
+    extraAttributes: [],
+    extraGroupingAttributes: [],
   },
 }

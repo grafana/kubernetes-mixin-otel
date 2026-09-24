@@ -1,7 +1,16 @@
 local pod = import '../dashboards/resources/queries/pod.libsonnet';
 
 local config = {
-  _config: {},
+  extraAttributes: [],
+  extraGroupingAttributes: [],
+};
+
+local configWithExtraAttributes = config {
+  extraAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+};
+
+local configWithExtraGroupingAttributes = config {
+  extraGroupingAttributes: ['asserts_env', 'asserts_site'],
 };
 
 local expectedWithRate =
@@ -22,6 +31,26 @@ local expectedWithoutRate =
     assert result == expectedWithoutRate :
            'ratio with useRate=false failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedWithoutRate, result];
     'PASS: ratio with useRate=false',
+
+  testExtraAttributes:
+    local queries = [
+      pod.cpuUsageByContainer(configWithExtraAttributes),  // normal (rateSum)
+      pod.networkReceiveBandwidth(configWithExtraAttributes),  // directional (selectors + extraAttributes)
+      pod.cpuUsageVsRequests(configWithExtraAttributes),  // ratio (ratioSumPodLevel)
+    ];
+    assert std.all([std.length(std.findSubstr('env="prod"', q)) > 0 for q in queries]) :
+           'extraAttributes not applied to one or more query paths.\nGot:\n%s' % std.toString(queries);
+    'PASS: extraAttributes applied to normal, directional, and ratio query paths',
+
+  testExtraGroupingAttributes:
+    local queries = [
+      pod.cpuUsageByContainer(configWithExtraGroupingAttributes),  // normal (rateSum)
+      pod.networkReceiveBandwidth(configWithExtraGroupingAttributes),  // directional (selectors + extraGroupingAttributes)
+      pod.cpuUsageVsRequests(configWithExtraGroupingAttributes),  // ratio (ratioSumPodLevel)
+    ];
+    assert std.all([std.length(std.findSubstr(', asserts_env, asserts_site)', q)) >= 2 for q in queries]) :
+           'extraGroupingAttributes not widening both by(...) levels on one or more query paths.\nGot:\n%s' % std.toString(queries);
+    'PASS: extraGroupingAttributes widens by(...) on normal, directional, and ratio query paths',
 
   testAllRatioQueries:
     local queries = [

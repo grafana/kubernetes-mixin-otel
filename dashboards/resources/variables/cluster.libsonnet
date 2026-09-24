@@ -6,6 +6,6 @@ local commonVariables = import './common.libsonnet';
 
     {
       datasource: datasource,
-      cluster: commonVariables.cluster(datasource),
+      cluster: commonVariables.cluster(config, datasource),
     },
 }
