@@ -4,7 +4,7 @@ local config = import '../../config.libsonnet';
 // It will use local queries from dashboards/resources/queries/pod.libsonnet
 local localQueries = import './queries/pod.libsonnet';
 local localVariables = import './variables/pod.libsonnet';
-local k8sMixinPod = import 'github.com/kubernetes-monitoring/kubernetes-mixin/dashboards/resources/pod.libsonnet';
+local k8sMixinPod = import 'github.com/kubernetes-sigs/kubernetes-mixin/dashboards/resources/pod.libsonnet';
 
 // Override queries and variables to use local ones instead of default
 local merged = {
