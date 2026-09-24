@@ -1,6 +1,7 @@
 dashboards_out
 tmp
 vendor
+tests/rules.yaml
 
 scripts/kwok-config/recording-rules-empty.yaml
 
