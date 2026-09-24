@@ -12,13 +12,14 @@ local maxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_co
 local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 
 // Metric selector: dashboard variable filters (regex-matched values) plus
-// optional extra selectors (e.g. direction="receive").
-local selector(metric, values, selectors=[]) =
+// optional extra attributes (e.g. direction="receive") and user-supplied
+// config.customAttributes.
+local selector(metric, values, attributes=[], config={ customAttributes: [] }) =
   tsqtsq.Expression({
     metric: metric,
     values: values,
     defaultOperator: tsqtsq.MatchingOperator.regexMatch,
-    defaultSelectors: selectors,
+    defaultSelectors: attributes + config.customAttributes,
   }).toString();
 
 local maybeRate(expr, useRate) =
