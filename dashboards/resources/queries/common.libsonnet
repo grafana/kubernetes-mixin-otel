@@ -51,6 +51,8 @@ local activeOnly(expr, phaseValues) =
   });
 
 {
+  selector:: selector,
+
   metricSum(metric, values, by=null, selectors=[])::
     promql.sum({
       by: by,
