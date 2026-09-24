@@ -110,6 +110,7 @@ config:
 
     pipelines:
       logs:
+        receivers: [filelog]
         processors: [memory_limiter, k8sattributes, resource/k8sclustername, batch]
         exporters: [otlphttp/lgtm]
 
