@@ -48,6 +48,13 @@ local expectedWithoutRate =
            'customAttributes not merged with directional attributes.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes merges with directional attributes',
 
+  testCustomAttributesOnMetricSum:
+    local result = pod.cpuRequests(configWithCustomAttributes);
+    local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
+    assert result == expected :
+           'customAttributes not applied to metricSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to metricSum path',
+
   testAllRatioQueries:
     local queries = [
       pod.cpuUsageVsRequests(config),
