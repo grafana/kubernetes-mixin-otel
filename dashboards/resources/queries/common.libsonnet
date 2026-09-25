@@ -74,10 +74,10 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
-  rateAvg(metric, values, by=null, attributes=[])::
+  rateAvg(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
     promql.avg({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
   ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false)::

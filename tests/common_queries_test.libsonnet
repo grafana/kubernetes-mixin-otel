@@ -34,4 +34,15 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     assert result == expected :
            'selector crashed or misbehaved when config has no customAttributes key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: selector defaults to no custom attributes when config lacks the key',
+
+  testRateAvgAppliesCustomAttributes:
+    local result = common.rateAvg(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+    );
+    local expected = 'avg(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod"}[$__rate_interval])))';
+    assert result == expected :
+           'customAttributes not applied to rateAvg.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to rateAvg',
 }
