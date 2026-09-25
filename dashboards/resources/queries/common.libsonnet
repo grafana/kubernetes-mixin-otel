@@ -15,11 +15,13 @@ local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 // optional extra attributes (e.g. direction="receive") and user-supplied
 // config.customAttributes.
 local selector(metric, values, attributes=[], config={ customAttributes: [] }) =
+  local customAttributes = std.get(config, 'customAttributes', []);
+  local customLabels = [attribute.label for attribute in customAttributes];
   tsqtsq.Expression({
     metric: metric,
     values: values,
     defaultOperator: tsqtsq.MatchingOperator.regexMatch,
-    defaultSelectors: attributes + config.customAttributes,
+    defaultSelectors: [attribute for attribute in attributes if !std.member(customLabels, attribute.label)] + customAttributes,
   }).toString();
 
 local maybeRate(expr, useRate) =
