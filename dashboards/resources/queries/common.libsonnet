@@ -54,28 +54,28 @@ local activeOnly(expr, phaseValues) =
 {
   selector:: selector,
 
-  metricSum(metric, values, by=null, selectors=[])::
+  metricSum(metric, values, by=null, attributes=[])::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: selector(metric, values, selectors) }),
+      expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes) }),
     }),
 
-  rateSum(metric, values, by=null, selectors=[])::
+  rateSum(metric, values, by=null, attributes=[])::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes) }) }),
     }),
 
-  rateSumPodLevel(metric, values, by=null, selectors=[])::
+  rateSumPodLevel(metric, values, by=null, attributes=[])::
     promql.sum({
       by: by,
-      expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+      expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, attributes) }) }),
     }),
 
-  rateAvg(metric, values, by=null, selectors=[])::
+  rateAvg(metric, values, by=null, attributes=[])::
     promql.avg({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, selectors) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes) }) }),
     }),
 
   ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false)::
