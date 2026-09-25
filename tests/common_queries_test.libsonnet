@@ -45,4 +45,16 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     assert result == expected :
            'customAttributes not applied to rateAvg.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes applied to rateAvg',
+
+  testRatioSumAppliesCustomAttributesToBothSides:
+    local result = common.ratioSum(
+      'metricA',
+      'metricB',
+      {},
+      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+    );
+    local expected = 'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricA{env="prod"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricB{env="prod"}))';
+    assert result == expected :
+           'customAttributes not applied to both sides of ratioSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to both sides of ratioSum',
 }
