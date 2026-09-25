@@ -201,6 +201,7 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/cluster_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/variables_test.libsonnet
+	@$(JSONNET_BIN) -J vendor lib/dashboards.jsonnet > /dev/null
 	@echo "All tests passed!"
 
 # file|expected error substring, quoted since | is a shell metacharacter
