@@ -199,4 +199,5 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@$(JSONNET_BIN) -J vendor tests/common_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/pod_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/namespace_queries_test.libsonnet
+	@$(JSONNET_BIN) -J vendor tests/cluster_queries_test.libsonnet
 	@echo "All tests passed!"
