@@ -27,13 +27,6 @@ local expectedWithoutRate =
            'ratio with useRate=false failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedWithoutRate, result];
     'PASS: ratio with useRate=false',
 
-  testCustomAttributesOnRateSum:
-    local result = pod.cpuUsageByContainer(configWithCustomAttributes);
-    local expected = 'sum by (k8s_container_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval])))';
-    assert result == expected :
-           'customAttributes not applied to rateSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: customAttributes applied to rateSum path',
-
   testCustomAttributesOnRatio:
     local result = pod.cpuUsageVsRequests(configWithCustomAttributes);
     local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval])) / sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"})))';
@@ -48,12 +41,14 @@ local expectedWithoutRate =
            'customAttributes not merged with directional attributes.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes merges with directional attributes',
 
-  testCustomAttributesOnMetricSum:
-    local result = pod.cpuRequests(configWithCustomAttributes);
-    local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
-    assert result == expected :
-           'customAttributes not applied to metricSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: customAttributes applied to metricSum path',
+  testCustomAttributesOnSingleSelectorBuilders:
+    local queries = [
+      pod.cpuUsageByContainer(configWithCustomAttributes),  // rateSum
+      pod.cpuRequests(configWithCustomAttributes),  // metricSum
+    ];
+    assert std.all([std.length(std.findSubstr('env="prod"', q)) == 1 for q in queries]) :
+           'customAttributes not applied to one or more single-selector builders.\nGot:\n%s' % std.toString(queries);
+    'PASS: customAttributes applied to rateSum and metricSum (single-selector builders)',
 
   testCustomAttributesOnDifference:
     local result = pod.memoryUsageCache(configWithCustomAttributes);

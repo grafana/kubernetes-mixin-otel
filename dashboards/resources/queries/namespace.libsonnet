@@ -15,20 +15,20 @@ local direction(value) = [
 {
   // CPU Utilization Stat Queries
   cpuUtilisationFromRequests(config)::
-    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, useRate=true),
+    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, useRate=true, config=config),
 
   cpuUtilisationFromLimits(config)::
-    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, useRate=true),
+    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, useRate=true, config=config),
 
   memoryUtilisationFromRequests(config)::
-    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values),
+    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values, config=config),
 
   memoryUtilisationFromLimits(config)::
-    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values),
+    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, config=config),
 
   // CPU Usage TimeSeries Queries
   cpuUsageByPod(config)::
-    b.rateSumPodLevel('k8s_pod_cpu_time_seconds_total', values, by=['k8s_pod_name']),
+    b.rateSumPodLevel('k8s_pod_cpu_time_seconds_total', values, by=['k8s_pod_name'], config=config),
 
   cpuQuotaRequests(config)::
     '0',
@@ -52,7 +52,7 @@ local direction(value) = [
 
   // Memory Usage TimeSeries Queries
   memoryUsageByPod(config)::
-    b.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name']),
+    b.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryQuotaRequests(config)::
     '0',
@@ -74,7 +74,7 @@ local direction(value) = [
     b.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name']),
 
   memoryUsageRSS(config)::
-    b.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name']),
+    b.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageCache(config)::
     '0',
@@ -84,10 +84,10 @@ local direction(value) = [
 
   // Network Table Queries
   networkReceiveBandwidth(config)::
-    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive')),
+    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidth(config)::
-    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit')),
+    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit'), config=config),
 
   networkReceivePackets(config)::
     '0',
@@ -96,17 +96,17 @@ local direction(value) = [
     '0',
 
   networkReceivePacketsDropped(config)::
-    b.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_namespace_name'], attributes=direction('receive')),
+    b.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_namespace_name'], attributes=direction('receive'), config=config),
 
   networkTransmitPacketsDropped(config)::
-    b.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_namespace_name'], attributes=direction('transmit')),
+    b.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_namespace_name'], attributes=direction('transmit'), config=config),
 
   // Network TimeSeries Queries
   networkReceiveBandwidthTimeSeries(config)::
-    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive')),
+    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidthTimeSeries(config)::
-    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit')),
+    b.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit'), config=config),
 
   // Storage TimeSeries Queries
   iopsReadsWrites(config)::

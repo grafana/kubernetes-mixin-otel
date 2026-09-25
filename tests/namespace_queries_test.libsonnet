@@ -1,7 +1,11 @@
 local namespace = import '../dashboards/resources/queries/namespace.libsonnet';
 
 local config = {
-  _config: {},
+  customAttributes: [],
+};
+
+local configWithCustomAttributes = config {
+  customAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
 };
 
 local expectedCpuUsageByPod =
@@ -40,6 +44,20 @@ local expectedMemoryUtilisationFromRequests =
     assert result == expectedMemoryUtilisationFromRequests :
            'memoryUtilisationFromRequests failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUtilisationFromRequests, result];
     'PASS: memoryUtilisationFromRequests',
+
+  testCustomAttributesOnRatio:
+    local result = namespace.cpuUtilisationFromRequests(configWithCustomAttributes);
+    local expected = 'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}[$__rate_interval])) / sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"})))';
+    assert result == expected :
+           'customAttributes not applied to both sides of the ratio.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to both sides of ratioSumPodLevel',
+
+  testCustomAttributesOnRateSumPodLevel:
+    local result = namespace.cpuUsageByPod(configWithCustomAttributes);
+    local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}[$__rate_interval])))';
+    assert result == expected :
+           'customAttributes not applied to rateSumPodLevel.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to rateSumPodLevel path',
 
   testAllRatioQueries:
     local queries = [
