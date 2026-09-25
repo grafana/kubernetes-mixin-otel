@@ -28,9 +28,9 @@ local fixJoinByField(transformation) =
   else transformation;
 
 {
+  local dashboard = merged($._config).grafanaDashboards['k8s-resources-cluster.json'],
   grafanaDashboards+:: {
-    'k8s-resources-cluster.json': merged($._config).grafanaDashboards['k8s-resources-cluster.json']
-                                  {
+    'k8s-resources-cluster.json': dashboard {
       panels: [
         panel {
           datasource: {
@@ -44,7 +44,7 @@ local fixJoinByField(transformation) =
           }
           else {}
         )
-        for panel in merged($._config).grafanaDashboards['k8s-resources-cluster.json'].panels
+        for panel in dashboard.panels
       ],
     },
   },

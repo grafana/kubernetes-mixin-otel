@@ -17,9 +17,9 @@ local merged(config) = {
 } + k8sMixinPod;
 
 {
+  local dashboard = merged($._config).grafanaDashboards['k8s-resources-pod.json'],
   grafanaDashboards+:: {
-    'k8s-resources-pod.json': merged($._config).grafanaDashboards['k8s-resources-pod.json']
-                              {
+    'k8s-resources-pod.json': dashboard {
       panels: [
         panel {
           datasource: {
@@ -27,7 +27,7 @@ local merged(config) = {
             uid: '${datasource}',
           },
         }
-        for panel in merged($._config).grafanaDashboards['k8s-resources-pod.json'].panels
+        for panel in dashboard.panels
       ],
     },
   },

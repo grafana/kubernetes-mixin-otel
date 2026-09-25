@@ -27,9 +27,9 @@ local updateTransformations(transformations) =
   ];
 
 {
+  local dashboard = merged($._config).grafanaDashboards['k8s-resources-namespace.json'],
   grafanaDashboards+:: {
-    'k8s-resources-namespace.json': merged($._config).grafanaDashboards['k8s-resources-namespace.json']
-                                    {
+    'k8s-resources-namespace.json': dashboard {
       panels: [
         panel {
           datasource: {
@@ -42,7 +42,7 @@ local updateTransformations(transformations) =
           else
             {}
         )
-        for panel in merged($._config).grafanaDashboards['k8s-resources-namespace.json'].panels
+        for panel in dashboard.panels
       ],
     },
   },
