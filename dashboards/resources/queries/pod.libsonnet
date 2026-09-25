@@ -74,10 +74,10 @@ local direction(value) = [
 
   // Network Queries
   networkReceiveBandwidth(config)::
-    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive')),
+    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidth(config)::
-    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit')),
+    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   networkReceivePackets(config)::
     '0',
@@ -86,10 +86,10 @@ local direction(value) = [
     '0',
 
   networkReceivePacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('receive')),
+    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitPacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('transmit')),
+    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   // Storage Queries - Pod Level
   iopsPodReads(config)::

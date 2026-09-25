@@ -41,6 +41,13 @@ local expectedWithoutRate =
            'customAttributes not applied to both sides of the ratio.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes applied to both sides of ratioSumPodLevel',
 
+  testCustomAttributesOnDirectional:
+    local result = pod.networkReceiveBandwidth(configWithCustomAttributes);
+    local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_network_io_bytes_total{direction="receive", env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval])))';
+    assert result == expected :
+           'customAttributes not merged with directional attributes.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes merges with directional attributes',
+
   testAllRatioQueries:
     local queries = [
       pod.cpuUsageVsRequests(config),
