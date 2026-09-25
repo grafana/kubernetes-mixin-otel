@@ -57,4 +57,16 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     assert result == expected :
            'customAttributes not applied to both sides of ratioSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes applied to both sides of ratioSum',
+
+  testRatioSumActiveOnlyAppliesCustomAttributesToAllArms:
+    local result = common.ratioSumActiveOnly(
+      'metricA',
+      'metricB',
+      {},
+      {},
+      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+    );
+    assert std.length(std.findSubstr('env="prod"', result)) == 4 :
+           'customAttributes not applied to numerator, denominator, and both active-phase join comparisons.\nGot:\n%s' % result;
+    'PASS: customAttributes applied to numerator, denominator, and the active-phase join',
 }

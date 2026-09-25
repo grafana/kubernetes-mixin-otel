@@ -116,12 +116,12 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       expr: promql.max({ by: maxBy, expr: activeOnly(selector(metric, values, config=config), phaseValues, config) }),
     }),
 
-  ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false)::
+  ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config={ customAttributes: [] })::
     promql.sum({
       by: by,
       expr: promql.div({
-        left: promql.max({ by: maxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
-        right: promql.max({ by: maxBy, expr: activeOnly(selector(denominatorMetric, values), phaseValues) }),
+        left: promql.max({ by: maxBy, expr: maybeRate(selector(numeratorMetric, values, config=config), useRate) }),
+        right: promql.max({ by: maxBy, expr: activeOnly(selector(denominatorMetric, values, config=config), phaseValues, config) }),
       }),
     }),
 
