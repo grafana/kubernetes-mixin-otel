@@ -16,7 +16,7 @@ local direction(value) = [
 {
   // CPU Queries
   cpuUsageByContainer(config)::
-    b.rateSum('k8s_pod_cpu_time_seconds_total', values, by=['k8s_container_name']),
+    b.rateSum('k8s_pod_cpu_time_seconds_total', values, by=['k8s_container_name'], config=config),
 
   cpuRequests(config)::
     b.metricSum('k8s_container_cpu_request', values, by=['k8s_pod_name']),
@@ -32,7 +32,7 @@ local direction(value) = [
     b.metricSum('k8s_container_cpu_request', values, by=['k8s_container_name']),
 
   cpuUsageVsRequests(config)::
-    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, by=['k8s_pod_name'], useRate=true),
+    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, by=['k8s_pod_name'], useRate=true, config=config),
 
   cpuLimitsByContainer(config)::
     b.metricSum('k8s_container_cpu_limit', values, by=['k8s_container_name']),

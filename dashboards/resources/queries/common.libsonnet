@@ -60,10 +60,10 @@ local activeOnly(expr, phaseValues) =
       expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes) }),
     }),
 
-  rateSum(metric, values, by=null, attributes=[])::
+  rateSum(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
   rateSumPodLevel(metric, values, by=null, attributes=[])::
@@ -87,14 +87,14 @@ local activeOnly(expr, phaseValues) =
       }),
     }),
 
-  ratioSumPodLevel(numeratorMetric, denominatorMetric, values, by=null, useRate=false)::
+  ratioSumPodLevel(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config={ customAttributes: [] })::
     promql.sum({
       by: by,
       expr: promql.div({
-        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values, config=config), useRate) }),
         right: promql.sum({
           by: podMaxBy,
-          expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values) }),
+          expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values, config=config) }),
         }),
       }),
     }),
