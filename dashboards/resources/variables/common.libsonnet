@@ -1,5 +1,10 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local commonQueries = import '../queries/common.libsonnet';
 local var = g.dashboard.variable;
+
+local filteredMetric(metric, config) =
+  local customAttributes = std.get(config, 'customAttributes', []);
+  if customAttributes == [] then metric else commonQueries.selector(metric, {}, config=config);
 
 {
   datasource(config)::
@@ -15,12 +20,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  cluster(datasource)::
+  cluster(datasource, config={ customAttributes: [] })::
     var.query.new('cluster')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_cluster_name',
-      'k8s_node_condition_ready',
+      filteredMetric('k8s_node_condition_ready', config),
     )
     + var.query.generalOptions.withLabel('cluster')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -37,12 +42,12 @@ local var = g.dashboard.variable;
       },
     },
   
-  node(datasource)::
+  node(datasource, config={ customAttributes: [] })::
     var.query.new('node')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_node_name',
-      'k8s_node_condition_ready',
+      filteredMetric('k8s_node_condition_ready', config),
     )
     + var.query.generalOptions.withLabel('node')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -59,12 +64,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  namespace(datasource)::
+  namespace(datasource, config={ customAttributes: [] })::
     var.query.new('namespace')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_namespace_name',
-      'k8s_namespace_phase',
+      filteredMetric('k8s_namespace_phase', config),
     )
     + var.query.generalOptions.withLabel('namespace')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -81,12 +86,12 @@ local var = g.dashboard.variable;
       },
     },
 
-  pod(datasource)::
+  pod(datasource, config={ customAttributes: [] })::
     var.query.new('pod')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_pod_name',
-      'k8s_pod_phase',
+      filteredMetric('k8s_pod_phase', config),
     )
     + var.query.generalOptions.withLabel('pod')
     + var.query.selectionOptions.withIncludeAll(true)
