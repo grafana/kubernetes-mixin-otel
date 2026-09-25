@@ -55,6 +55,13 @@ local expectedWithoutRate =
            'customAttributes not applied to metricSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes applied to metricSum path',
 
+  testCustomAttributesOnDifference:
+    local result = pod.memoryUsageCache(configWithCustomAttributes);
+    local expected = 'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_pod_memory_usage_bytes{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}) - max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_pod_memory_rss_bytes{env="prod", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
+    assert result == expected :
+           'customAttributes not applied to both sides of differenceSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to both sides of differenceSum',
+
   testAllRatioQueries:
     local queries = [
       pod.cpuUsageVsRequests(config),

@@ -99,12 +99,12 @@ local activeOnly(expr, phaseValues) =
       }),
     }),
 
-  differenceSum(metric1, metric2, values, by=null)::
+  differenceSum(metric1, metric2, values, by=null, config={ customAttributes: [] })::
     promql.sum({
       by: by,
       expr: promql.sub({
-        left: promql.max({ by: maxBy, expr: selector(metric1, values) }),
-        right: promql.max({ by: maxBy, expr: selector(metric2, values) }),
+        left: promql.max({ by: maxBy, expr: selector(metric1, values, config=config) }),
+        right: promql.max({ by: maxBy, expr: selector(metric2, values, config=config) }),
       }),
     }),
 
