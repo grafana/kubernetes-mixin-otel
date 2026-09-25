@@ -32,8 +32,8 @@ local clampMax(expr) =
 // Active pod filter (Pending=1 or Running=2), normalized to 1
 // pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
 // known issue here: https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36819
-local phaseActive(phaseValues) =
-  local phaseSelector = selector('k8s_pod_phase', phaseValues);
+local phaseActive(phaseValues, config={ customAttributes: [] }) =
+  local phaseSelector = selector('k8s_pod_phase', phaseValues, config=config);
   clampMax(promql.max({
     by: podMaxBy,
     expr: promql.or({
@@ -43,10 +43,10 @@ local phaseActive(phaseValues) =
   }));
 
 // Joins expr against the active-pod filter: expr * on (...) group_left() ...
-local activeOnly(expr, phaseValues) =
+local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
   promql.mul({
     left: expr,
-    right: phaseActive(phaseValues),
+    right: phaseActive(phaseValues, config),
     on: podMaxBy,
     groupLeft: [],
   });
@@ -108,10 +108,10 @@ local activeOnly(expr, phaseValues) =
       }),
     }),
 
-  metricSumActiveOnly(metric, values, phaseValues, by=null)::
+  metricSumActiveOnly(metric, values, phaseValues, by=null, config={ customAttributes: [] })::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: activeOnly(selector(metric, values), phaseValues) }),
+      expr: promql.max({ by: maxBy, expr: activeOnly(selector(metric, values, config=config), phaseValues, config) }),
     }),
 
   ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false)::
@@ -123,17 +123,18 @@ local activeOnly(expr, phaseValues) =
       }),
     }),
 
-  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false)::
+  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config={ customAttributes: [] })::
     promql.sum({
       by: by,
       expr: promql.div({
-        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values), useRate) }),
+        left: promql.max({ by: podMaxBy, expr: maybeRate(selector(numeratorMetric, values, config=config), useRate) }),
         right: '(%s)' % activeOnly(
           promql.sum({
             by: podMaxBy,
-            expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values) }),
+            expr: promql.max({ by: maxBy, expr: selector(denominatorMetric, values, config=config) }),
           }),
           phaseValues,
+          config,
         ),
       }),
     }),

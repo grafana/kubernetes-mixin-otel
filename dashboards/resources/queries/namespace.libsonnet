@@ -39,16 +39,16 @@ local direction(value) = [
   // CPU Quota Table Queries
   // first query reuses cpuUsageByPod query
   cpuRequestsByPod(config)::
-    b.metricSumActiveOnly('k8s_container_cpu_request', values, values, by=['k8s_pod_name']),
+    b.metricSumActiveOnly('k8s_container_cpu_request', values, values, by=['k8s_pod_name'], config=config),
 
   cpuUsageVsRequests(config)::
-    b.ratioSumActiveOnlyPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, values, by=['k8s_pod_name'], useRate=true),
+    b.ratioSumActiveOnlyPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, values, by=['k8s_pod_name'], useRate=true, config=config),
 
   cpuLimitsByPod(config)::
-    b.metricSumActiveOnly('k8s_container_cpu_limit', values, values, by=['k8s_pod_name']),
+    b.metricSumActiveOnly('k8s_container_cpu_limit', values, values, by=['k8s_pod_name'], config=config),
 
   cpuUsageVsLimits(config)::
-    b.ratioSumActiveOnlyPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, values, by=['k8s_pod_name'], useRate=true),
+    b.ratioSumActiveOnlyPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, values, by=['k8s_pod_name'], useRate=true, config=config),
 
   // Memory Usage TimeSeries Queries
   memoryUsageByPod(config)::
@@ -62,16 +62,16 @@ local direction(value) = [
 
   // Memory Quota Table Queries
   memoryRequestsByPod(config)::
-    b.metricSumActiveOnly('k8s_container_memory_request_bytes', values, values, by=['k8s_pod_name']),
+    b.metricSumActiveOnly('k8s_container_memory_request_bytes', values, values, by=['k8s_pod_name'], config=config),
 
   memoryUsageVsRequests(config)::
-    b.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values, values, by=['k8s_pod_name']),
+    b.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values, values, by=['k8s_pod_name'], config=config),
 
   memoryLimitsByPod(config)::
-    b.metricSumActiveOnly('k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name']),
+    b.metricSumActiveOnly('k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name'], config=config),
 
   memoryUsageVsLimits(config)::
-    b.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name']),
+    b.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name'], config=config),
 
   memoryUsageRSS(config)::
     b.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),

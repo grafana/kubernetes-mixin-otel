@@ -59,6 +59,18 @@ local expectedMemoryUtilisationFromRequests =
            'customAttributes not applied to rateSumPodLevel.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: customAttributes applied to rateSumPodLevel path',
 
+  testCustomAttributesOnActivePhaseJoin:
+    local result = namespace.cpuRequestsByPod(configWithCustomAttributes);
+    assert std.length(std.findSubstr('env="prod"', result)) == 3 :
+           'customAttributes not applied to both the main selector and the active-phase join selector.\nGot:\n%s' % result;
+    'PASS: customAttributes applied to both the main selector and the active-phase join selector',
+
+  testCustomAttributesOnRatioActivePhaseJoin:
+    local result = namespace.cpuUsageVsRequests(configWithCustomAttributes);
+    assert std.length(std.findSubstr('env="prod"', result)) == 4 :
+           'customAttributes not applied to numerator, denominator, and both active-phase join comparisons.\nGot:\n%s' % result;
+    'PASS: customAttributes applied to numerator, denominator, and the active-phase join',
+
   testAllRatioQueries:
     local queries = [
       namespace.cpuUtilisationFromRequests(config),
