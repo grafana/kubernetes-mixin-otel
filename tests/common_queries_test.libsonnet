@@ -12,18 +12,6 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
            'selector with config.customAttributes failed.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: selector merges config.customAttributes into the metric selector',
 
-  testSelectorCustomAttributesWinOnLabelCollision:
-    local result = common.selector(
-      'k8s_pod_network_io_bytes_total',
-      {},
-      attributes=[{ label: 'direction', operator: '=', value: 'transmit' }],
-      config={ customAttributes: [{ label: 'direction', operator: '=', value: 'receive' }] }
-    );
-    local expected = 'k8s_pod_network_io_bytes_total{direction="receive"}';
-    assert result == expected :
-           'customAttributes did not win on label collision.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: customAttributes wins over attributes on label collision',
-
   testSelectorHandlesConfigMissingCustomAttributes:
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',

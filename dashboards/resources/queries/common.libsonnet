@@ -16,12 +16,14 @@ local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 // config.customAttributes.
 local selector(metric, values, attributes=[], config={ customAttributes: [] }) =
   local customAttributes = std.get(config, 'customAttributes', []);
-  local customLabels = [attribute.label for attribute in customAttributes];
+  local existingLabels = std.objectFields(values) + [attribute.label for attribute in attributes];
+  local collisions = [attribute.label for attribute in customAttributes if std.member(existingLabels, attribute.label)];
+  assert collisions == [] : 'customAttributes label(s) %s collide with existing matchers on %s' % [collisions, metric];
   tsqtsq.Expression({
     metric: metric,
     values: values,
     defaultOperator: tsqtsq.MatchingOperator.regexMatch,
-    defaultSelectors: [attribute for attribute in attributes if !std.member(customLabels, attribute.label)] + customAttributes,
+    defaultSelectors: attributes + customAttributes,
   }).toString();
 
 local maybeRate(expr, useRate) =

@@ -191,7 +191,7 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
 
 .PHONY: test
-test: test-jsonnet
+test: test-jsonnet test-jsonnet-errors
 
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
@@ -202,3 +202,23 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@$(JSONNET_BIN) -J vendor tests/cluster_queries_test.libsonnet
 	@$(JSONNET_BIN) -J vendor tests/variables_test.libsonnet
 	@echo "All tests passed!"
+
+# file|expected error substring, quoted since | is a shell metacharacter
+JSONNET_ERROR_TESTS = \
+	"tests/errors/selector_attributes_collision_test.libsonnet|collide" \
+	"tests/errors/selector_values_collision_test.libsonnet|collide"
+
+.PHONY: test-jsonnet-errors
+test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
+	@echo "Running jsonnet error tests..."
+	@for entry in $(JSONNET_ERROR_TESTS); do \
+		file=$${entry%%|*}; want=$${entry#*|}; \
+		if out=$$($(JSONNET_BIN) -J vendor $$file 2>&1); then \
+			echo "FAIL: $$file evaluated cleanly, expected an assert"; exit 1; \
+		fi; \
+		case "$$out" in \
+			*"$$want"*) echo "PASS: $$file asserts on collision" ;; \
+			*) echo "FAIL: $$file wrong error"; echo "  want: $$want"; echo "  got:  $$out"; exit 1 ;; \
+		esac; \
+	done
+	@echo "All error tests passed!"
