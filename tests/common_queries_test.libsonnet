@@ -12,6 +12,20 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
            'selector with config.customAttributes failed.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: selector merges config.customAttributes into the metric selector',
 
+  testSelectorAllowsRepeatedNegativeMatchersOnSameLabel:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ customAttributes: [
+        { label: 'env', operator: '!=', value: 'dev' },
+        { label: 'env', operator: '!=', value: 'staging' },
+      ] }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{env!="dev", env!="staging"}';
+    assert result == expected :
+           'selector rejected non-empty repeated negative matchers on the same label.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector allows repeated != matchers on the same label',
+
   testSelectorHandlesConfigMissingCustomAttributes:
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',

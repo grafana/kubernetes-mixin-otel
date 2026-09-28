@@ -205,7 +205,8 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 # file|expected error substring, quoted since | is a shell metacharacter
 JSONNET_ERROR_TESTS = \
 	"tests/errors/selector_attributes_collision_test.libsonnet|collide" \
-	"tests/errors/selector_values_collision_test.libsonnet|collide"
+	"tests/errors/selector_values_collision_test.libsonnet|collide" \
+	"tests/errors/selector_duplicate_custom_attributes_test.libsonnet|multiple = matchers"
 
 .PHONY: test-jsonnet-errors
 test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
@@ -216,7 +217,7 @@ test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
 			echo "FAIL: $$file evaluated cleanly, expected an assert"; exit 1; \
 		fi; \
 		case "$$out" in \
-			*"$$want"*) echo "PASS: $$file asserts on collision" ;; \
+			*"$$want"*) echo "PASS: $$file asserts with '$$want'" ;; \
 			*) echo "FAIL: $$file wrong error"; echo "  want: $$want"; echo "  got:  $$out"; exit 1 ;; \
 		esac; \
 	done

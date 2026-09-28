@@ -16,6 +16,9 @@ local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 // config.customAttributes.
 local selector(metric, values, attributes=[], config={ customAttributes: [] }) =
   local customAttributes = std.get(config, 'customAttributes', []);
+  local equalityLabels = [attribute.label for attribute in customAttributes if attribute.operator == tsqtsq.MatchingOperator.equal];
+  local duplicateLabels = [label for label in std.set(equalityLabels) if std.count(equalityLabels, label) > 1];
+  assert duplicateLabels == [] : 'customAttributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
   local existingLabels = std.objectFields(values) + [attribute.label for attribute in attributes];
   local collisions = [attribute.label for attribute in customAttributes if std.member(existingLabels, attribute.label)];
   assert collisions == [] : 'customAttributes label(s) %s collide with existing matchers on %s' % [collisions, metric];
