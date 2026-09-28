@@ -1,8 +1,6 @@
 local namespace = import '../dashboards/resources/queries/namespace.libsonnet';
 
-local config = {
-  customAttributes: [],
-};
+local config = (import '../config.libsonnet')._config;
 
 local configWithCustomAttributes = config {
   customAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
