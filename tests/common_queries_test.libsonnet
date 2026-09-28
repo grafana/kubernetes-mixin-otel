@@ -26,6 +26,20 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
            'selector rejected non-empty repeated negative matchers on the same label.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: selector allows repeated != matchers on the same label',
 
+  testSelectorAllowsRepeatedRegexMatchersOnSameLabel:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ customAttributes: [
+        { label: 'env', operator: '=~', value: 'prod.*' },
+        { label: 'env', operator: '=~', value: '.*eu' },
+      ] }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{env=~"prod.*", env=~".*eu"}';
+    assert result == expected :
+           'selector rejected repeated regex matchers on the same label.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector allows repeated =~ matchers on the same label',
+
   testSelectorHandlesConfigMissingCustomAttributes:
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',
