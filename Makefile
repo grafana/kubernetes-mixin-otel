@@ -206,7 +206,7 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 JSONNET_ERROR_TESTS = \
 	"tests/errors/selector_attributes_collision_test.libsonnet|collide" \
 	"tests/errors/selector_values_collision_test.libsonnet|collide" \
-	"tests/errors/selector_duplicate_custom_attributes_test.libsonnet|multiple = matchers"
+	"tests/errors/selector_duplicate_custom_attributes_test.libsonnet|customAttributes has multiple"
 
 .PHONY: test-jsonnet-errors
 test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
