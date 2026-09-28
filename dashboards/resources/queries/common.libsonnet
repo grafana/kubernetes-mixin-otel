@@ -11,17 +11,19 @@ local promql = tsqtsq.promql;
 local maxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'];
 local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 
+local resolveCustomAttributes(config) = std.get(std.get(config, 'custom', {}), 'attributes', []);
+
 // Metric selector: dashboard variable filters (regex-matched values) plus
 // optional extra attributes (e.g. direction="receive") and user-supplied
-// config.customAttributes.
-local selector(metric, values, attributes=[], config={ customAttributes: [] }) =
-  local customAttributes = std.get(config, 'customAttributes', []);
+// config.custom.attributes.
+local selector(metric, values, attributes=[], config) =
+  local customAttributes = resolveCustomAttributes(config);
   local equalityLabels = [attribute.label for attribute in customAttributes if attribute.operator == tsqtsq.MatchingOperator.equal];
   local duplicateLabels = [label for label in std.set(equalityLabels) if std.count(equalityLabels, label) > 1];
-  assert duplicateLabels == [] : 'customAttributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
+  assert duplicateLabels == [] : 'custom.attributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
   local existingLabels = std.objectFields(values) + [attribute.label for attribute in attributes];
   local collisions = [attribute.label for attribute in customAttributes if std.member(existingLabels, attribute.label)];
-  assert collisions == [] : 'customAttributes label(s) %s collide with existing matchers on %s' % [collisions, metric];
+  assert collisions == [] : 'custom.attributes label(s) %s collide with existing matchers on %s' % [collisions, metric];
   tsqtsq.Expression({
     metric: metric,
     values: values,
@@ -39,7 +41,7 @@ local clampMax(expr) =
 // Active pod filter (Pending=1 or Running=2), normalized to 1
 // pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
 // known issue here: https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36819
-local phaseActive(phaseValues, config={ customAttributes: [] }) =
+local phaseActive(phaseValues, config) =
   local phaseSelector = selector('k8s_pod_phase', phaseValues, config=config);
   clampMax(promql.max({
     by: podMaxBy,
@@ -50,7 +52,7 @@ local phaseActive(phaseValues, config={ customAttributes: [] }) =
   }));
 
 // Joins expr against the active-pod filter: expr * on (...) group_left() ...
-local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
+local activeOnly(expr, phaseValues, config) =
   promql.mul({
     left: expr,
     right: phaseActive(phaseValues, config),
@@ -60,32 +62,33 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
 
 {
   selector:: selector,
+  customAttributes:: resolveCustomAttributes,
 
-  metricSum(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
+  metricSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
       expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes, config) }),
     }),
 
-  rateSum(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
+  rateSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
       expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
-  rateSumPodLevel(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
+  rateSumPodLevel(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
       expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
-  rateAvg(metric, values, by=null, attributes=[], config={ customAttributes: [] })::
+  rateAvg(metric, values, by=null, attributes=[], config)::
     promql.avg({
       by: by,
       expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
     }),
 
-  ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config={ customAttributes: [] })::
+  ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config)::
     promql.sum({
       by: by,
       expr: promql.div({
@@ -94,7 +97,7 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       }),
     }),
 
-  ratioSumPodLevel(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config={ customAttributes: [] })::
+  ratioSumPodLevel(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config)::
     promql.sum({
       by: by,
       expr: promql.div({
@@ -106,7 +109,7 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       }),
     }),
 
-  differenceSum(metric1, metric2, values, by=null, config={ customAttributes: [] })::
+  differenceSum(metric1, metric2, values, by=null, config)::
     promql.sum({
       by: by,
       expr: promql.sub({
@@ -115,13 +118,13 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       }),
     }),
 
-  metricSumActiveOnly(metric, values, phaseValues, by=null, config={ customAttributes: [] })::
+  metricSumActiveOnly(metric, values, phaseValues, by=null, config)::
     promql.sum({
       by: by,
       expr: promql.max({ by: maxBy, expr: activeOnly(selector(metric, values, config=config), phaseValues, config) }),
     }),
 
-  ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config={ customAttributes: [] })::
+  ratioSumActiveOnly(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config)::
     promql.sum({
       by: by,
       expr: promql.div({
@@ -130,7 +133,7 @@ local activeOnly(expr, phaseValues, config={ customAttributes: [] }) =
       }),
     }),
 
-  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config={ customAttributes: [] })::
+  ratioSumActiveOnlyPodLevel(numeratorMetric, denominatorMetric, values, phaseValues, by=null, useRate=false, config)::
     promql.sum({
       by: by,
       expr: promql.div({

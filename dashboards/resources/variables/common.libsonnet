@@ -1,10 +1,9 @@
-local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local commonQueries = import '../queries/common.libsonnet';
+local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local var = g.dashboard.variable;
 
 local filteredMetric(metric, config) =
-  local customAttributes = std.get(config, 'customAttributes', []);
-  if customAttributes == [] then metric else commonQueries.selector(metric, {}, config=config);
+  if commonQueries.customAttributes(config) == [] then metric else commonQueries.selector(metric, {}, config=config);
 
 {
   datasource(config)::
@@ -20,7 +19,7 @@ local filteredMetric(metric, config) =
       },
     },
 
-  cluster(datasource, config={ customAttributes: [] })::
+  cluster(datasource, config)::
     var.query.new('cluster')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
@@ -41,8 +40,8 @@ local filteredMetric(metric, config) =
         value: '$__all',
       },
     },
-  
-  node(datasource, config={ customAttributes: [] })::
+
+  node(datasource, config)::
     var.query.new('node')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
@@ -64,7 +63,7 @@ local filteredMetric(metric, config) =
       },
     },
 
-  namespace(datasource, config={ customAttributes: [] })::
+  namespace(datasource, config)::
     var.query.new('namespace')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
@@ -86,7 +85,7 @@ local filteredMetric(metric, config) =
       },
     },
 
-  pod(datasource, config={ customAttributes: [] })::
+  pod(datasource, config)::
     var.query.new('pod')
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(

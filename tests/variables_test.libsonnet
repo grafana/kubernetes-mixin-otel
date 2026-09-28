@@ -3,7 +3,7 @@ local commonVariables = import '../dashboards/resources/variables/common.libsonn
 local config = (import '../config.libsonnet')._config;
 
 local configWithCustomAttributes = config {
-  customAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+  custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] },
 };
 
 local datasource = commonVariables.datasource(config);

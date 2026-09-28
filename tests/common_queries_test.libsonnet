@@ -5,21 +5,21 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',
       { k8s_cluster_name: '${cluster:pipe}' },
-      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
     );
     local expected = 'k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}"}';
     assert result == expected :
-           'selector with config.customAttributes failed.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: selector merges config.customAttributes into the metric selector',
+           'selector with config.custom.attributes failed.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector merges config.custom.attributes into the metric selector',
 
   testSelectorAllowsRepeatedNegativeMatchersOnSameLabel:
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',
       {},
-      config={ customAttributes: [
+      config={ custom: { attributes: [
         { label: 'env', operator: '!=', value: 'dev' },
         { label: 'env', operator: '!=', value: 'staging' },
-      ] }
+      ] } }
     );
     local expected = 'k8s_pod_cpu_time_seconds_total{env!="dev", env!="staging"}';
     assert result == expected :
@@ -30,10 +30,10 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     local result = common.selector(
       'k8s_pod_cpu_time_seconds_total',
       {},
-      config={ customAttributes: [
+      config={ custom: { attributes: [
         { label: 'env', operator: '=~', value: 'prod.*' },
         { label: 'env', operator: '=~', value: '.*eu' },
-      ] }
+      ] } }
     );
     local expected = 'k8s_pod_cpu_time_seconds_total{env=~"prod.*", env=~".*eu"}';
     assert result == expected :
@@ -48,14 +48,25 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     );
     local expected = 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}"}';
     assert result == expected :
-           'selector crashed or misbehaved when config has no customAttributes key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: selector defaults to no custom attributes when config lacks the key',
+           'selector crashed or misbehaved when config has no custom key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector defaults to no custom attributes when config lacks the custom key',
+
+  testSelectorHandlesCustomMissingAttributes:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      { k8s_cluster_name: '${cluster:pipe}' },
+      config={ custom: {} }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}"}';
+    assert result == expected :
+           'selector crashed or misbehaved when config.custom has no attributes key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector defaults to no custom attributes when config.custom lacks the attributes key',
 
   testRateAvgAppliesCustomAttributes:
     local result = common.rateAvg(
       'k8s_pod_cpu_time_seconds_total',
       {},
-      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
     );
     local expected = 'avg(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod"}[$__rate_interval])))';
     assert result == expected :
@@ -67,7 +78,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
       'metricA',
       'metricB',
       {},
-      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
     );
     local expected = 'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricA{env="prod"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricB{env="prod"}))';
     assert result == expected :
@@ -80,7 +91,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
       'metricB',
       {},
       {},
-      config={ customAttributes: [{ label: 'env', operator: '=', value: 'prod' }] }
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
     );
     assert std.length(std.findSubstr('env="prod"', result)) == 4 :
            'customAttributes not applied to numerator, denominator, and both active-phase join comparisons.\nGot:\n%s' % result;

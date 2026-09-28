@@ -4,5 +4,5 @@ common.selector(
   'k8s_pod_network_io_bytes_total',
   {},
   attributes=[{ label: 'direction', operator: '=', value: 'transmit' }],
-  config={ customAttributes: [{ label: 'direction', operator: '=', value: 'receive' }] }
+  config={ custom: { attributes: [{ label: 'direction', operator: '=', value: 'receive' }] } }
 )

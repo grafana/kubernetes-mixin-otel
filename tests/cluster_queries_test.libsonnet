@@ -3,18 +3,28 @@ local cluster = import '../dashboards/resources/queries/cluster.libsonnet';
 local config = (import '../config.libsonnet')._config;
 
 local configWithCustomAttributes = config {
-  customAttributes: [{ label: 'env', operator: '=', value: 'prod' }],
+  custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] },
 };
+
+local expectedCpuUsageByNamespace =
+  'sum(sum by (k8s_cluster_name, k8s_namespace_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}"}[$__rate_interval])))';
 
 local expectedMemoryUsageByNamespace =
   'sum by (k8s_cluster_name, k8s_namespace_name) (k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}"})';
 
 {
-  testCpuUsageByNamespaceUsesPipeForMultiValueCluster:
+  testCpuUsageByNamespace:
     local result = cluster.cpuUsageByNamespace(config);
-    assert std.length(std.findSubstr('${cluster:pipe}', result)) > 0 :
-           'cpuUsageByNamespace must use ${cluster:pipe} so a multi-select cluster variable interpolates as a valid regex alternation.\nGot:\n%s' % result;
-    'PASS: cpuUsageByNamespace uses ${cluster:pipe}',
+    assert result == expectedCpuUsageByNamespace :
+           'cpuUsageByNamespace failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedCpuUsageByNamespace, result];
+    'PASS: cpuUsageByNamespace',
+
+  testCustomAttributesOnCpuUsageByNamespace:
+    local result = cluster.cpuUsageByNamespace(configWithCustomAttributes);
+    local expected = 'sum(sum by (k8s_cluster_name, k8s_namespace_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}"}[$__rate_interval])))';
+    assert result == expected :
+           'customAttributes not applied to cpuUsageByNamespace.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to cpuUsageByNamespace',
 
   testMemoryUsageByNamespace:
     local result = cluster.memoryUsageByNamespace(config);
