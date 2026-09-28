@@ -18,6 +18,9 @@ local resolveCustomAttributes(config) = std.get(std.get(config, 'custom', {}), '
 // config.custom.attributes.
 local selector(metric, values, attributes=[], config) =
   local customAttributes = resolveCustomAttributes(config);
+  local validOperators = std.objectValues(tsqtsq.MatchingOperator);
+  local invalidOperators = std.set([attribute.operator for attribute in customAttributes if !std.member(validOperators, attribute.operator)]);
+  assert invalidOperators == [] : 'custom.attributes has invalid operator(s) %s on %s, expected one of %s' % [invalidOperators, metric, validOperators];
   local equalityLabels = [attribute.label for attribute in customAttributes if attribute.operator == tsqtsq.MatchingOperator.equal];
   local duplicateLabels = [label for label in std.set(equalityLabels) if std.count(equalityLabels, label) > 1];
   assert duplicateLabels == [] : 'custom.attributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
@@ -67,25 +70,25 @@ local activeOnly(expr, phaseValues, config) =
   metricSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes, config) }),
+      expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes, config=config) }),
     }),
 
   rateSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config=config) }) }),
     }),
 
   rateSumPodLevel(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
-      expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
+      expr: promql.max({ by: podMaxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config=config) }) }),
     }),
 
   rateAvg(metric, values, by=null, attributes=[], config)::
     promql.avg({
       by: by,
-      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config) }) }),
+      expr: promql.max({ by: maxBy, expr: promql.rate({ expr: selector(metric, values, attributes, config=config) }) }),
     }),
 
   ratioSum(numeratorMetric, denominatorMetric, values, by=null, useRate=false, config)::
