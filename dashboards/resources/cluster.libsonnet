@@ -28,7 +28,8 @@ local fixJoinByField(transformation) =
   else transformation;
 
 {
-  local dashboard = merged($._config).grafanaDashboards['k8s-resources-cluster.json'],
+  local config = if std.objectHasAll($, '_config') then $._config else (import '../../config.libsonnet')._config,
+  local dashboard = merged(config).grafanaDashboards['k8s-resources-cluster.json'],
   grafanaDashboards+:: {
     'k8s-resources-cluster.json': dashboard {
       panels: [

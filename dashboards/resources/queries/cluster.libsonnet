@@ -18,7 +18,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
       expr: promql.sum({
         by: clusterBy,
         expr: promql.rate({
-          expr: b.selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster}' }, config=config),
+          expr: b.selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster:pipe}' }, config=config),
         }),
       }),
     }),

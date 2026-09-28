@@ -17,7 +17,8 @@ local merged(config) = {
 } + k8sMixinPod;
 
 {
-  local dashboard = merged($._config).grafanaDashboards['k8s-resources-pod.json'],
+  local config = if std.objectHasAll($, '_config') then $._config else (import '../../config.libsonnet')._config,
+  local dashboard = merged(config).grafanaDashboards['k8s-resources-pod.json'],
   grafanaDashboards+:: {
     'k8s-resources-pod.json': dashboard {
       panels: [

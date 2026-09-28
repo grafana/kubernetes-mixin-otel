@@ -27,7 +27,8 @@ local updateTransformations(transformations) =
   ];
 
 {
-  local dashboard = merged($._config).grafanaDashboards['k8s-resources-namespace.json'],
+  local config = if std.objectHasAll($, '_config') then $._config else (import '../../config.libsonnet')._config,
+  local dashboard = merged(config).grafanaDashboards['k8s-resources-namespace.json'],
   grafanaDashboards+:: {
     'k8s-resources-namespace.json': dashboard {
       panels: [
