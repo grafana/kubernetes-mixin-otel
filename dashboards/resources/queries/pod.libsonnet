@@ -1,5 +1,5 @@
 // queries path must match the path in the kubernetes-mixin template
-local b = import './common.libsonnet';
+local commonQueries = import './common.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 // Dashboard variable filters, applied as regex matchers to every query.
@@ -16,68 +16,68 @@ local direction(value) = [
 {
   // CPU Queries
   cpuUsageByContainer(config)::
-    b.rateSum('k8s_pod_cpu_time_seconds_total', values, by=['k8s_container_name'], config=config),
+    commonQueries.rateSum('k8s_pod_cpu_time_seconds_total', values, by=['k8s_container_name'], config=config),
 
   cpuRequests(config)::
-    b.metricSum('k8s_container_cpu_request', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_container_cpu_request', values, by=['k8s_pod_name'], config=config),
 
   cpuLimits(config)::
-    b.metricSum('k8s_container_cpu_limit', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_container_cpu_limit', values, by=['k8s_pod_name'], config=config),
 
   cpuThrottling(config)::
     '0',
 
   // CPU Quota Table Queries
   cpuRequestsByContainer(config)::
-    b.metricSum('k8s_container_cpu_request', values, by=['k8s_container_name'], config=config),
+    commonQueries.metricSum('k8s_container_cpu_request', values, by=['k8s_container_name'], config=config),
 
   cpuUsageVsRequests(config)::
-    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, by=['k8s_pod_name'], useRate=true, config=config),
+    commonQueries.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_request', values, by=['k8s_pod_name'], useRate=true, config=config),
 
   cpuLimitsByContainer(config)::
-    b.metricSum('k8s_container_cpu_limit', values, by=['k8s_container_name'], config=config),
+    commonQueries.metricSum('k8s_container_cpu_limit', values, by=['k8s_container_name'], config=config),
 
   cpuUsageVsLimits(config)::
-    b.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, by=['k8s_pod_name'], useRate=true, config=config),
+    commonQueries.ratioSumPodLevel('k8s_pod_cpu_time_seconds_total', 'k8s_container_cpu_limit', values, by=['k8s_pod_name'], useRate=true, config=config),
 
   // Memory Queries
   memoryUsageWSS(config)::
-    b.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryRequests(config)::
-    b.metricSum('k8s_container_memory_request_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_container_memory_request_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryLimits(config)::
-    b.metricSum('k8s_container_memory_limit_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_container_memory_limit_bytes', values, by=['k8s_pod_name'], config=config),
 
   // Memory Quota Table Queries
   memoryRequestsByContainer(config)::
-    b.metricSum('k8s_container_memory_request_bytes', values, by=['k8s_container_name'], config=config),
+    commonQueries.metricSum('k8s_container_memory_request_bytes', values, by=['k8s_container_name'], config=config),
 
   memoryUsageVsRequests(config)::
-    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_request_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryLimitsByContainer(config)::
-    b.metricSum('k8s_container_memory_limit_bytes', values, by=['k8s_container_name'], config=config),
+    commonQueries.metricSum('k8s_container_memory_limit_bytes', values, by=['k8s_container_name'], config=config),
 
   memoryUsageVsLimits(config)::
-    b.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageRSS(config)::
-    b.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageCache(config)::
-    b.differenceSum('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.differenceSum('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageSwap(config)::
     '0',
 
   // Network Queries
   networkReceiveBandwidth(config)::
-    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
+    commonQueries.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidth(config)::
-    b.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
+    commonQueries.rateSum('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   networkReceivePackets(config)::
     '0',
@@ -86,10 +86,10 @@ local direction(value) = [
     '0',
 
   networkReceivePacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
+    commonQueries.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitPacketsDropped(config)::
-    b.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
+    commonQueries.rateSum('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   // Storage Queries - Pod Level
   iopsPodReads(config)::

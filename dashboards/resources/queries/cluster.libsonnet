@@ -1,5 +1,5 @@
 // queries path must match the path in the kubernetes-mixin template
-local b = import './common.libsonnet';
+local commonQueries = import './common.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
@@ -18,7 +18,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
       expr: promql.sum({
         by: clusterBy,
         expr: promql.rate({
-          expr: b.selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster:pipe}' }, config=config),
+          expr: commonQueries.selector('k8s_pod_cpu_time_seconds_total', { k8s_cluster_name: '${cluster:pipe}' }, config=config),
         }),
       }),
     }),
@@ -39,7 +39,7 @@ local clusterBy = ['k8s_cluster_name', 'k8s_namespace_name'];
   memoryUsageByNamespace(config)::
     promql.sum({
       by: clusterBy,
-      expr: b.selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }, config=config),
+      expr: commonQueries.selector('k8s_container_memory_request_bytes', { k8s_cluster_name: '${cluster:pipe}' }, config=config),
     }),
 
   memoryRequestsByNamespace(config):: '0',
