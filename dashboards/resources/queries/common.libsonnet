@@ -57,6 +57,12 @@ local activeOnly(expr, phaseValues) =
       expr: promql.max({ by: maxBy, expr: selector(metric, values, selectors) }),
     }),
 
+  metricSumPodLevel(metric, values, by=null, selectors=[])::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: podMaxBy, expr: selector(metric, values, selectors) }),
+    }),
+
   rateSum(metric, values, by=null, selectors=[])::
     promql.sum({
       by: by,
