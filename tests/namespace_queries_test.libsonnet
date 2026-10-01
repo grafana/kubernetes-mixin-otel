@@ -10,6 +10,9 @@ local expectedCpuUsageByPod =
 local expectedMemoryUsageByPod =
   'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}))';
 
+local expectedMemoryUsageRSS =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_rss_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}))';
+
 local expectedCpuUtilisationFromRequests =
   'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"}[$__rate_interval])) / sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_cpu_request{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}"})))';
 
@@ -28,6 +31,12 @@ local expectedMemoryUtilisationFromRequests =
     assert result == expectedMemoryUsageByPod :
            'memoryUsageByPod failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUsageByPod, result];
     'PASS: memoryUsageByPod',
+
+  testMemoryUsageRSS:
+    local result = namespace.memoryUsageRSS(config);
+    assert result == expectedMemoryUsageRSS :
+           'memoryUsageRSS failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUsageRSS, result];
+    'PASS: memoryUsageRSS',
 
   testCpuUtilisationFromRequests:
     local result = namespace.cpuUtilisationFromRequests(config);

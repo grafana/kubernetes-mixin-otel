@@ -10,7 +10,34 @@ local expectedWithRate =
 local expectedWithoutRate =
   'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}) / sum by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (k8s_container_memory_request_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"})))';
 
+local expectedMemoryUsageWSS =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_working_set_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
+
+local expectedMemoryUsageRSS =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_rss_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
+
+local expectedMemoryUsageCache =
+  'sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_usage_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}) - max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (k8s_pod_memory_rss_bytes{k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}))';
+
 {
+  testMemoryUsageWSS:
+    local result = pod.memoryUsageWSS(config);
+    assert result == expectedMemoryUsageWSS :
+           'memoryUsageWSS failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUsageWSS, result];
+    'PASS: memoryUsageWSS',
+
+  testMemoryUsageRSS:
+    local result = pod.memoryUsageRSS(config);
+    assert result == expectedMemoryUsageRSS :
+           'memoryUsageRSS failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUsageRSS, result];
+    'PASS: memoryUsageRSS',
+
+  testMemoryUsageCache:
+    local result = pod.memoryUsageCache(config);
+    assert result == expectedMemoryUsageCache :
+           'memoryUsageCache failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedMemoryUsageCache, result];
+    'PASS: memoryUsageCache',
+
   testRatioWithRate:
     local result = pod.cpuUsageVsRequests(config);
     assert result == expectedWithRate :

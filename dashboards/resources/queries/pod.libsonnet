@@ -67,7 +67,7 @@ local direction(value) = [
     b.metricSumPodLevel('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name']),
 
   memoryUsageCache(config)::
-    b.differenceSum('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name']),
+    b.differenceSumPodLevel('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name']),
 
   memoryUsageSwap(config)::
     '0',

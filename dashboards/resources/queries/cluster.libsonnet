@@ -1,7 +1,6 @@
 // queries path must match the path in the kubernetes-mixin template
 local b = import './common.libsonnet';
 
-// Dashboard variable filters, applied as regex matchers to every query.
 local values = {
   k8s_cluster_name: '${cluster:pipe}',
 };
