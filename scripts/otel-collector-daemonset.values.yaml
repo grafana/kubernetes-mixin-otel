@@ -63,7 +63,7 @@ config:
       limit_mib: 160 # 80% of 200Mi limit
       spike_limit_mib: 32 # 20% of limit_mib
 
-    k8sattributes:
+    k8s_attributes:
       extract:
         otel_annotations: true
 
@@ -90,12 +90,12 @@ config:
     batch: {}
 
   exporters:
-    otlphttp/metrics:
+    otlp_http/metrics:
       endpoint: http://lgtm:9090/api/v1/otlp
       tls:
         insecure: true
 
-    otlphttp/lgtm:
+    otlp_http/lgtm:
       endpoint: http://lgtm:4318
       tls:
         insecure: true
@@ -110,9 +110,9 @@ config:
 
     pipelines:
       logs:
-        receivers: [filelog]
-        processors: [memory_limiter, k8sattributes, resource/k8sclustername, batch]
-        exporters: [otlphttp/lgtm]
+        receivers: [file_log]
+        processors: [memory_limiter, k8s_attributes, resource/k8sclustername, batch]
+        exporters: [otlp_http/lgtm]
 
       metrics:
         # Runs on every node, so resourcedetection is authoritative here and runs before the k8s attrs.
@@ -120,13 +120,13 @@ config:
         processors: [
           memory_limiter,
           resourcedetection,
-          k8sattributes,
+          k8s_attributes,
           resource/k8sclustername,
           resource/hostname,
           transform/copy_node_name,
           batch,
         ]
-        exporters: [otlphttp/metrics, prometheus]
+        exporters: [otlp_http/metrics, prometheus]
 
 ports:
   prometheus:
