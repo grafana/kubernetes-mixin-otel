@@ -47,7 +47,7 @@ cAdvisor-specific and require the cAdvisor endpoint.
 | Prometheus metric | OTel receiver metric | OTel semconv metric | Notes |
 |-------------------|---------------------|---------------------|-------|
 | `container_memory_working_set_bytes` | `container.memory.working_set` | _(not in k8s semconv)_ | Direct equivalent at container scope |
-| `container_memory_rss` | `container.memory.rss` | `k8s.pod.memory.rss` (pod level) | Available per container in receiver |
+| `container_memory_rss` | `container.memory.rss` | `k8s.pod.memory.rss` (pod level) | Available per container in receiver. Upstream mixin uses this for `memoryUsageByNamespace`; this mixin uses `k8s.pod.memory.working_set` for consistency with its own pod/namespace usage queries |
 | `container_memory_cache` | _(not exposed)_ | _(not defined)_ | cAdvisor-only; no equivalent in kubeletstatsreceiver |
 | `container_memory_swap` | _(not exposed)_ | _(not defined)_ | cAdvisor-only; no equivalent |
 
