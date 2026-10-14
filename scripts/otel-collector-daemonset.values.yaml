@@ -2,6 +2,15 @@ mode: daemonset
 
 image:
   repository: otel/opentelemetry-collector-contrib
+  tag: "0.153.0"
+
+resources:
+  limits:
+    memory: 200Mi
+    cpu: 200m
+  requests:
+    memory: 100Mi
+    cpu: 50m
 
 presets:
   kubernetesAttributes:
@@ -12,6 +21,10 @@ presets:
 
   hostMetrics:
     enabled: true
+
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
 
 config:
   receivers:
@@ -38,12 +51,17 @@ config:
 
   processors:
     transform/copy_node_name:
-    # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
+      # workaround for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
       metric_statements:
         - context: datapoint
           statements:
             - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
             - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 160 # 80% of 200Mi limit
+      spike_limit_mib: 32 # 20% of limit_mib
 
     k8sattributes:
       extract:
@@ -65,7 +83,7 @@ config:
           from_attribute: k8s.node.name
 
     resourcedetection:
-      detectors: [system]
+      detectors: [gcp, system]
       timeout: 2s
       override: true
 
@@ -77,6 +95,11 @@ config:
       tls:
         insecure: true
 
+    otlphttp/lgtm:
+      endpoint: http://lgtm:4318
+      tls:
+        insecure: true
+
     prometheus:
       endpoint: "0.0.0.0:8889"
       resource_to_telemetry_conversion:
@@ -84,11 +107,18 @@ config:
 
   service:
     extensions: [health_check]
-    
+
     pipelines:
+      logs:
+        receivers: [filelog]
+        processors: [memory_limiter, k8sattributes, resource/k8sclustername, batch]
+        exporters: [otlphttp/lgtm]
+
       metrics:
+        # Runs on every node, so resourcedetection is authoritative here and runs before the k8s attrs.
         receivers: [otlp, hostmetrics]
         processors: [
+          memory_limiter,
           resourcedetection,
           k8sattributes,
           resource/k8sclustername,

@@ -42,7 +42,7 @@ local direction(value) = [
 
   // Memory Queries
   memoryUsageWSS(config)::
-    commonQueries.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSumPodLevel('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryRequests(config)::
     commonQueries.metricSum('k8s_container_memory_request_bytes', values, by=['k8s_pod_name'], config=config),
@@ -64,10 +64,10 @@ local direction(value) = [
     commonQueries.ratioSumPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageRSS(config)::
-    commonQueries.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSumPodLevel('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageCache(config)::
-    commonQueries.differenceSum('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.differenceSumPodLevel('k8s_pod_memory_usage_bytes', 'k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageSwap(config)::
     '0',

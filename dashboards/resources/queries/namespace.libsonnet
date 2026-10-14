@@ -52,7 +52,7 @@ local direction(value) = [
 
   // Memory Usage TimeSeries Queries
   memoryUsageByPod(config)::
-    commonQueries.metricSum('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSumPodLevel('k8s_pod_memory_working_set_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryQuotaRequests(config)::
     '0',
@@ -74,7 +74,7 @@ local direction(value) = [
     commonQueries.ratioSumActiveOnlyPodLevel('k8s_pod_memory_working_set_bytes', 'k8s_container_memory_limit_bytes', values, values, by=['k8s_pod_name'], config=config),
 
   memoryUsageRSS(config)::
-    commonQueries.metricSum('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
+    commonQueries.metricSumPodLevel('k8s_pod_memory_rss_bytes', values, by=['k8s_pod_name'], config=config),
 
   memoryUsageCache(config)::
     '0',

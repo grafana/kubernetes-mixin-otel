@@ -1,8 +1,22 @@
 mode: deployment
 replicaCount: 1
 
+# Single-node test cluster can't fit a surge pod; recreate the old pod before the new.
+rollout:
+  strategy: Recreate
+
 image:
   repository: otel/opentelemetry-collector-contrib
+  tag: "0.153.0"
+
+resources:
+  # Runs heavier than the daemonset (k8s_cluster + k8sobjects), so it requests 150Mi not 100Mi.
+  limits:
+    memory: 200Mi
+    cpu: 200m
+  requests:
+    memory: 150Mi
+    cpu: 50m
 
 presets:
   kubernetesAttributes:
@@ -20,14 +34,29 @@ config:
         http:
           endpoint: 0.0.0.0:4318
 
+    k8s_cluster:
+      metrics:
+        k8s.container.status.reason:
+          enabled: true
+
+    k8sobjects:
+      objects:
+        - name: events
+          mode: watch
+
   processors:
     transform/copy_node_name:
-    # workaround waiting for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
+      # workaround for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
       metric_statements:
         - context: datapoint
           statements:
             - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
             - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 160 # 80% of 200Mi limit
+      spike_limit_mib: 32 # 20% of limit_mib
 
     k8sattributes:
       extract:
@@ -45,11 +74,23 @@ config:
           action: upsert
           from_attribute: k8s.node.name
 
+    resource/eventservicename:
+      # Label k8sobjects events so the frontend's service_name selector matches them.
+      attributes:
+        - key: service.name
+          action: upsert
+          value: integrations/kubernetes/eventhandler
+
     batch: {}
 
   exporters:
     otlphttp/metrics:
       endpoint: http://lgtm:9090/api/v1/otlp
+      tls:
+        insecure: true
+
+    otlphttp/lgtm:
+      endpoint: http://lgtm:4318
       tls:
         insecure: true
 
@@ -60,11 +101,26 @@ config:
 
   service:
     extensions: [health_check]
-    
+
     pipelines:
-      metrics:
+      logs:
         receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, resource/k8sclustername, batch]
+        exporters: [otlphttp/lgtm]
+      logs/events:
+        # Separate pipeline so service.name is stamped on events only, not OTLP app logs.
+        receivers: [k8sobjects]
+        processors: [memory_limiter, k8sattributes, resource/k8sclustername, resource/eventservicename, batch]
+        exporters: [otlphttp/lgtm]
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, k8sattributes, resource/k8sclustername, batch]
+        exporters: [otlphttp/lgtm]
+      metrics:
+        # Processor order matters: data flows through processors in the order listed.
+        receivers: [otlp, k8s_cluster]
         processors: [
+          memory_limiter,
           k8sattributes,
           resource/k8sclustername,
           resource/hostname,

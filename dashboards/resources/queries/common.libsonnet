@@ -2,8 +2,8 @@
 // jsonnet library (the same PromQL query API as the TypeScript tsqtsq).
 //
 // The helpers here encode this mixin's conventions -- OTel semantic
-// convention labels, and de-duplication of series via max by the container
-// identity labels -- expressed through the shared tsqtsq primitives.
+// convention labels, and de-duplication of series via max by the container or
+// pod identity labels -- expressed through the shared tsqtsq primitives.
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
@@ -73,6 +73,12 @@ local activeOnly(expr, phaseValues, config) =
       expr: promql.max({ by: maxBy, expr: selector(metric, values, attributes, config=config) }),
     }),
 
+  metricSumPodLevel(metric, values, by=null, attributes=[], config)::
+    promql.sum({
+      by: by,
+      expr: promql.max({ by: podMaxBy, expr: selector(metric, values, attributes, config=config) }),
+    }),
+
   rateSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,
@@ -118,6 +124,15 @@ local activeOnly(expr, phaseValues, config) =
       expr: promql.sub({
         left: promql.max({ by: maxBy, expr: selector(metric1, values, config=config) }),
         right: promql.max({ by: maxBy, expr: selector(metric2, values, config=config) }),
+      }),
+    }),
+
+  differenceSumPodLevel(metric1, metric2, values, by=null, config)::
+    promql.sum({
+      by: by,
+      expr: promql.sub({
+        left: promql.max({ by: podMaxBy, expr: selector(metric1, values, config=config) }),
+        right: promql.max({ by: podMaxBy, expr: selector(metric2, values, config=config) }),
       }),
     }),
 
