@@ -9,26 +9,35 @@ JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
 JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
 TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN)
 
-# OS/ARCH detection for the dashboard-linter precompiled release.
-DASHBOARD_LINTER_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-DASHBOARD_LINTER_RAW_ARCH := $(shell uname -m)
-ifeq ($(DASHBOARD_LINTER_RAW_ARCH),x86_64)
-DASHBOARD_LINTER_ARCH := amd64
-else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),aarch64)
-DASHBOARD_LINTER_ARCH := arm64
-else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),arm64)
-DASHBOARD_LINTER_ARCH := arm64
+# OS/ARCH detection for the precompiled tool releases (dashboard-linter, promtool).
+HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+HOST_RAW_ARCH := $(shell uname -m)
+ifeq ($(HOST_RAW_ARCH),x86_64)
+HOST_ARCH := amd64
+else ifeq ($(HOST_RAW_ARCH),aarch64)
+HOST_ARCH := arm64
+else ifeq ($(HOST_RAW_ARCH),arm64)
+HOST_ARCH := arm64
 else
-DASHBOARD_LINTER_ARCH := $(DASHBOARD_LINTER_RAW_ARCH)
+HOST_ARCH := $(HOST_RAW_ARCH)
 endif
-DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH).tar.gz
+DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(HOST_OS)_$(HOST_ARCH).tar.gz
 DASHBOARD_LINTER_BASE_URL := https://github.com/grafana/dashboard-linter/releases/download/v$(GRAFANA_DASHBOARD_LINTER_VERSION)
+
+PROMTOOL_BIN=$(BIN_DIR)/promtool
+PROMETHEUS_VERSION ?= 3.14.0
+PROMETHEUS_TARBALL := prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH).tar.gz
+PROMETHEUS_BASE_URL := https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)
+
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
 SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
+ALERTS_SRC_DIR ?=alerts
+RULES_OUT_DIR ?=rules_out
 
 # Find all libsonnet files recursively in the dashboards directory
 DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
+ALERT_SOURCES = $(shell find $(ALERTS_SRC_DIR) -name '*.libsonnet')
 
 .PHONY: dev
 dev: generate lint
@@ -136,8 +145,12 @@ clean-dashboards:
 	rm -f $(OUT_DIR)/*.json*
 	rm -f $(OUT_DIR)/.dashboards-generated
 
+.PHONY: clean-rules
+clean-rules:
+	rm -f $(RULES_OUT_DIR)/prometheus_alerts.yaml
+
 .PHONY: generate
-generate: $(OUT_DIR)/.dashboards-generated
+generate: $(OUT_DIR)/.dashboards-generated $(RULES_OUT_DIR)/prometheus_alerts.yaml
 
 $(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
 	$(JB_BIN) install
@@ -152,12 +165,24 @@ $(TOOLING): $(BIN_DIR)
 # Install dashboard-linter from the precompiled release (upstream-recommended path).
 # Verifies the archive against the published checksums.txt before extracting.
 $(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
-	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH))"
+	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
 	@tmp=$$(mktemp -d) && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/$(DASHBOARD_LINTER_TARBALL)" -o "$$tmp/$(DASHBOARD_LINTER_TARBALL)" && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/checksums.txt" -o "$$tmp/checksums.txt" && \
 		(cd "$$tmp" && grep " $(DASHBOARD_LINTER_TARBALL)$$" checksums.txt | shasum -a 256 -c -) && \
 		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C $(BIN_DIR) dashboard-linter && \
+		rm -rf "$$tmp"
+
+# Install promtool from the precompiled Prometheus release.
+# Verifies the archive against the published sha256sums.txt before extracting.
+$(PROMTOOL_BIN): $(BIN_DIR)
+	@echo "Installing promtool v$(PROMETHEUS_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
+	@tmp=$$(mktemp -d) && \
+		curl -sSfL "$(PROMETHEUS_BASE_URL)/$(PROMETHEUS_TARBALL)" -o "$$tmp/$(PROMETHEUS_TARBALL)" && \
+		curl -sSfL "$(PROMETHEUS_BASE_URL)/sha256sums.txt" -o "$$tmp/sha256sums.txt" && \
+		(cd "$$tmp" && grep " $(PROMETHEUS_TARBALL)$$" sha256sums.txt | shasum -a 256 -c -) && \
+		tar -xzf "$$tmp/$(PROMETHEUS_TARBALL)" -C $(BIN_DIR) --strip-components=1 \
+			prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH)/promtool && \
 		rm -rf "$$tmp"
 
 .PHONY: fmt
@@ -172,6 +197,10 @@ $(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonn
 	@mkdir -p $(OUT_DIR)
 	@$(JSONNET_BIN) -J vendor -m $(OUT_DIR) lib/dashboards.jsonnet
 	@touch $@
+
+$(RULES_OUT_DIR)/prometheus_alerts.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet config.libsonnet lib/alerts.jsonnet $(ALERT_SOURCES)
+	@mkdir -p $(RULES_OUT_DIR)
+	@$(JSONNET_BIN) -J vendor -S -m $(RULES_OUT_DIR) lib/alerts.jsonnet
 
 .PHONY: lint
 lint: jsonnet-lint dashboards-lint
@@ -191,10 +220,17 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
 
 .PHONY: test
-test: test-jsonnet
+test: test-jsonnet test-alerts
 
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 	@echo "Running jsonnet query tests..."
 	@for t in tests/*_test.libsonnet; do $(JSONNET_BIN) -J vendor $$t || exit 1; done
 	@echo "All tests passed!"
+
+.PHONY: test-alerts
+test-alerts: $(PROMTOOL_BIN) $(RULES_OUT_DIR)/prometheus_alerts.yaml
+	@echo "Checking alert rules..."
+	@$(PROMTOOL_BIN) check rules $(RULES_OUT_DIR)/prometheus_alerts.yaml
+	@echo "Running alert unit tests..."
+	@for t in tests/*-test.yaml; do $(PROMTOOL_BIN) test rules $$t || exit 1; done
