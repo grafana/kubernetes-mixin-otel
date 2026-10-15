@@ -204,8 +204,8 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 
 # file|expected error substring, quoted since | is a shell metacharacter
 JSONNET_ERROR_TESTS = \
-	"tests/errors/selector_attributes_collision_test.libsonnet|collide" \
-	"tests/errors/selector_values_collision_test.libsonnet|collide" \
+	"tests/errors/selector_attributes_collision_test.libsonnet|already matched by a query attribute" \
+	"tests/errors/selector_values_collision_test.libsonnet|already matched by a dashboard variable" \
 	"tests/errors/selector_duplicate_custom_attributes_test.libsonnet|custom.attributes has multiple" \
 	"tests/errors/selector_invalid_operator_test.libsonnet|invalid operator"
 

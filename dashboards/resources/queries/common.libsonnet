@@ -24,9 +24,12 @@ local selector(metric, values, attributes=[], config) =
   local equalityLabels = [attribute.label for attribute in customAttributes if attribute.operator == tsqtsq.MatchingOperator.equal];
   local duplicateLabels = [label for label in std.set(equalityLabels) if std.count(equalityLabels, label) > 1];
   assert duplicateLabels == [] : 'custom.attributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
-  local existingLabels = std.objectFields(values) + [attribute.label for attribute in attributes];
-  local collisions = [attribute.label for attribute in customAttributes if std.member(existingLabels, attribute.label)];
-  assert collisions == [] : 'custom.attributes label(s) %s collide with existing matchers on %s' % [collisions, metric];
+  local variableLabels = std.objectFields(values);
+  local attributeLabels = [attribute.label for attribute in attributes];
+  local variableCollisions = [attribute.label for attribute in customAttributes if std.member(variableLabels, attribute.label)];
+  assert variableCollisions == [] : 'custom.attributes label(s) %s are already matched by a dashboard variable on %s; the variable wins and the custom matcher would be discarded' % [variableCollisions, metric];
+  local attributeCollisions = [attribute.label for attribute in customAttributes if std.member(attributeLabels, attribute.label)];
+  assert attributeCollisions == [] : 'custom.attributes label(s) %s are already matched by a query attribute on %s' % [attributeCollisions, metric];
   tsqtsq.Expression({
     metric: metric,
     values: values,
