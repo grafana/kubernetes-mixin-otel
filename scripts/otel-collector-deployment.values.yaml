@@ -39,7 +39,7 @@ config:
         k8s.container.status.reason:
           enabled: true
 
-    k8sobjects:
+    k8s_objects:
       objects:
         - name: events
           mode: watch
