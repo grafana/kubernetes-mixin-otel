@@ -109,7 +109,7 @@ config:
         exporters: [otlp_http/lgtm]
       logs/events:
         # Separate pipeline so service.name is stamped on events only, not OTLP app logs.
-        receivers: [k8sobjects]
+        receivers: [k8s_objects]
         processors: [memory_limiter, k8s_attributes, resource/k8sclustername, resource/eventservicename, batch]
         exporters: [otlp_http/lgtm]
       traces:
