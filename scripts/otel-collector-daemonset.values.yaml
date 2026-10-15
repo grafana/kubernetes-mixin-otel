@@ -116,7 +116,7 @@ config:
 
       metrics:
         # Runs on every node, so resourcedetection is authoritative here and runs before the k8s attrs.
-        receivers: [otlp, hostmetrics]
+        receivers: [otlp, host_metrics]
         processors: [
           memory_limiter,
           resourcedetection,
