@@ -34,7 +34,7 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-    hostmetrics:
+    host_metrics:
       scrapers:
         cpu:
           metrics:
