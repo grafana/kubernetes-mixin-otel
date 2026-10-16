@@ -1,4 +1,4 @@
-module github.com/grafana/opentelemetry-mixin/kwok-hostmetrics-faker
+module github.com/grafana/kubernetes-mixin-otel/kwok-hostmetrics-faker
 
 go 1.26.0
 
