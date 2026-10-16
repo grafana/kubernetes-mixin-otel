@@ -1,4 +1,4 @@
-module github.com/grafana/opentelemetry-mixin/kwok-stats-proxy
+module github.com/grafana/kubernetes-mixin-otel/kwok-stats-proxy
 
 go 1.27.0
 

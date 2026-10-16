@@ -58,18 +58,18 @@ make kwok-down
 
 ## Configuration
 
-Override `_config` when importing `mixin.libsonnet`:
+Install with `jb install github.com/grafana/kubernetes-mixin-otel`, then override `_config` when importing `mixin.libsonnet`:
 
 ```jsonnet
-local mixin = import 'github.com/grafana/opentelemetry-mixin/mixin.libsonnet';
+local mixin = import 'github.com/grafana/kubernetes-mixin-otel/mixin.libsonnet';
 
-mixin {
+(mixin {
   _config+:: {
     custom+: {
       attributes: [{ label: 'env', operator: '=', value: 'prod' }],
     },
   },
-}
+}).grafanaDashboards
 ```
 
 `custom.attributes` — `{label, operator, value}` matchers added to every query's label selectors. The label must not be one the query already matches — a dashboard variable such as `k8s_namespace_name`, or a query-specific attribute such as `direction`; that fails the build.
