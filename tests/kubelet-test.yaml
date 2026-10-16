@@ -1,0 +1,37 @@
+rule_files:
+  - ../rules_out/prometheus_alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'k8s_node_condition_disk_pressure{host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp",k8s_cluster_name="otel-receivers-only",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_pid_pressure{host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq",k8s_cluster_name="otel-receivers-only",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_memory_pressure{host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-p7dx",k8s_cluster_name="otel-receivers-only",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-p7dx"}'
+        values: '0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: KubeNodePressure
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: KubeNodePressure
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp
+            exp_annotations:
+              summary: 'Node has an active pressure Condition.'
+              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp has an active MemoryPressure, DiskPressure, or PIDPressure Condition. This is caused by resource usage exceeding eviction thresholds.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq
+            exp_annotations:
+              summary: 'Node has an active pressure Condition.'
+              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq has an active MemoryPressure, DiskPressure, or PIDPressure Condition. This is caused by resource usage exceeding eviction thresholds.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
