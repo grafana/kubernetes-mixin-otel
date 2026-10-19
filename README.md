@@ -72,9 +72,13 @@ local mixin = import 'github.com/grafana/kubernetes-mixin-otel/mixin.libsonnet';
 }).grafanaDashboards
 ```
 
-`custom.attributes` — `{label, operator, value}` matchers added to every query's label selectors. The label must not be one the query already matches — a dashboard variable such as `k8s_namespace_name`, or a query-specific attribute such as `direction`; that fails the build.
+Use `.prometheusAlerts` for the alert rules.
+
+`custom.attributes` — `{label, operator, value}` matchers added to the label selectors of every panel query, variable dropdown query and alert rule. The label must not be one the query already matches — a dashboard variable such as `k8s_namespace_name`, or a query-specific attribute such as `direction`; that fails the build.
 
 Only use an attribute present on metrics from **both** the daemonset and deployment collector pipelines. Some panels (e.g. usage-vs-requests ratios) join a metric from each; if the attribute is missing on one side, that side returns no data and the whole panel goes blank.
+
+Alerts fail more quietly. `k8s_node_condition_*` comes only from the deployment pipeline, so an attribute missing there leaves the node condition alerts permanently silent with nothing visibly broken.
 
 ## Architecture
 
