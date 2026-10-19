@@ -105,10 +105,12 @@ tests:
               description: 'node-all-conditions has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
               runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepidpressure'
 
-  # Ready condition: False fires, Unknown (-1) does not, True never fires
+  # Ready condition: False (0) and Unknown (-1) both fire, True (1) never does
   - interval: 1m
     input_series:
       - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-not-ready"}'
+        values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'k8s_node_condition_ready{host_name="collector-b",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-not-ready"}'
         values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
       - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-unknown"}'
         values: '1 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
@@ -128,4 +130,12 @@ tests:
             exp_annotations:
               summary: 'Node is not ready.'
               description: 'node-not-ready has been unready for more than 15 minutes.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodenotready'
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-unknown
+            exp_annotations:
+              summary: 'Node is not ready.'
+              description: 'node-unknown has been unready for more than 15 minutes.'
               runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodenotready'

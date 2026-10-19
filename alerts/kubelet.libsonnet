@@ -9,7 +9,7 @@ local selectors = import '../lib/selectors.libsonnet';
         rules: [
           {
             alert: 'KubeNodeNotReady',
-            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 0' % selectors.withCustomAttributes('k8s_node_condition_ready', $._config),
+            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) <= 0' % selectors.withCustomAttributes('k8s_node_condition_ready', $._config),
             'for': '15m',
             labels: {
               severity: 'warning',

@@ -8,10 +8,10 @@ local exprFor(alert, config) =
   matching[0].expr;
 
 local conditionAlerts = [
-  { alert: 'KubeNodeNotReady', metric: 'k8s_node_condition_ready', comparison: '0' },
-  { alert: 'KubeNodeMemoryPressure', metric: 'k8s_node_condition_memory_pressure', comparison: '1' },
-  { alert: 'KubeNodeDiskPressure', metric: 'k8s_node_condition_disk_pressure', comparison: '1' },
-  { alert: 'KubeNodePIDPressure', metric: 'k8s_node_condition_pid_pressure', comparison: '1' },
+  { alert: 'KubeNodeNotReady', metric: 'k8s_node_condition_ready', comparison: '<= 0' },
+  { alert: 'KubeNodeMemoryPressure', metric: 'k8s_node_condition_memory_pressure', comparison: '== 1' },
+  { alert: 'KubeNodeDiskPressure', metric: 'k8s_node_condition_disk_pressure', comparison: '== 1' },
+  { alert: 'KubeNodePIDPressure', metric: 'k8s_node_condition_pid_pressure', comparison: '== 1' },
 ];
 
 {
@@ -19,7 +19,7 @@ local conditionAlerts = [
     local failures = [
       '%s expected:\n%s\n\ngot:\n%s' % [a.alert, expected, result]
       for a in conditionAlerts
-      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s) == %s' % [a.metric, a.comparison]]
+      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s) %s' % [a.metric, a.comparison]]
       for result in [exprFor(a.alert, {})]
       if result != expected
     ];
@@ -31,7 +31,7 @@ local conditionAlerts = [
     local failures = [
       '%s expected:\n%s\n\ngot:\n%s' % [a.alert, expected, result]
       for a in conditionAlerts
-      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s{env="prod"}) == %s' % [a.metric, a.comparison]]
+      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s{env="prod"}) %s' % [a.metric, a.comparison]]
       for result in [exprFor(a.alert, config)]
       if result != expected
     ];
