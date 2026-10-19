@@ -1,5 +1,5 @@
 // queries path must match the path in the kubernetes-mixin template
-local b = import './common.libsonnet';
+local commonQueries = import './common.libsonnet';
 
 local values = {
   k8s_cluster_name: '${cluster:pipe}',
@@ -15,7 +15,7 @@ local byNamespace = ['k8s_cluster_name', 'k8s_namespace_name'];
 
   // CPU usage and namespace queries
   cpuUsageByNamespace(config)::
-    b.rateSumPodLevel('k8s_pod_cpu_time_seconds_total', values, by=byNamespace),
+    commonQueries.rateSumPodLevel('k8s_pod_cpu_time_seconds_total', values, by=byNamespace, config=config),
 
   podsByNamespace(config):: '0',
   workloadsByNamespace(config):: '0',
@@ -31,7 +31,7 @@ local byNamespace = ['k8s_cluster_name', 'k8s_namespace_name'];
 
   // Memory usage and namespace queries
   memoryUsageByNamespace(config)::
-    b.metricSumPodLevel('k8s_pod_memory_working_set_bytes', values, by=byNamespace),
+    commonQueries.metricSumPodLevel('k8s_pod_memory_working_set_bytes', values, by=byNamespace, config=config),
 
   memoryRequestsByNamespace(config):: '0',
   memoryUsageVsRequests(config):: '0',

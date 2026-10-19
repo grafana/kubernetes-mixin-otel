@@ -1,5 +1,3 @@
-local config = import '../../config.libsonnet';
-
 // Import kubernetes-mixin template directly from vendor
 // It will use local queries from dashboards/resources/queries/namespace.libsonnet
 local localQueries = import './queries/namespace.libsonnet';
@@ -7,8 +5,9 @@ local localVariables = import './variables/namespace.libsonnet';
 local k8sMixinNamespace = import 'github.com/kubernetes-sigs/kubernetes-mixin/dashboards/resources/namespace.libsonnet';
 
 // Override queries and variables to use local ones instead of default
-local merged = {
-  _config: config._config,
+// Takes config explicitly (called with $._config below) so mixin.libsonnet + { _config+:: {...} } overrides are honored.
+local merged(config) = {
+  _config: config,
   _queries: {
     namespace: localQueries,
   },
@@ -28,10 +27,10 @@ local updateTransformations(transformations) =
   ];
 
 {
-  _config: config._config,
+  local config = if std.objectHasAll($, '_config') then $._config else (import '../../config.libsonnet')._config,
+  local dashboard = merged(config).grafanaDashboards['k8s-resources-namespace.json'],
   grafanaDashboards+:: {
-    'k8s-resources-namespace.json': merged.grafanaDashboards['k8s-resources-namespace.json']
-                                    {
+    'k8s-resources-namespace.json': dashboard {
       panels: [
         panel {
           datasource: {
@@ -44,7 +43,7 @@ local updateTransformations(transformations) =
           else
             {}
         )
-        for panel in merged.grafanaDashboards['k8s-resources-namespace.json'].panels
+        for panel in dashboard.panels
       ],
     },
   },

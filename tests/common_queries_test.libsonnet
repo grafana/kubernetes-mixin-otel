@@ -1,0 +1,99 @@
+local common = import '../dashboards/resources/queries/common.libsonnet';
+
+{
+  testSelectorMergesCustomAttributes:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      { k8s_cluster_name: '${cluster:pipe}' },
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{env="prod", k8s_cluster_name=~"${cluster:pipe}"}';
+    assert result == expected :
+           'selector with config.custom.attributes failed.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector merges config.custom.attributes into the metric selector',
+
+  testSelectorAllowsRepeatedNegativeMatchersOnSameLabel:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ custom: { attributes: [
+        { label: 'env', operator: '!=', value: 'dev' },
+        { label: 'env', operator: '!=', value: 'staging' },
+      ] } }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{env!="dev", env!="staging"}';
+    assert result == expected :
+           'selector rejected non-empty repeated negative matchers on the same label.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector allows repeated != matchers on the same label',
+
+  testSelectorAllowsRepeatedRegexMatchersOnSameLabel:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ custom: { attributes: [
+        { label: 'env', operator: '=~', value: 'prod.*' },
+        { label: 'env', operator: '=~', value: '.*eu' },
+      ] } }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{env=~"prod.*", env=~".*eu"}';
+    assert result == expected :
+           'selector rejected repeated regex matchers on the same label.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector allows repeated =~ matchers on the same label',
+
+  testSelectorHandlesConfigMissingCustomAttributes:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      { k8s_cluster_name: '${cluster:pipe}' },
+      config={}
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}"}';
+    assert result == expected :
+           'selector crashed or misbehaved when config has no custom key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector defaults to no custom attributes when config lacks the custom key',
+
+  testSelectorHandlesCustomMissingAttributes:
+    local result = common.selector(
+      'k8s_pod_cpu_time_seconds_total',
+      { k8s_cluster_name: '${cluster:pipe}' },
+      config={ custom: {} }
+    );
+    local expected = 'k8s_pod_cpu_time_seconds_total{k8s_cluster_name=~"${cluster:pipe}"}';
+    assert result == expected :
+           'selector crashed or misbehaved when config.custom has no attributes key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: selector defaults to no custom attributes when config.custom lacks the attributes key',
+
+  testRateAvgAppliesCustomAttributes:
+    local result = common.rateAvg(
+      'k8s_pod_cpu_time_seconds_total',
+      {},
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
+    );
+    local expected = 'avg(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod"}[$__rate_interval])))';
+    assert result == expected :
+           'customAttributes not applied to rateAvg.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to rateAvg',
+
+  testRatioSumAppliesCustomAttributesToBothSides:
+    local result = common.ratioSum(
+      'metricA',
+      'metricB',
+      {},
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
+    );
+    local expected = 'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricA{env="prod"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricB{env="prod"}))';
+    assert result == expected :
+           'customAttributes not applied to both sides of ratioSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: customAttributes applied to both sides of ratioSum',
+
+  testRatioSumActiveOnlyAppliesCustomAttributesToAllArms:
+    local result = common.ratioSumActiveOnly(
+      'metricA',
+      'metricB',
+      {},
+      {},
+      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
+    );
+    assert std.length(std.findSubstr('env="prod"', result)) == 4 :
+           'customAttributes not applied to numerator, denominator, and both active-phase join comparisons.\nGot:\n%s' % result;
+    'PASS: customAttributes applied to numerator, denominator, and the active-phase join',
+}
