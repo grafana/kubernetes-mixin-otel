@@ -32,12 +32,15 @@ receivers:
       - pod
       - container
 
-  # Match dev: only Ready condition, no allocatable metrics
+  # Match dev: same node conditions, no allocatable metrics
   k8s_cluster:
     auth_type: kubeConfig
     collection_interval: 30s
     node_conditions_to_report:
       - Ready
+      - MemoryPressure
+      - DiskPressure
+      - PIDPressure
     metadata_collection_interval: 5m
 
 processors:

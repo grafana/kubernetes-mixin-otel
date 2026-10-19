@@ -35,6 +35,11 @@ config:
           endpoint: 0.0.0.0:4318
 
     k8s_cluster:
+      node_conditions_to_report:
+        - Ready
+        - MemoryPressure
+        - DiskPressure
+        - PIDPressure
       metrics:
         k8s.container.status.reason:
           enabled: true
