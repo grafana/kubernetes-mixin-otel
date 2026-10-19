@@ -1,6 +1,6 @@
-local common = import '../../dashboards/resources/queries/common.libsonnet';
+local selectors = import '../../lib/selectors.libsonnet';
 
-common.selector(
+selectors.selector(
   'k8s_pod_cpu_time_seconds_total',
   {},
   config={ custom: { attributes: [
