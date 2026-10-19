@@ -4,6 +4,7 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  # one node per pressure condition, plus an Unknown (-1) memory condition that must not fire
   - interval: 1m
     input_series:
       - series: 'k8s_node_condition_disk_pressure{host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp",k8s_cluster_name="otel-receivers-only",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp"}'
@@ -14,24 +15,117 @@ tests:
         values: '0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
     alert_rule_test:
       - eval_time: 12m
-        alertname: KubeNodePressure
+        alertname: KubeNodeDiskPressure
         exp_alerts: []
       - eval_time: 15m
-        alertname: KubeNodePressure
+        alertname: KubeNodeDiskPressure
         exp_alerts:
           - exp_labels:
               severity: info
               k8s_cluster_name: otel-receivers-only
               k8s_node_name: gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp
             exp_annotations:
-              summary: 'Node has an active pressure Condition.'
-              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp has an active MemoryPressure, DiskPressure, or PIDPressure Condition. This is caused by resource usage exceeding eviction thresholds.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
+              summary: 'Node has an active DiskPressure Condition.'
+              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+      - eval_time: 15m
+        alertname: KubeNodePIDPressure
+        exp_alerts:
           - exp_labels:
               severity: info
               k8s_cluster_name: otel-receivers-only
               k8s_node_name: gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq
             exp_annotations:
-              summary: 'Node has an active pressure Condition.'
-              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq has an active MemoryPressure, DiskPressure, or PIDPressure Condition. This is caused by resource usage exceeding eviction thresholds.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
+              summary: 'Node has an active PIDPressure Condition.'
+              description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepidpressure'
+      - eval_time: 15m
+        alertname: KubeNodeMemoryPressure
+        exp_alerts: []
+
+  # duplicate scrapes, all three pressures on one node, and a healthy node
+  - interval: 1m
+    input_series:
+      - series: 'k8s_node_condition_disk_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-duplicate-scrape"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_disk_pressure{host_name="collector-b",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-duplicate-scrape"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_memory_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-all-conditions"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_disk_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-all-conditions"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_pid_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-all-conditions"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'k8s_node_condition_memory_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-healthy"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'k8s_node_condition_disk_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-healthy"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'k8s_node_condition_pid_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-healthy"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: KubeNodeDiskPressure
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-all-conditions
+            exp_annotations:
+              summary: 'Node has an active DiskPressure Condition.'
+              description: 'node-all-conditions has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-duplicate-scrape
+            exp_annotations:
+              summary: 'Node has an active DiskPressure Condition.'
+              description: 'node-duplicate-scrape has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+      - eval_time: 15m
+        alertname: KubeNodeMemoryPressure
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-all-conditions
+            exp_annotations:
+              summary: 'Node has an active MemoryPressure Condition.'
+              description: 'node-all-conditions has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodememorypressure'
+      - eval_time: 15m
+        alertname: KubeNodePIDPressure
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-all-conditions
+            exp_annotations:
+              summary: 'Node has an active PIDPressure Condition.'
+              description: 'node-all-conditions has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepidpressure'
+
+  # Ready condition: False fires, Unknown (-1) does not, True never fires
+  - interval: 1m
+    input_series:
+      - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-not-ready"}'
+        values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-unknown"}'
+        values: '1 1 1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
+      - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-ready"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 17m
+        alertname: KubeNodeNotReady
+        exp_alerts: []
+      - eval_time: 19m
+        alertname: KubeNodeNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: otel-receivers-only
+              k8s_node_name: node-not-ready
+            exp_annotations:
+              summary: 'Node is not ready.'
+              description: 'node-not-ready has been unready for more than 15 minutes.'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodenotready'
