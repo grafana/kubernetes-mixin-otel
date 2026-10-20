@@ -258,4 +258,4 @@ test-alerts: $(PROMTOOL_BIN) $(RULES_OUT_DIR)/prometheus_alerts.yaml
 	@echo "Checking alert rules..."
 	@$(PROMTOOL_BIN) check rules $(RULES_OUT_DIR)/prometheus_alerts.yaml
 	@echo "Running alert unit tests..."
-	@for t in tests/*-test.yaml; do $(PROMTOOL_BIN) test rules $$t || exit 1; done
+	@for t in tests/promtool/*-test.yaml; do $(PROMTOOL_BIN) test rules $$t || exit 1; done
