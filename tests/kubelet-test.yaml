@@ -27,7 +27,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
       - eval_time: 15m
         alertname: KubeNodePIDPressure
         exp_alerts:
@@ -38,7 +38,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active PIDPressure Condition.'
               description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepidpressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
       - eval_time: 15m
         alertname: KubeNodeMemoryPressure
         exp_alerts: []
@@ -73,7 +73,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'node-all-conditions has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
           - exp_labels:
               severity: info
               k8s_cluster_name: otel-receivers-only
@@ -81,7 +81,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'node-duplicate-scrape has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodediskpressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
       - eval_time: 15m
         alertname: KubeNodeMemoryPressure
         exp_alerts:
@@ -92,7 +92,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active MemoryPressure Condition.'
               description: 'node-all-conditions has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodememorypressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
       - eval_time: 15m
         alertname: KubeNodePIDPressure
         exp_alerts:
@@ -103,7 +103,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active PIDPressure Condition.'
               description: 'node-all-conditions has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepidpressure'
+              runbook_url: 'https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodepressure'
 
   # Ready condition: False (0) and Unknown (-1) both fire, True (1) never does
   - interval: 1m

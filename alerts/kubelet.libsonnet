@@ -29,6 +29,7 @@ local selectors = import '../lib/selectors.libsonnet';
             annotations: {
               description: '{{ $labels.k8s_node_name }} has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.',
               summary: 'Node has an active MemoryPressure Condition.',
+              runbook_url: $._config.runbookURLPattern % 'kubenodepressure',
             },
           },
           {
@@ -41,6 +42,7 @@ local selectors = import '../lib/selectors.libsonnet';
             annotations: {
               description: '{{ $labels.k8s_node_name }} has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.',
               summary: 'Node has an active DiskPressure Condition.',
+              runbook_url: $._config.runbookURLPattern % 'kubenodepressure',
             },
           },
           {
@@ -53,6 +55,7 @@ local selectors = import '../lib/selectors.libsonnet';
             annotations: {
               description: '{{ $labels.k8s_node_name }} has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.',
               summary: 'Node has an active PIDPressure Condition.',
+              runbook_url: $._config.runbookURLPattern % 'kubenodepressure',
             },
           },
         ],
