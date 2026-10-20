@@ -1,8 +1,9 @@
 BIN_DIR ?= $(shell pwd)/tmp/bin
 
 JSONNET_VENDOR=vendor
-GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter
 GRAFANA_DASHBOARD_LINTER_VERSION ?= 0.1.0
+# version in the filename so a bump re-downloads instead of reusing the old binary
+GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter-$(GRAFANA_DASHBOARD_LINTER_VERSION)
 JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
@@ -24,8 +25,8 @@ endif
 DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(HOST_OS)_$(HOST_ARCH).tar.gz
 DASHBOARD_LINTER_BASE_URL := https://github.com/grafana/dashboard-linter/releases/download/v$(GRAFANA_DASHBOARD_LINTER_VERSION)
 
-PROMTOOL_BIN=$(BIN_DIR)/promtool
 PROMETHEUS_VERSION ?= 3.14.0
+PROMTOOL_BIN=$(BIN_DIR)/promtool-$(PROMETHEUS_VERSION)
 PROMETHEUS_TARBALL := prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH).tar.gz
 PROMETHEUS_BASE_URL := https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)
 
@@ -166,7 +167,8 @@ $(GRAFANA_DASHBOARD_LINTER_BIN): | $(BIN_DIR)
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/$(DASHBOARD_LINTER_TARBALL)" -o "$$tmp/$(DASHBOARD_LINTER_TARBALL)" && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/checksums.txt" -o "$$tmp/checksums.txt" && \
 		(cd "$$tmp" && grep " $(DASHBOARD_LINTER_TARBALL)$$" checksums.txt | shasum -a 256 -c -) && \
-		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C $(BIN_DIR) dashboard-linter && \
+		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C "$$tmp" dashboard-linter && \
+		mv "$$tmp/dashboard-linter" $(GRAFANA_DASHBOARD_LINTER_BIN) && \
 		rm -rf "$$tmp"
 
 # Install promtool from the precompiled Prometheus release.
@@ -177,8 +179,9 @@ $(PROMTOOL_BIN): | $(BIN_DIR)
 		curl -sSfL "$(PROMETHEUS_BASE_URL)/$(PROMETHEUS_TARBALL)" -o "$$tmp/$(PROMETHEUS_TARBALL)" && \
 		curl -sSfL "$(PROMETHEUS_BASE_URL)/sha256sums.txt" -o "$$tmp/sha256sums.txt" && \
 		(cd "$$tmp" && grep " $(PROMETHEUS_TARBALL)$$" sha256sums.txt | shasum -a 256 -c -) && \
-		tar -xzf "$$tmp/$(PROMETHEUS_TARBALL)" -C $(BIN_DIR) --strip-components=1 \
+		tar -xzf "$$tmp/$(PROMETHEUS_TARBALL)" -C "$$tmp" --strip-components=1 \
 			prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH)/promtool && \
+		mv "$$tmp/promtool" $(PROMTOOL_BIN) && \
 		rm -rf "$$tmp"
 
 .PHONY: fmt
