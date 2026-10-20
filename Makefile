@@ -30,14 +30,10 @@ PROMETHEUS_TARBALL := prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH).t
 PROMETHEUS_BASE_URL := https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)
 
 JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
-SRC_DIR ?=dashboards
 OUT_DIR ?=dashboards_out
-ALERTS_SRC_DIR ?=alerts
 RULES_OUT_DIR ?=rules_out
 
-# Find all libsonnet files recursively in the dashboards directory
-DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
-ALERT_SOURCES = $(shell find $(ALERTS_SRC_DIR) -name '*.libsonnet')
+JSONNET_SOURCES := $(shell find . -name 'vendor' -prune -o \( -name '*.libsonnet' -o -name '*.jsonnet' \) -print)
 
 .PHONY: dev
 dev: generate lint
@@ -158,13 +154,13 @@ $(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 
-$(TOOLING): $(BIN_DIR)
+$(TOOLING): scripts/tools.go scripts/go.mod scripts/go.sum | $(BIN_DIR)
 	@echo Installing tools from scripts/tools.go
 	@cd scripts && go list -e -mod=mod -tags tools -f '{{ range .Imports }}{{ printf "%s\n" .}}{{end}}' ./ | xargs -tI % go build -mod=mod -o $(BIN_DIR) %
 
 # Install dashboard-linter from the precompiled release (upstream-recommended path).
 # Verifies the archive against the published checksums.txt before extracting.
-$(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
+$(GRAFANA_DASHBOARD_LINTER_BIN): | $(BIN_DIR)
 	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
 	@tmp=$$(mktemp -d) && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/$(DASHBOARD_LINTER_TARBALL)" -o "$$tmp/$(DASHBOARD_LINTER_TARBALL)" && \
@@ -175,7 +171,7 @@ $(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
 
 # Install promtool from the precompiled Prometheus release.
 # Verifies the archive against the published sha256sums.txt before extracting.
-$(PROMTOOL_BIN): $(BIN_DIR)
+$(PROMTOOL_BIN): | $(BIN_DIR)
 	@echo "Installing promtool v$(PROMETHEUS_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
 	@tmp=$$(mktemp -d) && \
 		curl -sSfL "$(PROMETHEUS_BASE_URL)/$(PROMETHEUS_TARBALL)" -o "$$tmp/$(PROMETHEUS_TARBALL)" && \
@@ -193,14 +189,15 @@ jsonnet-fmt: $(JSONNETFMT_BIN)
 	@find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
 		xargs -n 1 -- $(JSONNETFMT_BIN) $(JSONNETFMT_ARGS) -i
 
-$(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet lib/dashboards.jsonnet $(DASHBOARD_SOURCES)
+$(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) $(JSONNET_SOURCES)
 	@mkdir -p $(OUT_DIR)
 	@$(JSONNET_BIN) -J vendor -m $(OUT_DIR) lib/dashboards.jsonnet
 	@touch $@
 
-$(RULES_OUT_DIR)/prometheus_alerts.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet config.libsonnet lib/alerts.jsonnet $(ALERT_SOURCES)
+$(RULES_OUT_DIR)/prometheus_alerts.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) $(JSONNET_SOURCES)
 	@mkdir -p $(RULES_OUT_DIR)
 	@$(JSONNET_BIN) -J vendor -S -m $(RULES_OUT_DIR) lib/alerts.jsonnet
+	@touch $@
 
 .PHONY: lint
 lint: jsonnet-lint dashboards-lint
