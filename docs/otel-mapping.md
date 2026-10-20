@@ -140,7 +140,7 @@ cAdvisor-specific and require the cAdvisor endpoint.
 
 | Prometheus metric | OTel receiver metric | OTel semconv metric | Notes |
 |-------------------|---------------------|---------------------|-------|
-| `kube_node_status_condition` | `k8s.node.condition` (optional) | `k8s.node.condition.status` | Receiver metric is opt-in; attribute name differs: receiver uses `condition`, semconv uses `k8s.node.condition.type` + `k8s.node.condition.status` |
+| `kube_node_status_condition` | `k8s.node.condition_<name>` (per `node_conditions_to_report`) | `k8s.node.condition.status` | This mixin uses the per-condition metrics, one per entry in `node_conditions_to_report` (default `[Ready]`), e.g. `k8s.node.condition_memory_pressure`. The generic `k8s.node.condition` is a separate opt-in metric that carries the type as a `condition` attribute instead |
 | `kube_node_status_allocatable` | **No metric equivalent** | `k8s.node.cpu.allocatable`, `k8s.node.memory.allocatable`, `k8s.node.pod.allocatable` | Critical gap: allocatable capacity is not exposed as a metric by any current receiver. Semconv defines it but no receiver implements it yet |
 | `kube_node_status_capacity` | **No equivalent** | _(not defined in k8s semconv)_ | Not in any receiver |
 | `kube_node_spec_unschedulable` | **No equivalent** | _(not defined)_ | Not in receiver |
@@ -285,9 +285,11 @@ enumerated integer on a per-pod series, while semconv counts pods-per-phase
 
 | Aspect | Receiver | Semconv |
 |--------|----------|---------|
-| Metric name | `k8s.node.condition` (optional, disabled by default) | `k8s.node.condition.status` |
-| Attribute — condition type | `condition` (e.g., `Ready`) | `k8s.node.condition.type` |
-| Attribute — condition value | _(integer: 1=true, 0=false)_ | `k8s.node.condition.status` (attribute: `true`, `false`, `unknown`) |
+| Metric name | `k8s.node.condition_<name>`, one per entry in `node_conditions_to_report` (default `[Ready]`) | `k8s.node.condition.status` |
+| Attribute — condition type | _(in the metric name)_ | `k8s.node.condition.type` |
+| Attribute — condition value | _(integer: 1=true, 0=false, -1=unknown)_ | `k8s.node.condition.status` (attribute: `true`, `false`, `unknown`) |
+
+The generic `k8s.node.condition` metric (optional, disabled by default) is a separate shape that carries the type as a `condition` attribute. This mixin uses the per-condition metrics; a condition absent from `node_conditions_to_report` produces no metric at all, not a zero.
 
 #### Resource quota
 
