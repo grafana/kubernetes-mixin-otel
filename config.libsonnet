@@ -4,6 +4,7 @@ local k8sAlertsConfig = (import 'github.com/kubernetes-sigs/kubernetes-mixin/ale
 k8sMixinConfig {
   _config+:: {
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
+    runbookURLPattern: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-%s',
     custom+: {
       attributes: [],
     },

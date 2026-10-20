@@ -78,8 +78,6 @@ Use `.prometheusAlerts` for the alert rules.
 
 Only use an attribute present on metrics from **both** the daemonset and deployment collector pipelines. Some panels (e.g. usage-vs-requests ratios) join a metric from each; if the attribute is missing on one side, that side returns no data and the whole panel goes blank.
 
-Alerts fail more quietly. `k8s_node_condition_*` comes only from the deployment pipeline, so an attribute missing there leaves the node condition alerts permanently silent with nothing visibly broken.
-
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
