@@ -236,7 +236,8 @@ JSONNET_ERROR_TESTS = \
 	"tests/jsonnet/errors/selector_attributes_collision_test.libsonnet|already matched by a query attribute" \
 	"tests/jsonnet/errors/selector_values_collision_test.libsonnet|already matched by a dashboard variable" \
 	"tests/jsonnet/errors/selector_duplicate_custom_attributes_test.libsonnet|custom.attributes has multiple" \
-	"tests/jsonnet/errors/selector_invalid_operator_test.libsonnet|invalid operator"
+	"tests/jsonnet/errors/selector_invalid_operator_test.libsonnet|invalid operator" \
+	"tests/jsonnet/errors/grouping_attributes_invalid_name_test.libsonnet|custom.groupingAttributes must be label names"
 
 .PHONY: test-jsonnet-errors
 test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)

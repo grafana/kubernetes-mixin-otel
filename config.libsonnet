@@ -7,6 +7,7 @@ k8sMixinConfig {
     runbookURLPattern: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-%s',
     custom+: {
       attributes: [],
+      groupingAttributes: [],
     },
   },
 }
