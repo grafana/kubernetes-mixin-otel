@@ -1,4 +1,4 @@
-local selectors = import '../lib/selectors.libsonnet';
+local selectors = import '../../lib/selectors.libsonnet';
 
 {
   testSelectorMergesCustomAttributes:

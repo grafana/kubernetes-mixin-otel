@@ -1,4 +1,4 @@
-local mixin = import '../mixin.libsonnet';
+local mixin = import '../../mixin.libsonnet';
 
 local exprFor(alert, config) =
   local m = mixin { _config+:: config };

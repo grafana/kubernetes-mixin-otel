@@ -1,4 +1,4 @@
-local common = import '../dashboards/resources/queries/common.libsonnet';
+local common = import '../../dashboards/resources/queries/common.libsonnet';
 
 {
   testRateAvgAppliesCustomAttributes:

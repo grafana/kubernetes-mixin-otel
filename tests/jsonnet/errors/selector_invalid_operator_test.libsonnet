@@ -1,4 +1,4 @@
-local selectors = import '../../lib/selectors.libsonnet';
+local selectors = import '../../../lib/selectors.libsonnet';
 
 selectors.selector(
   'k8s_pod_cpu_time_seconds_total',
