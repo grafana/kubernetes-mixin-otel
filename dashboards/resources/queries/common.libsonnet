@@ -4,6 +4,7 @@
 // The helpers here encode this mixin's conventions -- OTel semantic
 // convention labels, and de-duplication of series via max by the container or
 // pod identity labels -- expressed through the shared tsqtsq primitives.
+local selectors = import '../../../lib/selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
@@ -11,31 +12,7 @@ local promql = tsqtsq.promql;
 local maxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'];
 local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
 
-local resolveCustomAttributes(config) = std.get(std.get(config, 'custom', {}), 'attributes', []);
-
-// Metric selector: dashboard variable filters (regex-matched values) plus
-// optional extra attributes (e.g. direction="receive") and user-supplied
-// config.custom.attributes.
-local selector(metric, values, attributes=[], config) =
-  local customAttributes = resolveCustomAttributes(config);
-  local validOperators = std.objectValues(tsqtsq.MatchingOperator);
-  local invalidOperators = std.set([attribute.operator for attribute in customAttributes if !std.member(validOperators, attribute.operator)]);
-  assert invalidOperators == [] : 'custom.attributes has invalid operator(s) %s on %s, expected one of %s' % [invalidOperators, metric, validOperators];
-  local equalityLabels = [attribute.label for attribute in customAttributes if attribute.operator == tsqtsq.MatchingOperator.equal];
-  local duplicateLabels = [label for label in std.set(equalityLabels) if std.count(equalityLabels, label) > 1];
-  assert duplicateLabels == [] : 'custom.attributes has multiple %s matchers for label(s) %s on %s' % [tsqtsq.MatchingOperator.equal, duplicateLabels, metric];
-  local variableLabels = std.objectFields(values);
-  local attributeLabels = [attribute.label for attribute in attributes];
-  local variableCollisions = [attribute.label for attribute in customAttributes if std.member(variableLabels, attribute.label)];
-  assert variableCollisions == [] : 'custom.attributes label(s) %s are already matched by a dashboard variable on %s; the variable wins and the custom matcher would be discarded' % [variableCollisions, metric];
-  local attributeCollisions = [attribute.label for attribute in customAttributes if std.member(attributeLabels, attribute.label)];
-  assert attributeCollisions == [] : 'custom.attributes label(s) %s are already matched by a query attribute on %s' % [attributeCollisions, metric];
-  tsqtsq.Expression({
-    metric: metric,
-    values: values,
-    defaultOperator: tsqtsq.MatchingOperator.regexMatch,
-    defaultSelectors: attributes + customAttributes,
-  }).toString();
+local selector = selectors.selector;
 
 local maybeRate(expr, useRate) =
   if useRate then promql.rate({ expr: expr }) else expr;
@@ -67,9 +44,6 @@ local activeOnly(expr, phaseValues, config) =
   });
 
 {
-  selector:: selector,
-  customAttributes:: resolveCustomAttributes,
-
   metricSum(metric, values, by=null, attributes=[], config)::
     promql.sum({
       by: by,

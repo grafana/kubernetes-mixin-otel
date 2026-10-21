@@ -1,6 +1,6 @@
-local pod = import '../dashboards/resources/queries/pod.libsonnet';
+local pod = import '../../dashboards/resources/queries/pod.libsonnet';
 
-local config = (import '../config.libsonnet')._config;
+local config = (import '../../config.libsonnet')._config;
 
 local configWithCustomAttributes = config {
   custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] },

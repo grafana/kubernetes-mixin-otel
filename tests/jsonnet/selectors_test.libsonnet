@@ -1,8 +1,8 @@
-local common = import '../dashboards/resources/queries/common.libsonnet';
+local selectors = import '../../lib/selectors.libsonnet';
 
 {
   testSelectorMergesCustomAttributes:
-    local result = common.selector(
+    local result = selectors.selector(
       'k8s_pod_cpu_time_seconds_total',
       { k8s_cluster_name: '${cluster:pipe}' },
       config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
@@ -13,7 +13,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     'PASS: selector merges config.custom.attributes into the metric selector',
 
   testSelectorAllowsRepeatedNegativeMatchersOnSameLabel:
-    local result = common.selector(
+    local result = selectors.selector(
       'k8s_pod_cpu_time_seconds_total',
       {},
       config={ custom: { attributes: [
@@ -27,7 +27,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     'PASS: selector allows repeated != matchers on the same label',
 
   testSelectorAllowsRepeatedRegexMatchersOnSameLabel:
-    local result = common.selector(
+    local result = selectors.selector(
       'k8s_pod_cpu_time_seconds_total',
       {},
       config={ custom: { attributes: [
@@ -41,7 +41,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     'PASS: selector allows repeated =~ matchers on the same label',
 
   testSelectorHandlesConfigMissingCustomAttributes:
-    local result = common.selector(
+    local result = selectors.selector(
       'k8s_pod_cpu_time_seconds_total',
       { k8s_cluster_name: '${cluster:pipe}' },
       config={}
@@ -52,7 +52,7 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
     'PASS: selector defaults to no custom attributes when config lacks the custom key',
 
   testSelectorHandlesCustomMissingAttributes:
-    local result = common.selector(
+    local result = selectors.selector(
       'k8s_pod_cpu_time_seconds_total',
       { k8s_cluster_name: '${cluster:pipe}' },
       config={ custom: {} }
@@ -62,38 +62,15 @@ local common = import '../dashboards/resources/queries/common.libsonnet';
            'selector crashed or misbehaved when config.custom has no attributes key.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: selector defaults to no custom attributes when config.custom lacks the attributes key',
 
-  testRateAvgAppliesCustomAttributes:
-    local result = common.rateAvg(
-      'k8s_pod_cpu_time_seconds_total',
-      {},
-      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
-    );
-    local expected = 'avg(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (rate(k8s_pod_cpu_time_seconds_total{env="prod"}[$__rate_interval])))';
-    assert result == expected :
-           'customAttributes not applied to rateAvg.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: customAttributes applied to rateAvg',
+  testWithCustomAttributesOmitsEmptySelector:
+    local result = selectors.withCustomAttributes('k8s_node_condition_ready', { custom: { attributes: [] } });
+    assert result == 'k8s_node_condition_ready' :
+           'withCustomAttributes should return the bare metric when no custom attributes are set.\nGot:\n%s' % result;
+    'PASS: withCustomAttributes returns the bare metric when unset',
 
-  testRatioSumAppliesCustomAttributesToBothSides:
-    local result = common.ratioSum(
-      'metricA',
-      'metricB',
-      {},
-      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
-    );
-    local expected = 'sum(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricA{env="prod"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name) (metricB{env="prod"}))';
-    assert result == expected :
-           'customAttributes not applied to both sides of ratioSum.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
-    'PASS: customAttributes applied to both sides of ratioSum',
-
-  testRatioSumActiveOnlyAppliesCustomAttributesToAllArms:
-    local result = common.ratioSumActiveOnly(
-      'metricA',
-      'metricB',
-      {},
-      {},
-      config={ custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } }
-    );
-    assert std.length(std.findSubstr('env="prod"', result)) == 4 :
-           'customAttributes not applied to numerator, denominator, and both active-phase join comparisons.\nGot:\n%s' % result;
-    'PASS: customAttributes applied to numerator, denominator, and the active-phase join',
+  testWithCustomAttributesAppliesMatchers:
+    local result = selectors.withCustomAttributes('k8s_node_condition_ready', { custom: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } });
+    assert result == 'k8s_node_condition_ready{env="prod"}' :
+           'withCustomAttributes did not apply config.custom.attributes.\nGot:\n%s' % result;
+    'PASS: withCustomAttributes applies config.custom.attributes',
 }

@@ -1,6 +1,6 @@
-local common = import '../../dashboards/resources/queries/common.libsonnet';
+local selectors = import '../../../lib/selectors.libsonnet';
 
-common.selector(
+selectors.selector(
   'k8s_pod_network_io_bytes_total',
   {},
   attributes=[{ label: 'direction', operator: '=', value: 'transmit' }],

@@ -1,9 +1,6 @@
-local commonQueries = import '../queries/common.libsonnet';
+local selectors = import '../../../lib/selectors.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local var = g.dashboard.variable;
-
-local filteredMetric(metric, config) =
-  if commonQueries.customAttributes(config) == [] then metric else commonQueries.selector(metric, {}, config=config);
 
 {
   datasource(config)::
@@ -24,7 +21,7 @@ local filteredMetric(metric, config) =
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_cluster_name',
-      filteredMetric('k8s_node_condition_ready', config),
+      selectors.withCustomAttributes('k8s_node_condition_ready', config),
     )
     + var.query.generalOptions.withLabel('cluster')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -46,7 +43,7 @@ local filteredMetric(metric, config) =
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_node_name',
-      filteredMetric('k8s_node_condition_ready', config),
+      selectors.withCustomAttributes('k8s_node_condition_ready', config),
     )
     + var.query.generalOptions.withLabel('node')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -68,7 +65,7 @@ local filteredMetric(metric, config) =
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_namespace_name',
-      filteredMetric('k8s_namespace_phase', config),
+      selectors.withCustomAttributes('k8s_namespace_phase', config),
     )
     + var.query.generalOptions.withLabel('namespace')
     + var.query.selectionOptions.withIncludeAll(true)
@@ -90,7 +87,7 @@ local filteredMetric(metric, config) =
     + var.query.withDatasourceFromVariable(datasource)
     + var.query.queryTypes.withLabelValues(
       'k8s_pod_name',
-      filteredMetric('k8s_pod_phase', config),
+      selectors.withCustomAttributes('k8s_pod_phase', config),
     )
     + var.query.generalOptions.withLabel('pod')
     + var.query.selectionOptions.withIncludeAll(true)

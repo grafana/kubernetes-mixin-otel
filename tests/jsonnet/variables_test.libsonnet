@@ -1,6 +1,6 @@
-local commonVariables = import '../dashboards/resources/variables/common.libsonnet';
+local commonVariables = import '../../dashboards/resources/variables/common.libsonnet';
 
-local config = (import '../config.libsonnet')._config;
+local config = (import '../../config.libsonnet')._config;
 
 local configWithCustomAttributes = config {
   custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] },

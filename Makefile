@@ -1,34 +1,40 @@
 BIN_DIR ?= $(shell pwd)/tmp/bin
 
 JSONNET_VENDOR=vendor
-GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter
 GRAFANA_DASHBOARD_LINTER_VERSION ?= 0.1.0
+# version in the filename so a bump re-downloads instead of reusing the old binary
+GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter-$(GRAFANA_DASHBOARD_LINTER_VERSION)
 JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
 JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
 TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN)
 
-# OS/ARCH detection for the dashboard-linter precompiled release.
-DASHBOARD_LINTER_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-DASHBOARD_LINTER_RAW_ARCH := $(shell uname -m)
-ifeq ($(DASHBOARD_LINTER_RAW_ARCH),x86_64)
-DASHBOARD_LINTER_ARCH := amd64
-else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),aarch64)
-DASHBOARD_LINTER_ARCH := arm64
-else ifeq ($(DASHBOARD_LINTER_RAW_ARCH),arm64)
-DASHBOARD_LINTER_ARCH := arm64
+# OS/ARCH detection for the precompiled tool releases (dashboard-linter, promtool).
+HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+HOST_RAW_ARCH := $(shell uname -m)
+ifeq ($(HOST_RAW_ARCH),x86_64)
+HOST_ARCH := amd64
+else ifeq ($(HOST_RAW_ARCH),aarch64)
+HOST_ARCH := arm64
+else ifeq ($(HOST_RAW_ARCH),arm64)
+HOST_ARCH := arm64
 else
-DASHBOARD_LINTER_ARCH := $(DASHBOARD_LINTER_RAW_ARCH)
+HOST_ARCH := $(HOST_RAW_ARCH)
 endif
-DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH).tar.gz
+DASHBOARD_LINTER_TARBALL := dashboard-linter_$(GRAFANA_DASHBOARD_LINTER_VERSION)_$(HOST_OS)_$(HOST_ARCH).tar.gz
 DASHBOARD_LINTER_BASE_URL := https://github.com/grafana/dashboard-linter/releases/download/v$(GRAFANA_DASHBOARD_LINTER_VERSION)
-JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
-SRC_DIR ?=dashboards
-OUT_DIR ?=dashboards_out
 
-# Find all libsonnet files recursively in the dashboards directory
-DASHBOARD_SOURCES = $(shell find $(SRC_DIR) -name '*.libsonnet')
+PROMETHEUS_VERSION ?= 3.14.0
+PROMTOOL_BIN=$(BIN_DIR)/promtool-$(PROMETHEUS_VERSION)
+PROMETHEUS_TARBALL := prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH).tar.gz
+PROMETHEUS_BASE_URL := https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)
+
+JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
+OUT_DIR ?=dashboards_out
+RULES_OUT_DIR ?=rules_out
+
+JSONNET_SOURCES := $(shell find . -name 'vendor' -prune -o \( -name '*.libsonnet' -o -name '*.jsonnet' \) -print)
 
 .PHONY: dev
 dev: generate lint
@@ -136,8 +142,12 @@ clean-dashboards:
 	rm -f $(OUT_DIR)/*.json*
 	rm -f $(OUT_DIR)/.dashboards-generated
 
+.PHONY: clean-rules
+clean-rules:
+	rm -f $(RULES_OUT_DIR)/prometheus_alerts.yaml
+
 .PHONY: generate
-generate: $(OUT_DIR)/.dashboards-generated
+generate: $(OUT_DIR)/.dashboards-generated $(RULES_OUT_DIR)/prometheus_alerts.yaml
 
 $(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
 	$(JB_BIN) install
@@ -145,19 +155,33 @@ $(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 
-$(TOOLING): $(BIN_DIR)
+$(TOOLING): scripts/tools.go scripts/go.mod scripts/go.sum | $(BIN_DIR)
 	@echo Installing tools from scripts/tools.go
 	@cd scripts && go list -e -mod=mod -tags tools -f '{{ range .Imports }}{{ printf "%s\n" .}}{{end}}' ./ | xargs -tI % go build -mod=mod -o $(BIN_DIR) %
 
 # Install dashboard-linter from the precompiled release (upstream-recommended path).
 # Verifies the archive against the published checksums.txt before extracting.
-$(GRAFANA_DASHBOARD_LINTER_BIN): $(BIN_DIR)
-	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(DASHBOARD_LINTER_OS)_$(DASHBOARD_LINTER_ARCH))"
+$(GRAFANA_DASHBOARD_LINTER_BIN): | $(BIN_DIR)
+	@echo "Installing dashboard-linter v$(GRAFANA_DASHBOARD_LINTER_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
 	@tmp=$$(mktemp -d) && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/$(DASHBOARD_LINTER_TARBALL)" -o "$$tmp/$(DASHBOARD_LINTER_TARBALL)" && \
 		curl -sSfL "$(DASHBOARD_LINTER_BASE_URL)/checksums.txt" -o "$$tmp/checksums.txt" && \
 		(cd "$$tmp" && grep " $(DASHBOARD_LINTER_TARBALL)$$" checksums.txt | shasum -a 256 -c -) && \
-		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C $(BIN_DIR) dashboard-linter && \
+		tar -xzf "$$tmp/$(DASHBOARD_LINTER_TARBALL)" -C "$$tmp" dashboard-linter && \
+		mv "$$tmp/dashboard-linter" $(GRAFANA_DASHBOARD_LINTER_BIN) && \
+		rm -rf "$$tmp"
+
+# Install promtool from the precompiled Prometheus release.
+# Verifies the archive against the published sha256sums.txt before extracting.
+$(PROMTOOL_BIN): | $(BIN_DIR)
+	@echo "Installing promtool v$(PROMETHEUS_VERSION) ($(HOST_OS)_$(HOST_ARCH))"
+	@tmp=$$(mktemp -d) && \
+		curl -sSfL "$(PROMETHEUS_BASE_URL)/$(PROMETHEUS_TARBALL)" -o "$$tmp/$(PROMETHEUS_TARBALL)" && \
+		curl -sSfL "$(PROMETHEUS_BASE_URL)/sha256sums.txt" -o "$$tmp/sha256sums.txt" && \
+		(cd "$$tmp" && grep " $(PROMETHEUS_TARBALL)$$" sha256sums.txt | shasum -a 256 -c -) && \
+		tar -xzf "$$tmp/$(PROMETHEUS_TARBALL)" -C "$$tmp" --strip-components=1 \
+			prometheus-$(PROMETHEUS_VERSION).$(HOST_OS)-$(HOST_ARCH)/promtool && \
+		mv "$$tmp/promtool" $(PROMTOOL_BIN) && \
 		rm -rf "$$tmp"
 
 .PHONY: fmt
@@ -168,9 +192,14 @@ jsonnet-fmt: $(JSONNETFMT_BIN)
 	@find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
 		xargs -n 1 -- $(JSONNETFMT_BIN) $(JSONNETFMT_ARGS) -i
 
-$(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet lib/dashboards.jsonnet $(DASHBOARD_SOURCES)
+$(OUT_DIR)/.dashboards-generated: $(JSONNET_BIN) $(JSONNET_VENDOR) $(JSONNET_SOURCES)
 	@mkdir -p $(OUT_DIR)
 	@$(JSONNET_BIN) -J vendor -m $(OUT_DIR) lib/dashboards.jsonnet
+	@touch $@
+
+$(RULES_OUT_DIR)/prometheus_alerts.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) $(JSONNET_SOURCES)
+	@mkdir -p $(RULES_OUT_DIR)
+	@$(JSONNET_BIN) -J vendor -S -m $(RULES_OUT_DIR) lib/alerts.jsonnet
 	@touch $@
 
 .PHONY: lint
@@ -191,9 +220,9 @@ dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
 	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
 
 .PHONY: test
-test: test-jsonnet test-jsonnet-errors
+test: test-jsonnet test-jsonnet-errors test-alerts
 
-JSONNET_TESTS = $(wildcard tests/*_test.libsonnet)
+JSONNET_TESTS = $(wildcard tests/jsonnet/*_test.libsonnet)
 
 .PHONY: test-jsonnet
 test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
@@ -204,10 +233,10 @@ test-jsonnet: $(JSONNET_BIN) $(JSONNET_VENDOR)
 
 # file|expected error substring, quoted since | is a shell metacharacter
 JSONNET_ERROR_TESTS = \
-	"tests/errors/selector_attributes_collision_test.libsonnet|already matched by a query attribute" \
-	"tests/errors/selector_values_collision_test.libsonnet|already matched by a dashboard variable" \
-	"tests/errors/selector_duplicate_custom_attributes_test.libsonnet|custom.attributes has multiple" \
-	"tests/errors/selector_invalid_operator_test.libsonnet|invalid operator"
+	"tests/jsonnet/errors/selector_attributes_collision_test.libsonnet|already matched by a query attribute" \
+	"tests/jsonnet/errors/selector_values_collision_test.libsonnet|already matched by a dashboard variable" \
+	"tests/jsonnet/errors/selector_duplicate_custom_attributes_test.libsonnet|custom.attributes has multiple" \
+	"tests/jsonnet/errors/selector_invalid_operator_test.libsonnet|invalid operator"
 
 .PHONY: test-jsonnet-errors
 test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
@@ -223,3 +252,10 @@ test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)
 		esac; \
 	done
 	@echo "All error tests passed!"
+
+.PHONY: test-alerts
+test-alerts: $(PROMTOOL_BIN) $(RULES_OUT_DIR)/prometheus_alerts.yaml
+	@echo "Checking alert rules..."
+	@$(PROMTOOL_BIN) check rules $(RULES_OUT_DIR)/prometheus_alerts.yaml
+	@echo "Running alert unit tests..."
+	@for t in tests/promtool/*-test.yaml; do $(PROMTOOL_BIN) test rules $$t || exit 1; done
