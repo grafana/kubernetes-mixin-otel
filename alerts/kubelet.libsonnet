@@ -5,7 +5,7 @@ local selectors = import '../lib/selectors.libsonnet';
   prometheusAlerts+:: {
     groups+: [
       {
-        name: 'kubernetes-system-kubelet',
+        name: 'k8s.node_component.kubelet',
         rules: [
           {
             alert: 'OTelKubeNodeNotReady',
