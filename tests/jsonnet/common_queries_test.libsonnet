@@ -80,6 +80,20 @@ local baseline = 'sum by (k8s_namespace_name) (max by (k8s_cluster_name, k8s_nam
            'metricSumActiveOnly must group both aggregation levels and leave the active-pod join alone.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: groupingAttributes applied to metricSumActiveOnly without touching the join',
 
+  testGroupingAttributesAppliedToBothSidesOfDifferenceSum:
+    local result = common.differenceSum('metricA', 'metricB', values, by=['k8s_namespace_name'], config=groupingConfig);
+    local expected = 'sum by (k8s_namespace_name, env) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, env) (metricA{k8s_cluster_name=~"${cluster:pipe}"}) - max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, env) (metricB{k8s_cluster_name=~"${cluster:pipe}"}))';
+    assert result == expected :
+           'groupingAttributes must be applied to both sides of differenceSum or the subtraction matches nothing.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: groupingAttributes applied to both sides of differenceSum',
+
+  testGroupingAttributesAppliedToBothSidesOfDifferenceSumPodLevel:
+    local result = common.differenceSumPodLevel('metricA', 'metricB', values, by=['k8s_pod_name'], config=groupingConfig);
+    local expected = 'sum by (k8s_pod_name, env) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, env) (metricA{k8s_cluster_name=~"${cluster:pipe}"}) - max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, env) (metricB{k8s_cluster_name=~"${cluster:pipe}"}))';
+    assert result == expected :
+           'groupingAttributes must be applied to both sides of differenceSumPodLevel or the subtraction matches nothing.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: groupingAttributes applied to both sides of differenceSumPodLevel',
+
   testGroupingAttributesAppliedToRatioSumActiveOnly:
     local result = common.ratioSumActiveOnly('metricA', 'metricB', values, {}, by=['k8s_namespace_name'], config=groupingConfig);
     local expected = 'sum by (k8s_namespace_name, env) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, env) (metricA{k8s_cluster_name=~"${cluster:pipe}"}) / max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, k8s_container_name, env) (metricB{k8s_cluster_name=~"${cluster:pipe}"} * on (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) group_left() clamp_max(max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) ((k8s_pod_phase{} == 1) or (k8s_pod_phase{} == 2)), 1)))';
