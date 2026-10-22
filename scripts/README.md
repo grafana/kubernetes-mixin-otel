@@ -66,6 +66,28 @@ A real Kubernetes cluster with actual workloads using [k3d](https://k3d.io/). Ou
 | **Deployment** | Single pod | Cluster-wide metrics (nodes, deployments, quotas) | Any node |
 | **DaemonSet** | Pod per node | Per-node metrics (kubelet stats, host metrics) | Every node |
 
+### Testing a custom attribute locally
+
+Both environments export metrics through the Prometheus OTLP endpoint, which promotes only a fixed set of resource attributes to labels. A custom attribute will not appear as a label no matter how the pods are annotated — it lands in `target_info` instead, and queries that group by it return one unlabelled series with no error.
+
+To test `custom.attributes` or `custom.groupingAttributes` against real data, the attribute has to reach the metrics as a label:
+
+1. Annotate the pods so `k8sattributes` picks the attribute up as a resource attribute:
+   ```shell
+   kubectl --context k3d-kubernetes-mixin-otel annotate pods -n default --all --overwrite \
+     resource.opentelemetry.io/env=prod
+   ```
+2. Copy it onto datapoints, alongside the existing statements in the `transform/copy_node_name` processor, in **both** `otel-collector-daemonset.values.yaml` and `otel-collector-deployment.values.yaml` (`kwok-config/kwok-otel-collector.yaml` for KWOK):
+   ```yaml
+   - set(attributes["env"], resource.attributes["env"]) where resource.attributes["env"] != nil
+   ```
+3. Redeploy the collectors, then confirm the label exists before trusting any panel:
+   ```shell
+   curl -s 'http://localhost:9090/api/v1/label/env/values'
+   ```
+
+Step 1 alone is not enough; step 2 is what makes it a label.
+
 ---
 
 # KWOK cluster

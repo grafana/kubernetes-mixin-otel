@@ -78,6 +78,18 @@ Use `.prometheusAlerts` for the alert rules.
 
 Only use an attribute present on metrics from **both** the daemonset and deployment collector pipelines. Some panels (e.g. usage-vs-requests ratios) join a metric from each; if the attribute is missing on one side, that side returns no data and the whole panel goes blank.
 
+`custom.groupingAttributes` — label names added to the `by (...)` clause of every panel query, so each panel breaks out one series per value:
+
+```jsonnet
+custom+: {
+  groupingAttributes: ['custom_env'],
+},
+```
+
+The attribute has to exist as a Prometheus label on the metrics. If you ingest through Prometheus's OTLP endpoint, a resource attribute does not become a label — it lands in `target_info`. Either promote it with [`otlp.promote_resource_attributes`](https://prometheus.io/docs/guides/opentelemetry/#promoting-resource-attributes), or copy it onto datapoints in your collector. Grouping by a label that does not exist yields one unlabelled series per panel, and no error.
+
+Single-value stat panels are unaffected: they aggregate without a `by` clause, and grouping is not applied to them.
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
