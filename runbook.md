@@ -162,7 +162,9 @@ in the namespace.
 
 **Impact.** The API server rejects new objects of this resource type in the
 namespace with `403 Forbidden`. Deployments cannot scale up and evicted pods
-cannot be replaced.
+cannot be replaced. This is reported at `info` because a namespace sized to its
+quota sits here indefinitely by design; treat it as a capacity signal, not an
+incident, unless the namespace is expected to have headroom.
 
 **Diagnosis.**
 
@@ -184,8 +186,9 @@ it in `k8s_resourcequota_name`.
 over a quota, so this means the limit was lowered beneath existing usage, or
 objects were created before the quota existed.
 
-**Impact.** Same as fully used — new objects are rejected — and usage will not
-fall on its own.
+**Impact.** New objects are rejected, as with a full quota, but unlike that case
+this state cannot arise from normal operation and will not resolve on its own —
+which is why it escalates to `warning`.
 
 **Diagnosis.**
 
