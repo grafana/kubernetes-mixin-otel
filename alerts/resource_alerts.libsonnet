@@ -1,5 +1,17 @@
 // alerts path must match the path in the kubernetes-mixin template
+local grouping = import '../lib/grouping.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
+
+local quotaBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name', 'resource'];
+
+local quotaRatio(config) =
+  local by = std.join(', ', grouping.maybeWithGrouping(quotaBy, config));
+  'max by (%s) (%s) / (max by (%s) (%s) > 0)' % [
+    by,
+    selectors.withCustomAttributes('k8s_resource_quota_used', config),
+    by,
+    selectors.withCustomAttributes('k8s_resource_quota_hard_limit', config),
+  ];
 
 {
   prometheusAlerts+:: {
@@ -9,10 +21,7 @@ local selectors = import '../lib/selectors.libsonnet';
         rules: [
           {
             alert: 'OTelKubeQuotaAlmostFull',
-            expr: '%s / (%s > 0) > 0.9 < 1' % [
-              selectors.withCustomAttributes('k8s_resource_quota_used', $._config),
-              selectors.withCustomAttributes('k8s_resource_quota_hard_limit', $._config),
-            ],
+            expr: '%s > 0.9 < 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
               severity: 'info',
@@ -24,10 +33,7 @@ local selectors = import '../lib/selectors.libsonnet';
           },
           {
             alert: 'OTelKubeQuotaFullyUsed',
-            expr: '%s / (%s > 0) == 1' % [
-              selectors.withCustomAttributes('k8s_resource_quota_used', $._config),
-              selectors.withCustomAttributes('k8s_resource_quota_hard_limit', $._config),
-            ],
+            expr: '%s == 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
               severity: 'info',
@@ -39,10 +45,7 @@ local selectors = import '../lib/selectors.libsonnet';
           },
           {
             alert: 'OTelKubeQuotaExceeded',
-            expr: '%s / (%s > 0) > 1' % [
-              selectors.withCustomAttributes('k8s_resource_quota_used', $._config),
-              selectors.withCustomAttributes('k8s_resource_quota_hard_limit', $._config),
-            ],
+            expr: '%s > 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
               severity: 'warning',

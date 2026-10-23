@@ -38,7 +38,7 @@ processors:
         action: upsert
         value: ${env:CLUSTER_NAME}
 
-  # Match dev DaemonSet: copy to datapoint for Prometheus OTLP
+  # Match dev DaemonSet: resource attributes become labels only where the backend promotes them
   transform/promote_resource_attributes:
     metric_statements:
       - context: datapoint
