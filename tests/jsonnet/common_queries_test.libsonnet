@@ -139,6 +139,6 @@ local baseline = 'sum by (k8s_namespace_name) (max by (k8s_cluster_name, k8s_nam
   testDashboardsEvaluateWithGroupingAttributes:
     local dashboards = (mixin { _config+:: { custom+: { groupingAttributes: ['env'] } } }).grafanaDashboards;
     assert std.length(std.findSubstr(', env)', std.toString(dashboards))) > 0 :
-           'custom.groupingAttributes reached no dashboard query; withGrouping has been dropped from the dashboard code path';
+           'custom.groupingAttributes reached no dashboard query; maybeWithGrouping has been dropped from the dashboard code path';
     'PASS: every dashboard renders with custom.groupingAttributes set',
 }

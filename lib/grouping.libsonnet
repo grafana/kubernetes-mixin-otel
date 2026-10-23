@@ -18,7 +18,8 @@ local resolveGroupingAttributes(config) =
   groupingAttributes;
 
 {
-  withGrouping(by, config)::
+  // by == null means the caller aggregates without a by clause; grouping it would break single-value panels
+  maybeWithGrouping(by, config)::
     local groupingAttributes = resolveGroupingAttributes(config);
     if groupingAttributes == [] || by == null then by
     else by + [attribute for attribute in std.set(groupingAttributes) if !std.member(by, attribute)],
