@@ -32,7 +32,7 @@ receivers:
       - pod
       - container
 
-  # Match dev: same node conditions, allocatable types and resource quota metrics
+  # Match dev: same node conditions and allocatable types
   k8s_cluster:
     auth_type: kubeConfig
     collection_interval: 30s
@@ -44,11 +44,6 @@ receivers:
     allocatable_types_to_report:
       - cpu
       - memory
-    metrics:
-      k8s.resource_quota.hard_limit:
-        enabled: true
-      k8s.resource_quota.used:
-        enabled: true
     metadata_collection_interval: 5m
 
 processors:
@@ -59,7 +54,6 @@ processors:
         statements:
           - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
           - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
-          - set(attributes["k8s.resourcequota.name"], resource.attributes["k8s.resourcequota.name"]) where resource.attributes["k8s.resourcequota.name"] != nil
 
   k8sattributes:
     auth_type: kubeConfig
