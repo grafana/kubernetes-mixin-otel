@@ -1,0 +1,85 @@
+rule_files:
+  - ../../rules_out/prometheus_alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # two ResourceQuota objects on the same namespace and resource must alert independently
+  - interval: 1m
+    input_series:
+      - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-a",k8s_resourcequota_name="compute-quota",resource="pods",service_namespace="team-a"}'
+        values: '190x19'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-a",k8s_resourcequota_name="compute-quota",resource="pods",service_namespace="team-a"}'
+        values: '200x19'
+      - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-a",k8s_resourcequota_name="high-priority-quota",resource="pods",service_namespace="team-a"}'
+        values: '10x19'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-a",k8s_resourcequota_name="high-priority-quota",resource="pods",service_namespace="team-a"}'
+        values: '10x19'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: OTelKubeQuotaAlmostFull
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: OTelKubeQuotaAlmostFull
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: team-a
+              k8s_resourcequota_name: compute-quota
+              resource: pods
+              service_namespace: team-a
+            exp_annotations:
+              summary: 'Namespace quota is going to be full.'
+              description: 'Namespace team-a is using 95% of its pods quota in ResourceQuota compute-quota.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaalmostfull'
+      - eval_time: 16m
+        alertname: OTelKubeQuotaFullyUsed
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: team-a
+              k8s_resourcequota_name: high-priority-quota
+              resource: pods
+              service_namespace: team-a
+            exp_annotations:
+              summary: 'Namespace quota is fully used.'
+              description: 'Namespace team-a is using 100% of its pods quota in ResourceQuota high-priority-quota.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotafullyused'
+      - eval_time: 16m
+        alertname: OTelKubeQuotaExceeded
+        exp_alerts: []
+
+  # usage over the limit, and a zero hard limit that must not divide
+  - interval: 1m
+    input_series:
+      - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-b",k8s_resourcequota_name="object-quota",resource="configmaps",service_namespace="team-b"}'
+        values: '15x19'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-b",k8s_resourcequota_name="object-quota",resource="configmaps",service_namespace="team-b"}'
+        values: '10x19'
+      - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-c",k8s_resourcequota_name="unset-quota",resource="services",service_namespace="team-c"}'
+        values: '0x19'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-c",k8s_resourcequota_name="unset-quota",resource="services",service_namespace="team-c"}'
+        values: '0x19'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: OTelKubeQuotaExceeded
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: team-b
+              k8s_resourcequota_name: object-quota
+              resource: configmaps
+              service_namespace: team-b
+            exp_annotations:
+              summary: 'Namespace quota has exceeded the limits.'
+              description: 'Namespace team-b is using 150% of its configmaps quota in ResourceQuota object-quota.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaexceeded'
+      - eval_time: 16m
+        alertname: OTelKubeQuotaAlmostFull
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: OTelKubeQuotaFullyUsed
+        exp_alerts: []

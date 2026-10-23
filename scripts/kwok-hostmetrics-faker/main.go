@@ -316,8 +316,8 @@ func buildNodeMetrics(node, cluster string, numCPUs int, start, now time.Time, e
 	}
 
 	// Datapoint-level base attributes matching:
-	//   transform/copy_node_name  -> k8s.node.name, host.name
-	//   resource/k8sclustername   -> k8s.cluster.name
+	//   transform/promote_resource_attributes -> k8s.node.name, host.name
+	//   resource/k8sclustername              -> k8s.cluster.name
 	base := []keyValue{
 		strAttr(attrK8SNodeName, node),
 		strAttr(attrHostName, node),

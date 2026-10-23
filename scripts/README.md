@@ -77,7 +77,7 @@ To test `custom.attributes` or `custom.groupingAttributes` against real data, th
    kubectl --context k3d-kubernetes-mixin-otel annotate pods -n default --all --overwrite \
      resource.opentelemetry.io/env=prod
    ```
-2. Copy it onto datapoints, alongside the existing statements in the `transform/copy_node_name` processor, in **both** `otel-collector-daemonset.values.yaml` and `otel-collector-deployment.values.yaml` (`kwok-config/kwok-otel-collector.yaml` for KWOK):
+2. Copy it onto datapoints, alongside the existing statements in the `transform/promote_resource_attributes` processor, in **both** `otel-collector-daemonset.values.yaml` and `otel-collector-deployment.values.yaml` (`kwok-config/kwok-otel-collector.yaml` for KWOK):
    ```yaml
    - set(attributes["env"], resource.attributes["env"]) where resource.attributes["env"] != nil
    ```

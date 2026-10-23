@@ -50,8 +50,8 @@ config:
         network: {}
 
   processors:
-    transform/copy_node_name:
-      # workaround for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
+    transform/promote_resource_attributes:
+      # resource attributes become labels only where the backend promotes them; datapoint attributes always do
       metric_statements:
         - context: datapoint
           statements:
@@ -123,7 +123,7 @@ config:
           k8s_attributes,
           resource/k8sclustername,
           resource/hostname,
-          transform/copy_node_name,
+          transform/promote_resource_attributes,
           batch,
         ]
         exporters: [otlp_http/metrics, prometheus]

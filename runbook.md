@@ -117,3 +117,83 @@ typically a container missing an init process, leaving zombies behind.
 **Mitigation.** Restart or fix the offending workload. Set `pod-max-pids` on
 the kubelet, or a PID resource limit on the workload, to stop one pod
 exhausting the node.
+
+## Resource quotas
+
+Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
+from the [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sclusterreceiver).
+Both are disabled by default — if these alerts never fire, check that the
+receiver enables them. A namespace may hold several ResourceQuota objects
+(commonly scoped by PriorityClass), and Kubernetes enforces all of them, so each
+is alerted on separately via `k8s.resourcequota.name`. That attribute is a
+resource attribute, which most backends do not promote to a label by default;
+without it, two quotas covering the same resource collapse into one series and
+the ratio becomes meaningless. The dev collector config promotes it onto
+datapoints in the `transform/promote_resource_attributes` processor.
+
+##### Alert Name: "OTelKubeQuotaAlmostFull"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaalmostfull)
+
+**Meaning.** Between 90% and 100% of a quota's hard limit is consumed. Nothing
+is being rejected yet.
+
+**Impact.** The namespace is approaching the point where new objects of this
+resource type are refused.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+```
+
+The output lists every constrained resource with its used and hard values.
+
+**Mitigation.** Raise the quota, or reclaim capacity by removing unused objects
+in the namespace.
+
+##### Alert Name: "OTelKubeQuotaFullyUsed"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotafullyused)
+
+**Meaning.** The quota is exactly at its hard limit.
+
+**Impact.** The API server rejects new objects of this resource type in the
+namespace with `403 Forbidden`. Deployments cannot scale up and evicted pods
+cannot be replaced.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+kubectl get events -n $NAMESPACE --field-selector reason=FailedCreate
+```
+
+**Mitigation.** Raise the quota or free capacity. If the namespace holds
+several ResourceQuota objects, confirm which one is binding — the alert names
+it in `k8s_resourcequota_name`.
+
+##### Alert Name: "OTelKubeQuotaExceeded"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaexceeded)
+
+**Meaning.** Usage is above the hard limit. Admission control cannot push usage
+over a quota, so this means the limit was lowered beneath existing usage, or
+objects were created before the quota existed.
+
+**Impact.** Same as fully used — new objects are rejected — and usage will not
+fall on its own.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+```
+
+Compare against the quota's recent changes to see whether the limit was reduced.
+
+**Mitigation.** Either restore the previous limit or delete objects until usage
+is back under it.
