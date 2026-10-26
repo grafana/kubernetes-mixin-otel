@@ -153,10 +153,10 @@ The output lists every constrained resource with its used and hard values.
 **Mitigation.** Raise the quota, or reclaim capacity by removing unused objects
 in the namespace.
 
-##### Alert Name: "OTelKubeQuotaFullyUsed"
+##### Alert Name: "K8sResourceQuotaFullyUsed"
 + *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotafullyused)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotafullyused)
 
 **Meaning.** The quota is exactly at its hard limit.
 
@@ -177,10 +177,10 @@ kubectl get events -n $NAMESPACE --field-selector reason=FailedCreate
 several ResourceQuota objects, confirm which one is binding — the alert names
 it in `k8s_resourcequota_name`.
 
-##### Alert Name: "OTelKubeQuotaExceeded"
+##### Alert Name: "K8sResourceQuotaExceeded"
 + *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
 + *Severity*: warning
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaexceeded)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaexceeded)
 
 **Meaning.** Usage is above the hard limit. Admission control cannot push usage
 over a quota, so this means the limit was lowered beneath existing usage, or

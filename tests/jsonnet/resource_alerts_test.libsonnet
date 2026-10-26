@@ -9,8 +9,8 @@ local exprFor(alert, config) =
 
 local quotaAlerts = [
   { alert: 'K8sResourceQuotaAlmostFull', comparison: '> 0.9 < 1' },
-  { alert: 'OTelKubeQuotaFullyUsed', comparison: '== 1' },
-  { alert: 'OTelKubeQuotaExceeded', comparison: '> 1' },
+  { alert: 'K8sResourceQuotaFullyUsed', comparison: '== 1' },
+  { alert: 'K8sResourceQuotaExceeded', comparison: '> 1' },
 ];
 
 local ratio(by, selector) =

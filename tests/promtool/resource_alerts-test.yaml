@@ -24,7 +24,7 @@ tests:
         alertname: K8sResourceQuotaAlmostFull
         exp_alerts: []
       - eval_time: 14m
-        alertname: OTelKubeQuotaFullyUsed
+        alertname: K8sResourceQuotaFullyUsed
         exp_alerts: []
       - eval_time: 16m
         alertname: K8sResourceQuotaAlmostFull
@@ -40,7 +40,7 @@ tests:
               description: 'Namespace team-a is using 95% of its pods quota in ResourceQuota compute-quota.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaalmostfull'
       - eval_time: 16m
-        alertname: OTelKubeQuotaFullyUsed
+        alertname: K8sResourceQuotaFullyUsed
         exp_alerts:
           - exp_labels:
               severity: info
@@ -51,9 +51,9 @@ tests:
             exp_annotations:
               summary: 'Namespace quota is fully used.'
               description: 'Namespace team-a is using 100% of its pods quota in ResourceQuota high-priority-quota.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotafullyused'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotafullyused'
       - eval_time: 16m
-        alertname: OTelKubeQuotaExceeded
+        alertname: K8sResourceQuotaExceeded
         exp_alerts: []
 
   # usage over the limit, and a zero hard limit that must not divide
@@ -69,10 +69,10 @@ tests:
         values: '0x19'
     alert_rule_test:
       - eval_time: 14m
-        alertname: OTelKubeQuotaExceeded
+        alertname: K8sResourceQuotaExceeded
         exp_alerts: []
       - eval_time: 16m
-        alertname: OTelKubeQuotaExceeded
+        alertname: K8sResourceQuotaExceeded
         exp_alerts:
           - exp_labels:
               severity: warning
@@ -83,10 +83,10 @@ tests:
             exp_annotations:
               summary: 'Namespace quota has exceeded the limits.'
               description: 'Namespace team-b is using 150% of its configmaps quota in ResourceQuota object-quota.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaexceeded'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaexceeded'
       - eval_time: 16m
         alertname: K8sResourceQuotaAlmostFull
         exp_alerts: []
       - eval_time: 16m
-        alertname: OTelKubeQuotaFullyUsed
+        alertname: K8sResourceQuotaFullyUsed
         exp_alerts: []

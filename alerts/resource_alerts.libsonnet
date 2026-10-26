@@ -32,7 +32,7 @@ local quotaRatio(config) =
             },
           },
           {
-            alert: 'OTelKubeQuotaFullyUsed',
+            alert: 'K8sResourceQuotaFullyUsed',
             expr: '%s == 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
@@ -44,7 +44,7 @@ local quotaRatio(config) =
             },
           },
           {
-            alert: 'OTelKubeQuotaExceeded',
+            alert: 'K8sResourceQuotaExceeded',
             expr: '%s > 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
