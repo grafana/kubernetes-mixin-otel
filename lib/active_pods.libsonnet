@@ -22,7 +22,10 @@ local phaseActive(phaseValues, config) =
   });
 
 {
-  // Joins expr against the active-pod filter: expr * on (...) group_left() ...
+  // activeOnly joins on podMaxBy, so a caller deduping on a different tuple stops matching
+  podMaxBy:: podMaxBy,
+  containerMaxBy:: podMaxBy + ['k8s_container_name'],
+
   activeOnly(expr, phaseValues, config)::
     promql.mul({
       left: expr,

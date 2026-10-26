@@ -16,7 +16,6 @@ local cases = [
     expected: by,
   },
   {
-    // by == null is a single-value stat panel; grouping it would split the panel
     name: 'stays unaggregated when by is null',
     by: null,
     config: { custom: { groupingAttributes: ['env'] } },

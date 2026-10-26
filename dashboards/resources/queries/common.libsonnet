@@ -11,8 +11,8 @@ local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
 
-local maxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'];
-local podMaxBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'];
+local maxBy = activePods.containerMaxBy;
+local podMaxBy = activePods.podMaxBy;
 
 local selector = selectors.selector;
 local maybeWithGrouping = grouping.maybeWithGrouping;

@@ -8,8 +8,8 @@ local promql = tsqtsq.promql;
 
 local quotaBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name', 'resource'];
 local podFitBy = ['k8s_cluster_name', 'k8s_namespace_name'];
-local podMaxBy = podFitBy + ['k8s_pod_name'];
-local containerMaxBy = podMaxBy + ['k8s_container_name'];
+local podMaxBy = activePods.podMaxBy;
+local containerMaxBy = activePods.containerMaxBy;
 
 local podFitResources = {
   pods: { pattern: 'pods' },

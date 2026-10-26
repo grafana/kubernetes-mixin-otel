@@ -81,6 +81,54 @@ local podFitAlerts = [
            'K8sResourceQuotaBlocksSmallestPod must keep the pods branch; it is the alert whose description matches a count quota.';
     'PASS: the aggregation-independent pods branch is emitted only on the smallest-pod alert',
 
+  testPodFitExprsApplyCustomAttributes:
+    local config = {
+      resourceQuotaPodFitResources: ['requests.cpu'],
+      custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] },
+    };
+    local branchMetrics = [
+      'k8s_resource_quota_hard_limit',
+      'k8s_resource_quota_used',
+      'k8s_container_cpu_request',
+      'k8s_pod_phase',
+    ];
+    local failures = [
+      '%s: %s' % [a.alert, problem]
+      for a in podFitAlerts
+      for result in [exprFor(a.alert, config)]
+      for problem in
+        [
+          '%s renders without a selector, so no matcher can reach it' % metric
+          for metric in branchMetrics
+          if !std.member(result, metric + '{')
+        ] + [
+          'filtered %d of %d selectors' % [std.length(std.findSubstr('env="prod"', result)), std.length(std.findSubstr('{', result))]
+          for _ in ['once']
+          if std.length(std.findSubstr('env="prod"', result)) != std.length(std.findSubstr('{', result))
+        ]
+    ];
+    assert failures == [] :
+           'custom.attributes must reach hard_limit, used, the container request metric and k8s_pod_phase; missing it on any one compares filtered data against unfiltered data. The selector-count check alone cannot see a metric that renders bare, because dropping withCustomAttributes removes the braces and the matcher together, so each expected metric is also asserted to carry a selector.\n%s' % std.join('\n', failures);
+    'PASS: custom.attributes reach every selector of each pod-fit branch',
+
+  testPodFitExprsApplyGroupingAttributes:
+    local config = {
+      resourceQuotaPodFitResources: ['requests.cpu'],
+      custom+: { groupingAttributes: ['env'] },
+    };
+    local failures = [
+      '%s has %d aggregations and %d grouped label lists, join carries env: %s\n%s' % [a.alert, aggregations, grouped, joinGrouped, result]
+      for a in podFitAlerts
+      for result in [exprFor(a.alert, config)]
+      for aggregations in [std.length(std.findSubstr(' by (', result))]
+      for grouped in [std.length(std.findSubstr(', env)', result))]
+      for joinGrouped in [std.member(result, 'on (k8s_cluster_name, k8s_namespace_name, env)')]
+      if !joinGrouped || grouped != aggregations
+    ];
+    assert failures == [] :
+           'custom.groupingAttributes must reach every aggregation and the on() clause of the pod-fit join; reaching only one side makes the join match nothing. The counts balance because exactly one aggregation legitimately omits it (phaseActive dedups at bare pod identity) while the on() clause carries it, so a drop on either side unbalances them.\n%s' % std.join('\n\n', failures);
+    'PASS: custom.groupingAttributes reach every aggregation and the pod-fit join',
+
   testPodFitAlertsAbsentWhenNoResourcesConfigured:
     local config = { resourceQuotaPodFitResources: [] };
     local failures = [

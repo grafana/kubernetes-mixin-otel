@@ -1,13 +1,13 @@
 # Kubernetes OTel Alert Runbooks
 
 Runbooks for the alerts in this mixin. These alerts are built on OpenTelemetry
-receiver metrics rather than kube-state-metrics, so they are named with an
+receiver metrics rather than kube-state-metrics, so they are named with a
 `K8s` prefix and are not interchangeable with the upstream
 [kubernetes-mixin](https://github.com/kubernetes-sigs/kubernetes-mixin) alerts
 of similar names.
 
 Node condition alerts read `k8s.node.condition_<name>` from the
-[k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sclusterreceiver),
+[k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver),
 which emits one metric per entry in `node_conditions_to_report` (default
 `[Ready]`). A condition absent from that list produces no metric at all, not a
 zero — so if one of these alerts never fires, check the collector config first.
@@ -214,6 +214,18 @@ in the namespace requests. Another copy of that pod would be rejected.
 the largest ones no longer do. `K8sResourceQuotaAlmostFull` covers the same
 window but cannot distinguish "near the limit and fine" from "near the limit and
 unable to replace its biggest pod", which is what this alert adds.
+
+For cpu and memory, headroom below the smallest pod is also below the largest, so
+`K8sResourceQuotaBlocksSmallestPod` always fires alongside this alert. This mixin
+ships no inhibition; to be paged once, inhibit this alert on
+`k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name, resource`:
+
+```yaml
+inhibit_rules:
+  - source_matchers: [alertname = K8sResourceQuotaBlocksSmallestPod]
+    target_matchers: [alertname = K8sResourceQuotaBlocksLargestPod]
+    equal: [k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name, resource]
+```
 
 **Diagnosis.**
 
