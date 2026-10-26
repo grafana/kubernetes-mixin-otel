@@ -1,3 +1,4 @@
+// expect: look like OTel attribute names
 local common = import '../../../dashboards/resources/queries/common.libsonnet';
 
 common.metricSum(

@@ -1,3 +1,4 @@
+// expect: must be label name strings
 local common = import '../../../dashboards/resources/queries/common.libsonnet';
 
 common.metricSum(

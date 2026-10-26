@@ -1,3 +1,4 @@
+// expect: invalid operator
 local selectors = import '../../../lib/selectors.libsonnet';
 
 selectors.selector(

@@ -1,3 +1,4 @@
+// expect: already matched by a dashboard variable
 local selectors = import '../../../lib/selectors.libsonnet';
 
 selectors.selector(

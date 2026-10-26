@@ -112,7 +112,7 @@ local activeOnly = activePods.activeOnly;
       by: maybeWithGrouping(by, config),
       expr: promql.div({
         left: promql.max({ by: maybeWithGrouping(podMaxBy, config), expr: maybeRate(selector(numeratorMetric, values, config=config), useRate) }),
-        right: '(%s)' % activeOnly(
+        right: activeOnly(
           promql.sum({
             by: maybeWithGrouping(podMaxBy, config),
             expr: promql.max({ by: maybeWithGrouping(maxBy, config), expr: selector(denominatorMetric, values, config=config) }),

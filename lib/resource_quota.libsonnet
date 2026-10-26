@@ -37,11 +37,11 @@ local quotaHeadroom(spec, config) =
   local resourceMatcher = [{ label: 'resource', operator: tsqtsq.MatchingOperator.regexMatch, value: spec.pattern }];
   local quotaMax(metric) = promql.max({ by: by, expr: selectors.selector(metric, {}, resourceMatcher, config=config) });
   local headroom = promql.sub({
-    left: '(%s)' % promql.gt({ left: quotaMax('k8s_resource_quota_hard_limit'), right: '0' }),
+    left: promql.gt({ left: quotaMax('k8s_resource_quota_hard_limit'), right: '0' }),
     right: quotaMax('k8s_resource_quota_used'),
   });
   if std.objectHas(spec, 'quotaDivisor')
-  then promql.div({ left: '(%s)' % headroom, right: '%d' % spec.quotaDivisor })
+  then promql.div({ left: headroom, right: '%d' % spec.quotaDivisor })
   else headroom;
 
 local podRequestExtreme(aggregation, spec, config) =
@@ -58,15 +58,15 @@ local podRequestExtreme(aggregation, spec, config) =
 
 local podFitBranch(aggregation, resource, config) =
   local spec = podFitResources[resource];
-  local headroom = promql.gte({ left: '(%s)' % quotaHeadroom(spec, config), right: '0' });
+  local headroom = promql.gte({ left: quotaHeadroom(spec, config), right: '0' });
   if std.objectHas(spec, 'requestMetric')
   then promql.lt({
-    left: '(%s)' % headroom,
+    left: headroom,
     right: podRequestExtreme(aggregation, spec, config),
     on: grouping.maybeWithGrouping(podFitBy, config),
     groupLeft: [],
   })
-  else promql.lt({ left: '(%s)' % headroom, right: '1' });
+  else promql.lt({ left: headroom, right: '1' });
 
 {
   quotaBy:: quotaBy,
@@ -75,7 +75,7 @@ local podFitBranch(aggregation, resource, config) =
 
   podFitExpr(aggregation, config)::
     std.join(' or ', [
-      '(%s)' % podFitBranch(aggregation, resource, config)
+      podFitBranch(aggregation, resource, config)
       for resource in resolvePodFitResources(aggregation, config)
     ]),
 }
