@@ -5,6 +5,7 @@ k8sMixinConfig {
   _config+:: {
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
     resourceQuotaAlmostFullPercent: 90,
+    resourceQuotaPodFitResources: ['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory'],
     runbookURLPattern: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-%s',
     custom+: {
       attributes: [],

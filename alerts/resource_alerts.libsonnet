@@ -1,11 +1,10 @@
 // alerts path must match the path in the kubernetes-mixin template
 local grouping = import '../lib/grouping.libsonnet';
+local quota = import '../lib/resource_quota.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
 
-local quotaBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name', 'resource'];
-
 local quotaRatio(config) =
-  local by = std.join(', ', grouping.maybeWithGrouping(quotaBy, config));
+  local by = std.join(', ', grouping.maybeWithGrouping(quota.quotaBy, config));
   'max by (%s) (%s) / (max by (%s) (%s) > 0)' % [
     by,
     selectors.withCustomAttributes('k8s_resource_quota_used', config),
@@ -55,7 +54,34 @@ local quotaRatio(config) =
               summary: 'Namespace quota has exceeded the limits.',
             },
           },
-        ],
+        ] + (
+          if quota.podFitResources($._config) == [] then [] else [
+            {
+              alert: 'K8sResourceQuotaBlocksLargestPod',
+              expr: quota.podFitExpr('max', $._config),
+              'for': '15m',
+              labels: {
+                severity: 'info',
+              },
+              annotations: {
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value }}) than another pod the size of its largest would consume, so no such pod can be scheduled.',
+                summary: 'Namespace quota cannot fit another pod.',
+              },
+            },
+            {
+              alert: 'K8sResourceQuotaBlocksSmallestPod',
+              expr: quota.podFitExpr('min', $._config),
+              'for': '15m',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value }}) than another pod the size of its smallest would consume, so no pod can be scheduled at all.',
+                summary: 'Namespace quota cannot fit any pod.',
+              },
+            },
+          ]
+        ),
       },
     ],
   },
