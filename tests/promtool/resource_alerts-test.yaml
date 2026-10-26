@@ -116,7 +116,7 @@ tests:
               resource: pods
             exp_annotations:
               summary: 'Namespace quota cannot fit any pod.'
-              description: 'ResourceQuota pod-count in namespace team-d has less pods headroom (0) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
+              description: 'ResourceQuota pod-count in namespace team-d has less pods headroom (0) than its smallest pod needs, so no further pod can be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod'
 
   # 0.5 cores of headroom fits the 0.25-core pod but not the 1-core pod, so only the largest-pod alert fires
@@ -149,7 +149,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-e has less requests.cpu headroom (500m) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              description: 'ResourceQuota cpu-quota in namespace team-e has less requests.cpu headroom (500m) than its largest pod needs, so another pod that size cannot be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod
@@ -182,7 +182,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit any pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-f has less requests.cpu headroom (100m) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
+              description: 'ResourceQuota cpu-quota in namespace team-f has less requests.cpu headroom (100m) than its smallest pod needs, so no further pod can be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod'
 
   # already over the limit, and a zero hard limit: the >= 0 and > 0 guards keep both pod-fit alerts quiet
@@ -264,7 +264,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota tight in namespace team-i has less requests.cpu headroom (100m) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              description: 'ResourceQuota tight in namespace team-i has less requests.cpu headroom (100m) than its largest pod needs, so another pod that size cannot be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
 
   # a Succeeded pod still reports its requests but is not charged against the quota; counting it would hide both alerts behind a tiny completed Job
@@ -294,7 +294,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit any pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-j has less requests.cpu headroom (100m) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
+              description: 'ResourceQuota cpu-quota in namespace team-j has less requests.cpu headroom (100m) than its smallest pod needs, so no further pod can be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod'
 
   # memory headroom renders in scientific notation without humanize, which is what made the annotation unreadable
@@ -324,7 +324,7 @@ tests:
               resource: requests.memory
             exp_annotations:
               summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota mem-quota in namespace team-k has less requests.memory headroom (1.074G) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              description: 'ResourceQuota mem-quota in namespace team-k has less requests.memory headroom (1.074G) than its largest pod needs, so another pod that size cannot be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod

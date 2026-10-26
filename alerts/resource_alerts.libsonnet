@@ -64,7 +64,7 @@ local quotaRatio(config) =
                 severity: 'info',
               },
               annotations: {
-                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than another pod the size of its largest would consume, so no such pod can be scheduled.',
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.',
                 summary: 'Namespace quota cannot fit another pod.',
               },
             },
@@ -79,7 +79,7 @@ local quotaRatio(config) =
                 severity: 'warning',
               },
               annotations: {
-                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than another pod the size of its smallest would consume, so no pod can be scheduled at all.',
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its smallest pod needs, so no further pod can be scheduled.',
                 summary: 'Namespace quota cannot fit any pod.',
               },
             },
