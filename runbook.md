@@ -15,10 +15,10 @@ Values are `1` for True, `0` for False and `-1` for Unknown.
 
 ## Node conditions
 
-##### Alert Name: "OTelKubeNodeNotReady"
+##### Alert Name: "K8sNodeNotReady"
 + *Message*: `{{ $labels.k8s_node_name }} has been unready for more than 15 minutes.`
 + *Severity*: warning
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodenotready)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready)
 
 **Meaning.** The node has not reported `Ready` for more than 15 minutes, so it
 cannot host new pods. This alert covers both `False` (the kubelet reports it is
@@ -46,10 +46,10 @@ the control plane stops scheduling against it.
 See also [Node Conditions](https://kubernetes.io/docs/concepts/architecture/nodes/#condition)
 and [Node Problem Detector](https://github.com/kubernetes/node-problem-detector).
 
-##### Alert Name: "OTelKubeNodeMemoryPressure"
+##### Alert Name: "K8sNodeMemoryPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodememorypressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodememorypressure)
 
 **Meaning.** Available memory on the node has fallen below the kubelet's
 eviction threshold (`memory.available`, default `100Mi`).
@@ -69,10 +69,10 @@ Look for pods without memory limits, or requests set well below actual usage.
 **Mitigation.** Evict or resize the largest consumers, set memory limits on
 workloads that lack them, or add capacity to the node pool.
 
-##### Alert Name: "OTelKubeNodeDiskPressure"
+##### Alert Name: "K8sNodeDiskPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodediskpressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodediskpressure)
 
 **Meaning.** Free disk space or inodes have fallen below the kubelet's eviction
 thresholds (`nodefs.available` 10%, `nodefs.inodesFree` 5%, `imagefs.available`
@@ -94,10 +94,10 @@ images, or emptyDir volumes.
 without intervention. If it recurs, cap container log size, move emptyDir
 workloads to persistent volumes, or grow the disk.
 
-##### Alert Name: "OTelKubeNodePIDPressure"
+##### Alert Name: "K8sNodePIDPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodepidpressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodepidpressure)
 
 **Meaning.** Available process IDs on the node have fallen below the kubelet's
 eviction threshold. Unlike memory and disk, there is nothing for the kubelet to
@@ -131,10 +131,10 @@ without it, two quotas covering the same resource collapse into one series and
 the ratio becomes meaningless. The dev collector config promotes it onto
 datapoints in the `transform/promote_resource_attributes` processor.
 
-##### Alert Name: "OTelKubeQuotaAlmostFull"
+##### Alert Name: "K8sResourceQuotaAlmostFull"
 + *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubequotaalmostfull)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaalmostfull)
 
 **Meaning.** Between 90% and 100% of a quota's hard limit is consumed. Nothing
 is being rejected yet.

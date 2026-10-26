@@ -8,7 +8,7 @@ local exprFor(alert, config) =
   matching[0].expr;
 
 local quotaAlerts = [
-  { alert: 'OTelKubeQuotaAlmostFull', comparison: '> 0.9 < 1' },
+  { alert: 'K8sResourceQuotaAlmostFull', comparison: '> 0.9 < 1' },
   { alert: 'OTelKubeQuotaFullyUsed', comparison: '== 1' },
   { alert: 'OTelKubeQuotaExceeded', comparison: '> 1' },
 ];

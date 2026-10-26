@@ -8,10 +8,10 @@ local exprFor(alert, config) =
   matching[0].expr;
 
 local conditionAlerts = [
-  { alert: 'OTelKubeNodeNotReady', metric: 'k8s_node_condition_ready', comparison: '<= 0' },
-  { alert: 'OTelKubeNodeMemoryPressure', metric: 'k8s_node_condition_memory_pressure', comparison: '== 1' },
-  { alert: 'OTelKubeNodeDiskPressure', metric: 'k8s_node_condition_disk_pressure', comparison: '== 1' },
-  { alert: 'OTelKubeNodePIDPressure', metric: 'k8s_node_condition_pid_pressure', comparison: '== 1' },
+  { alert: 'K8sNodeNotReady', metric: 'k8s_node_condition_ready', comparison: '<= 0' },
+  { alert: 'K8sNodeMemoryPressure', metric: 'k8s_node_condition_memory_pressure', comparison: '== 1' },
+  { alert: 'K8sNodeDiskPressure', metric: 'k8s_node_condition_disk_pressure', comparison: '== 1' },
+  { alert: 'K8sNodePIDPressure', metric: 'k8s_node_condition_pid_pressure', comparison: '== 1' },
 ];
 
 {

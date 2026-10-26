@@ -20,7 +20,7 @@ local quotaRatio(config) =
         name: 'k8s.policy.resource_quota',
         rules: [
           {
-            alert: 'OTelKubeQuotaAlmostFull',
+            alert: 'K8sResourceQuotaAlmostFull',
             expr: '%s > 0.9 < 1' % quotaRatio($._config),
             'for': '15m',
             labels: {
