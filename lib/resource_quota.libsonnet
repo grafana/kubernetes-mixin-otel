@@ -1,4 +1,5 @@
 // Imported by alerts; never import those back.
+local activePods = import './active_pods.libsonnet';
 local grouping = import './grouping.libsonnet';
 local selectors = import './selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
@@ -12,10 +13,10 @@ local containerMaxBy = podMaxBy + ['k8s_container_name'];
 
 local podFitResources = {
   pods: { pattern: 'pods' },
-  'requests.cpu': { pattern: '(requests\\.)?cpu', requestMetric: 'k8s_container_cpu_request', quotaDivisor: 1000 },
-  'requests.memory': { pattern: '(requests\\.)?memory', requestMetric: 'k8s_container_memory_request_bytes' },
-  'limits.cpu': { pattern: 'limits\\.cpu', requestMetric: 'k8s_container_cpu_limit', quotaDivisor: 1000 },
-  'limits.memory': { pattern: 'limits\\.memory', requestMetric: 'k8s_container_memory_limit_bytes' },
+  'requests.cpu': { pattern: '(requests[.])?cpu', requestMetric: 'k8s_container_cpu_request', quotaDivisor: 1000 },
+  'requests.memory': { pattern: '(requests[.])?memory', requestMetric: 'k8s_container_memory_request_bytes' },
+  'limits.cpu': { pattern: 'limits[.]cpu', requestMetric: 'k8s_container_cpu_limit', quotaDivisor: 1000 },
+  'limits.memory': { pattern: 'limits[.]memory', requestMetric: 'k8s_container_memory_limit_bytes' },
 };
 
 local resolvePodFitResources(config) =
@@ -44,7 +45,7 @@ local podRequestExtreme(aggregation, spec, config) =
       by: grouping.maybeWithGrouping(podMaxBy, config),
       expr: promql.max({
         by: grouping.maybeWithGrouping(containerMaxBy, config),
-        expr: selectors.withCustomAttributes(spec.requestMetric, config),
+        expr: activePods.activeOnly(selectors.withCustomAttributes(spec.requestMetric, config), {}, config),
       }),
     }),
   });

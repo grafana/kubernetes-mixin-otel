@@ -239,7 +239,8 @@ JSONNET_ERROR_TESTS = \
 	"tests/jsonnet/errors/selector_invalid_operator_test.libsonnet|invalid operator" \
 	"tests/jsonnet/errors/grouping_attributes_invalid_type_test.libsonnet|must be label name strings" \
 	"tests/jsonnet/errors/grouping_attributes_invalid_name_test.libsonnet|look like OTel attribute names" \
-	"tests/jsonnet/errors/grouping_attributes_invalid_characters_test.libsonnet|must be valid Prometheus label names"
+	"tests/jsonnet/errors/grouping_attributes_invalid_characters_test.libsonnet|must be valid Prometheus label names" \
+	"tests/jsonnet/errors/resource_quota_unknown_pod_fit_resource_test.libsonnet|has unknown resource(s)"
 
 .PHONY: test-jsonnet-errors
 test-jsonnet-errors: $(JSONNET_BIN) $(JSONNET_VENDOR)

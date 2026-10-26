@@ -4,6 +4,7 @@
 // The helpers here encode this mixin's conventions -- OTel semantic
 // convention labels, and de-duplication of series via max by the container or
 // pod identity labels -- expressed through the shared tsqtsq primitives.
+local activePods = import '../../../lib/active_pods.libsonnet';
 local grouping = import '../../../lib/grouping.libsonnet';
 local selectors = import '../../../lib/selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
@@ -19,31 +20,7 @@ local maybeWithGrouping = grouping.maybeWithGrouping;
 local maybeRate(expr, useRate) =
   if useRate then promql.rate({ expr: expr }) else expr;
 
-local clampMax(expr) =
-  // TODO(tsqtsq): replace with promql.clamp_max once available upstream.
-  'clamp_max(%s, 1)' % expr;
-
-// Active pod filter (Pending=1 or Running=2), normalized to 1
-// pod phases are 1=Pending, 2=Running, 3=Succeeded, 4=Failed, 5=Unknown
-// known issue here: https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36819
-local phaseActive(phaseValues, config) =
-  local phaseSelector = selector('k8s_pod_phase', phaseValues, config=config);
-  clampMax(promql.max({
-    by: podMaxBy,
-    expr: promql.or({
-      left: '(%s)' % promql.eq({ left: phaseSelector, right: '1' }),
-      right: '(%s)' % promql.eq({ left: phaseSelector, right: '2' }),
-    }),
-  }));
-
-// Joins expr against the active-pod filter: expr * on (...) group_left() ...
-local activeOnly(expr, phaseValues, config) =
-  promql.mul({
-    left: expr,
-    right: phaseActive(phaseValues, config),
-    on: podMaxBy,
-    groupLeft: [],
-  });
+local activeOnly = activePods.activeOnly;
 
 {
   metricSum(metric, values, by=null, attributes=[], config)::
