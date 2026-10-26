@@ -40,8 +40,15 @@ config:
         - MemoryPressure
         - DiskPressure
         - PIDPressure
+      allocatable_types_to_report:
+        - cpu
+        - memory
       metrics:
         k8s.container.status.reason:
+          enabled: true
+        k8s.resource_quota.hard_limit:
+          enabled: true
+        k8s.resource_quota.used:
           enabled: true
 
     k8s_objects:
@@ -50,13 +57,14 @@ config:
           mode: watch
 
   processors:
-    transform/copy_node_name:
-      # workaround for the Prometheus OTLP endpoint to promote k8s.node.name and host.name
+    transform/promote_resource_attributes:
+      # resource attributes become labels only where the backend promotes them; datapoint attributes always do
       metric_statements:
         - context: datapoint
           statements:
             - set(attributes["k8s.node.name"], resource.attributes["k8s.node.name"]) where resource.attributes["k8s.node.name"] != nil
             - set(attributes["host.name"], resource.attributes["host.name"]) where resource.attributes["host.name"] != nil
+            - set(attributes["k8s.resourcequota.name"], resource.attributes["k8s.resourcequota.name"]) where resource.attributes["k8s.resourcequota.name"] != nil
 
     memory_limiter:
       check_interval: 1s
@@ -129,7 +137,7 @@ config:
           k8s_attributes,
           resource/k8sclustername,
           resource/hostname,
-          transform/copy_node_name,
+          transform/promote_resource_attributes,
           batch,
         ]
         exporters: [otlp_http/metrics, prometheus]

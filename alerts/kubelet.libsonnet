@@ -8,7 +8,7 @@ local selectors = import '../lib/selectors.libsonnet';
         name: 'k8s.node_component.kubelet',
         rules: [
           {
-            alert: 'OTelKubeNodeNotReady',
+            alert: 'K8sNodeNotReady',
             expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) <= 0' % selectors.withCustomAttributes('k8s_node_condition_ready', $._config),
             'for': '15m',
             labels: {
@@ -20,7 +20,7 @@ local selectors = import '../lib/selectors.libsonnet';
             },
           },
           {
-            alert: 'OTelKubeNodeMemoryPressure',
+            alert: 'K8sNodeMemoryPressure',
             expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_memory_pressure', $._config),
             'for': '10m',
             labels: {
@@ -32,7 +32,7 @@ local selectors = import '../lib/selectors.libsonnet';
             },
           },
           {
-            alert: 'OTelKubeNodeDiskPressure',
+            alert: 'K8sNodeDiskPressure',
             expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_disk_pressure', $._config),
             'for': '10m',
             labels: {
@@ -44,7 +44,7 @@ local selectors = import '../lib/selectors.libsonnet';
             },
           },
           {
-            alert: 'OTelKubeNodePIDPressure',
+            alert: 'K8sNodePIDPressure',
             expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_pid_pressure', $._config),
             'for': '10m',
             labels: {

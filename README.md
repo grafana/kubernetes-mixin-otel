@@ -90,6 +90,14 @@ The attribute has to exist as a Prometheus label on the metrics. If you ingest t
 
 Single-value stat panels are unaffected: they aggregate without a `by` clause, and grouping is not applied to them.
 
+`resourceQuotaAlmostFullPercent` (default `90`) — the fill level at which `K8sResourceQuotaAlmostFull` fires. Lower it for large namespaces where 90% still leaves meaningful headroom, or raise it for small ones where routine churn crosses 90% constantly:
+
+```jsonnet
+_config+:: {
+  resourceQuotaAlmostFullPercent: 75,
+},
+```
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).

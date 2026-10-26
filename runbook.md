@@ -2,7 +2,7 @@
 
 Runbooks for the alerts in this mixin. These alerts are built on OpenTelemetry
 receiver metrics rather than kube-state-metrics, so they are named with an
-`OTel` prefix and are not interchangeable with the upstream
+`K8s` prefix and are not interchangeable with the upstream
 [kubernetes-mixin](https://github.com/kubernetes-sigs/kubernetes-mixin) alerts
 of similar names.
 
@@ -15,10 +15,10 @@ Values are `1` for True, `0` for False and `-1` for Unknown.
 
 ## Node conditions
 
-##### Alert Name: "OTelKubeNodeNotReady"
+##### Alert Name: "K8sNodeNotReady"
 + *Message*: `{{ $labels.k8s_node_name }} has been unready for more than 15 minutes.`
 + *Severity*: warning
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodenotready)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready)
 
 **Meaning.** The node has not reported `Ready` for more than 15 minutes, so it
 cannot host new pods. This alert covers both `False` (the kubelet reports it is
@@ -46,10 +46,10 @@ the control plane stops scheduling against it.
 See also [Node Conditions](https://kubernetes.io/docs/concepts/architecture/nodes/#condition)
 and [Node Problem Detector](https://github.com/kubernetes/node-problem-detector).
 
-##### Alert Name: "OTelKubeNodeMemoryPressure"
+##### Alert Name: "K8sNodeMemoryPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodememorypressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodememorypressure)
 
 **Meaning.** Available memory on the node has fallen below the kubelet's
 eviction threshold (`memory.available`, default `100Mi`).
@@ -69,10 +69,10 @@ Look for pods without memory limits, or requests set well below actual usage.
 **Mitigation.** Evict or resize the largest consumers, set memory limits on
 workloads that lack them, or add capacity to the node pool.
 
-##### Alert Name: "OTelKubeNodeDiskPressure"
+##### Alert Name: "K8sNodeDiskPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodediskpressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodediskpressure)
 
 **Meaning.** Free disk space or inodes have fallen below the kubelet's eviction
 thresholds (`nodefs.available` 10%, `nodefs.inodesFree` 5%, `imagefs.available`
@@ -94,10 +94,10 @@ images, or emptyDir volumes.
 without intervention. If it recurs, cap container log size, move emptyDir
 workloads to persistent volumes, or grow the disk.
 
-##### Alert Name: "OTelKubeNodePIDPressure"
+##### Alert Name: "K8sNodePIDPressure"
 + *Message*: `{{ $labels.k8s_node_name }} has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.`
 + *Severity*: info
-+ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodepidpressure)
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodepidpressure)
 
 **Meaning.** Available process IDs on the node have fallen below the kubelet's
 eviction threshold. Unlike memory and disk, there is nothing for the kubelet to
@@ -117,3 +117,87 @@ typically a container missing an init process, leaving zombies behind.
 **Mitigation.** Restart or fix the offending workload. Set `pod-max-pids` on
 the kubelet, or a PID resource limit on the workload, to stop one pod
 exhausting the node.
+
+## Resource quotas
+
+Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
+from the [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver/metadata.yaml).
+Both are enabled by default — if these alerts never fire, check that the
+namespace actually has a ResourceQuota object, since the metrics are only
+emitted for quotas that exist. A namespace may hold several ResourceQuota objects
+(commonly scoped by PriorityClass), and Kubernetes enforces all of them, so each
+is alerted on separately via `k8s.resourcequota.name`. That attribute is a
+resource attribute, which most backends do not promote to a label by default;
+without it, two quotas covering the same resource collapse into one series and
+the ratio becomes meaningless. The dev collector config promotes it onto
+datapoints in the `transform/promote_resource_attributes` processor.
+
+##### Alert Name: "K8sResourceQuotaAlmostFull"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaalmostfull)
+
+**Meaning.** A quota is between `resourceQuotaAlmostFullPercent` (default 90%)
+and 100% consumed. Nothing is being rejected yet.
+
+**Impact.** The namespace is approaching the point where new objects of this
+resource type are refused.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+```
+
+The output lists every constrained resource with its used and hard values.
+
+**Mitigation.** Raise the quota, or reclaim capacity by removing unused objects
+in the namespace.
+
+##### Alert Name: "K8sResourceQuotaFullyUsed"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotafullyused)
+
+**Meaning.** The quota is exactly at its hard limit.
+
+**Impact.** The API server rejects new objects of this resource type in the
+namespace with `403 Forbidden`. Deployments cannot scale up and evicted pods
+cannot be replaced. This is reported at `info` because a namespace sized to its
+quota sits here indefinitely by design; treat it as a capacity signal, not an
+incident, unless the namespace is expected to have headroom.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+kubectl get events -n $NAMESPACE --field-selector reason=FailedCreate
+```
+
+**Mitigation.** Raise the quota or free capacity. If the namespace holds
+several ResourceQuota objects, confirm which one is binding — the alert names
+it in `k8s_resourcequota_name`.
+
+##### Alert Name: "K8sResourceQuotaExceeded"
++ *Message*: `Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaexceeded)
+
+**Meaning.** Usage is above the hard limit. Admission control cannot push usage
+over a quota, so this means the limit was lowered beneath existing usage, or
+objects were created before the quota existed.
+
+**Impact.** New objects are rejected, as with a full quota, but unlike that case
+this state cannot arise from normal operation and will not resolve on its own —
+which is why it escalates to `warning`.
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+```
+
+Compare against the quota's recent changes to see whether the limit was reduced.
+
+**Mitigation.** Either restore the previous limit or delete objects until usage
+is back under it.

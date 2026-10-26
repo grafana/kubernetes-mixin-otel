@@ -15,10 +15,10 @@ tests:
         values: '0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'
     alert_rule_test:
       - eval_time: 12m
-        alertname: OTelKubeNodeDiskPressure
+        alertname: K8sNodeDiskPressure
         exp_alerts: []
       - eval_time: 15m
-        alertname: OTelKubeNodeDiskPressure
+        alertname: K8sNodeDiskPressure
         exp_alerts:
           - exp_labels:
               severity: info
@@ -27,9 +27,9 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodediskpressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodediskpressure'
       - eval_time: 15m
-        alertname: OTelKubeNodePIDPressure
+        alertname: K8sNodePIDPressure
         exp_alerts:
           - exp_labels:
               severity: info
@@ -38,9 +38,9 @@ tests:
             exp_annotations:
               summary: 'Node has an active PIDPressure Condition.'
               description: 'gke-otel-receivers-on-default-pool-v2-03ad09ad-k2wq has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodepidpressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodepidpressure'
       - eval_time: 15m
-        alertname: OTelKubeNodeMemoryPressure
+        alertname: K8sNodeMemoryPressure
         exp_alerts: []
 
   # duplicate scrapes, all three pressures on one node, and a healthy node
@@ -64,7 +64,7 @@ tests:
         values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
     alert_rule_test:
       - eval_time: 15m
-        alertname: OTelKubeNodeDiskPressure
+        alertname: K8sNodeDiskPressure
         exp_alerts:
           - exp_labels:
               severity: info
@@ -73,7 +73,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'node-all-conditions has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodediskpressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodediskpressure'
           - exp_labels:
               severity: info
               k8s_cluster_name: otel-receivers-only
@@ -81,9 +81,9 @@ tests:
             exp_annotations:
               summary: 'Node has an active DiskPressure Condition.'
               description: 'node-duplicate-scrape has an active DiskPressure Condition. Available disk space or inodes have fallen below the eviction threshold; the kubelet will garbage collect images and may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodediskpressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodediskpressure'
       - eval_time: 15m
-        alertname: OTelKubeNodeMemoryPressure
+        alertname: K8sNodeMemoryPressure
         exp_alerts:
           - exp_labels:
               severity: info
@@ -92,9 +92,9 @@ tests:
             exp_annotations:
               summary: 'Node has an active MemoryPressure Condition.'
               description: 'node-all-conditions has an active MemoryPressure Condition. Available memory has fallen below the eviction threshold and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodememorypressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodememorypressure'
       - eval_time: 15m
-        alertname: OTelKubeNodePIDPressure
+        alertname: K8sNodePIDPressure
         exp_alerts:
           - exp_labels:
               severity: info
@@ -103,7 +103,7 @@ tests:
             exp_annotations:
               summary: 'Node has an active PIDPressure Condition.'
               description: 'node-all-conditions has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodepidpressure'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodepidpressure'
 
   # Ready condition: False (0) and Unknown (-1) both fire, True (1) never does
   - interval: 1m
@@ -118,10 +118,10 @@ tests:
         values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
     alert_rule_test:
       - eval_time: 17m
-        alertname: OTelKubeNodeNotReady
+        alertname: K8sNodeNotReady
         exp_alerts: []
       - eval_time: 19m
-        alertname: OTelKubeNodeNotReady
+        alertname: K8sNodeNotReady
         exp_alerts:
           - exp_labels:
               severity: warning
@@ -130,7 +130,7 @@ tests:
             exp_annotations:
               summary: 'Node is not ready.'
               description: 'node-not-ready has been unready for more than 15 minutes.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodenotready'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready'
           - exp_labels:
               severity: warning
               k8s_cluster_name: otel-receivers-only
@@ -138,4 +138,4 @@ tests:
             exp_annotations:
               summary: 'Node is not ready.'
               description: 'node-unknown has been unready for more than 15 minutes.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-otelkubenodenotready'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready'
