@@ -2,7 +2,7 @@
 
 Runbooks for the alerts in this mixin. These alerts are built on OpenTelemetry
 receiver metrics rather than kube-state-metrics, so they are named with an
-`OTel` prefix and are not interchangeable with the upstream
+`K8s` prefix and are not interchangeable with the upstream
 [kubernetes-mixin](https://github.com/kubernetes-sigs/kubernetes-mixin) alerts
 of similar names.
 
