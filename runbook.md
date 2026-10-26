@@ -203,7 +203,7 @@ Compare against the quota's recent changes to see whether the limit was reduced.
 is back under it.
 
 ##### Alert Name: "K8sResourceQuotaBlocksLargestPod"
-+ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value }}) than its largest pod needs, so another pod that size cannot be scheduled.`
++ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.`
 + *Severity*: info
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod)
 
@@ -228,7 +228,7 @@ Compare the quota's remaining headroom against the largest pod listed.
 reclaim capacity from pods that no longer need it.
 
 ##### Alert Name: "K8sResourceQuotaBlocksSmallestPod"
-+ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value }}) than its smallest pod needs, so no further pod can be scheduled.`
++ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its smallest pod needs, so no further pod can be scheduled.`
 + *Severity*: warning
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod)
 
