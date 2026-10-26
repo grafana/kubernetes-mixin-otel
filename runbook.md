@@ -136,8 +136,8 @@ datapoints in the `transform/promote_resource_attributes` processor.
 + *Severity*: info
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotaalmostfull)
 
-**Meaning.** Between 90% and 100% of a quota's hard limit is consumed. Nothing
-is being rejected yet.
+**Meaning.** A quota is between `resourceQuotaAlmostFullPercent` (default 90%)
+and 100% consumed. Nothing is being rejected yet.
 
 **Impact.** The namespace is approaching the point where new objects of this
 resource type are refused.

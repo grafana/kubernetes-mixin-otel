@@ -21,7 +21,7 @@ local quotaRatio(config) =
         rules: [
           {
             alert: 'K8sResourceQuotaAlmostFull',
-            expr: '%s > 0.9 < 1' % quotaRatio($._config),
+            expr: '%s > %g < 1' % [quotaRatio($._config), $._config.resourceQuotaAlmostFullPercent / 100],
             'for': '15m',
             labels: {
               severity: 'info',

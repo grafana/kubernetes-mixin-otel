@@ -42,6 +42,12 @@ local defaultBy = 'k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name,
     assert failures == [] : 'custom.attributes not applied to both arms of every quota alert.\n%s' % std.join('\n\n', failures);
     'PASS: custom.attributes applied to all three quota alerts',
 
+  testQuotaAlmostFullThresholdIsConfigurable:
+    local expected = '%s > 0.75 < 1' % ratio(defaultBy, '');
+    local result = exprFor('K8sResourceQuotaAlmostFull', { resourceQuotaAlmostFullPercent: 75 });
+    assert result == expected : 'resourceQuotaAlmostFullPercent not applied.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
+    'PASS: resourceQuotaAlmostFullPercent overrides the almost-full threshold',
+
   testQuotaExprsApplyGroupingAttributes:
     local config = { custom+: { groupingAttributes: ['env'] } };
     local failures = [
