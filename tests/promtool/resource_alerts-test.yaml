@@ -149,7 +149,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-e has less requests.cpu headroom (0.5) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              description: 'ResourceQuota cpu-quota in namespace team-e has less requests.cpu headroom (500m) than another pod the size of its largest would consume, so no such pod can be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod
@@ -182,7 +182,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit any pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-f has less requests.cpu headroom (0.1) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
+              description: 'ResourceQuota cpu-quota in namespace team-f has less requests.cpu headroom (100m) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod'
 
   # already over the limit, and a zero hard limit: the >= 0 and > 0 guards keep both pod-fit alerts quiet
@@ -264,7 +264,7 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota tight in namespace team-i has less requests.cpu headroom (0.1) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              description: 'ResourceQuota tight in namespace team-i has less requests.cpu headroom (100m) than another pod the size of its largest would consume, so no such pod can be scheduled.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
 
   # a Succeeded pod still reports its requests but is not charged against the quota; counting it would hide both alerts behind a tiny completed Job
@@ -294,5 +294,38 @@ tests:
               resource: requests.cpu
             exp_annotations:
               summary: 'Namespace quota cannot fit any pod.'
-              description: 'ResourceQuota cpu-quota in namespace team-j has less requests.cpu headroom (0.1) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
+              description: 'ResourceQuota cpu-quota in namespace team-j has less requests.cpu headroom (100m) than another pod the size of its smallest would consume, so no pod can be scheduled at all.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod'
+
+  # memory headroom renders in scientific notation without humanize, which is what made the annotation unreadable
+  - interval: 1m
+    input_series:
+      - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_resourcequota_name="mem-quota",resource="requests.memory",service_namespace="team-k"}'
+        values: '3221225472x19'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_resourcequota_name="mem-quota",resource="requests.memory",service_namespace="team-k"}'
+        values: '4294967296x19'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_pod_name="big",k8s_container_name="app"}'
+        values: '2147483648x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_pod_name="big"}'
+        values: '2x19'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_pod_name="small",k8s_container_name="app"}'
+        values: '536870912x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-k",k8s_pod_name="small"}'
+        values: '2x19'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: K8sResourceQuotaBlocksLargestPod
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: team-k
+              k8s_resourcequota_name: mem-quota
+              resource: requests.memory
+            exp_annotations:
+              summary: 'Namespace quota cannot fit another pod.'
+              description: 'ResourceQuota mem-quota in namespace team-k has less requests.memory headroom (1.074G) than another pod the size of its largest would consume, so no such pod can be scheduled.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
+      - eval_time: 16m
+        alertname: K8sResourceQuotaBlocksSmallestPod
+        exp_alerts: []
