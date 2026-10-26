@@ -121,9 +121,10 @@ exhausting the node.
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
-from the [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sclusterreceiver).
-Both are disabled by default — if these alerts never fire, check that the
-receiver enables them. A namespace may hold several ResourceQuota objects
+from the [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver/metadata.yaml).
+Both are enabled by default — if these alerts never fire, check that the
+namespace actually has a ResourceQuota object, since the metrics are only
+emitted for quotas that exist. A namespace may hold several ResourceQuota objects
 (commonly scoped by PriorityClass), and Kubernetes enforces all of them, so each
 is alerted on separately via `k8s.resourcequota.name`. That attribute is a
 resource attribute, which most backends do not promote to a label by default;
