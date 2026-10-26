@@ -106,14 +106,20 @@ local podFitAlerts = [
   testPodFitPodsBranchComparesAgainstOnePod:
     local config = { resourceQuotaPodFitResources: ['pods'] };
     local expected = countBranch(defaultBy, quotaSelector('pods', ''));
-    local failures = [
-      '%s expected:\n%s\n\ngot:\n%s' % [a.alert, expected, result]
-      for a in podFitAlerts
-      for result in [exprFor(a.alert, config)]
-      if result != expected
-    ];
-    assert failures == [] : 'the pods branch must compare headroom against a single pod and never join to a container metric.\n%s' % std.join('\n\n', failures);
+    local result = exprFor('K8sResourceQuotaBlocksSmallestPod', config);
+    assert result == expected : 'the pods branch must compare headroom against a single pod and never join to a container metric.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: pods branch is headroom < 1 with no vector join',
+
+  testPodFitPodsBranchOnlyReachesSmallestPodAlert:
+    local countOnly = { resourceQuotaPodFitResources: ['pods'] };
+    assert rulesNamed('K8sResourceQuotaBlocksLargestPod', countOnly) == [] :
+           'a pod-count quota has no largest-versus-smallest distinction, so K8sResourceQuotaBlocksLargestPod must not be emitted for it alone.';
+    local defaultLargest = exprFor('K8sResourceQuotaBlocksLargestPod', {});
+    assert !std.member(defaultLargest, 'resource=~"pods"') :
+           'the pods branch renders identically for max and min, so emitting it on both alerts duplicates every pod-count alert.\nGot:\n%s' % defaultLargest;
+    assert std.member(exprFor('K8sResourceQuotaBlocksSmallestPod', {}), 'resource=~"pods"') :
+           'K8sResourceQuotaBlocksSmallestPod must keep the pods branch; it is the alert whose description matches a count quota.';
+    'PASS: the aggregation-independent pods branch is emitted only on the smallest-pod alert',
 
   testPodFitCpuBranchScalesQuotaMillicoresToCores:
     local config = { resourceQuotaPodFitResources: ['requests.cpu'] };
@@ -191,30 +197,34 @@ local podFitAlerts = [
     'PASS: empty resourceQuotaPodFitResources removes both pod-fit alerts',
 
   testPodFitBranchOrderFollowsConfiguredResources:
-    local config = { resourceQuotaPodFitResources: ['limits.memory', 'pods'] };
+    local config = { resourceQuotaPodFitResources: ['limits.memory', 'pods', 'requests.cpu'] };
     local expected = std.join(' or ', [
-      sizeBranch('max', defaultBy, quotaSelector('limits[.]memory', ''), null, 'k8s_container_memory_limit_bytes', 'k8s_pod_phase{}', defaultPodFitBy, defaultPodMaxBy, defaultContainerMaxBy),
+      sizeBranch('min', defaultBy, quotaSelector('limits[.]memory', ''), null, 'k8s_container_memory_limit_bytes', 'k8s_pod_phase{}', defaultPodFitBy, defaultPodMaxBy, defaultContainerMaxBy),
       countBranch(defaultBy, quotaSelector('pods', '')),
+      sizeBranch('min', defaultBy, quotaSelector('(requests[.])?cpu', ''), '1000', 'k8s_container_cpu_request', 'k8s_pod_phase{}', defaultPodFitBy, defaultPodMaxBy, defaultContainerMaxBy),
     ]);
-    local result = exprFor('K8sResourceQuotaBlocksLargestPod', config);
+    local result = exprFor('K8sResourceQuotaBlocksSmallestPod', config);
     assert result == expected : 'branch order must follow the configured resource list.\nExpected:\n%s\n\nGot:\n%s' % [expected, result];
     'PASS: pod-fit branches are emitted in configured order',
 
   testPodFitDefaultCoversEverySupportedResource:
-    local expectedMetrics = [
-      'k8s_resource_quota_hard_limit{resource=~"pods"}',
+    local sizeMetrics = [
       'k8s_container_cpu_request',
       'k8s_container_memory_request_bytes',
       'k8s_container_cpu_limit',
       'k8s_container_memory_limit_bytes',
     ];
+    local expectedMetrics(alert) =
+      if alert == 'K8sResourceQuotaBlocksSmallestPod'
+      then sizeMetrics + ['k8s_resource_quota_hard_limit{resource=~"pods"}']
+      else sizeMetrics;
     local failures = [
       '%s is missing %s' % [a.alert, metric]
       for a in podFitAlerts
       for result in [exprFor(a.alert, {})]
-      for metric in expectedMetrics
+      for metric in expectedMetrics(a.alert)
       if !std.member(result, metric)
     ];
     assert failures == [] : 'the default resource list must produce a branch per supported resource.\n%s' % std.join('\n', failures);
-    'PASS: default resourceQuotaPodFitResources covers pods, cpu and memory requests and limits',
+    'PASS: default resourceQuotaPodFitResources covers cpu and memory requests and limits, plus pods on the smallest-pod alert',
 }

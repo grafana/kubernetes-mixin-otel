@@ -91,7 +91,7 @@ tests:
         alertname: K8sResourceQuotaFullyUsed
         exp_alerts: []
 
-  # pod-count quota with no headroom left: the pods branch needs no container metric
+  # pod-count quota with no headroom left: the pods branch needs no container metric, and belongs only to the smallest-pod alert
   - interval: 1m
     input_series:
       - series: 'k8s_resource_quota_used{k8s_cluster_name="otel-receivers-only",k8s_namespace_name="team-d",k8s_resourcequota_name="pod-count",resource="pods",service_namespace="team-d"}'
@@ -100,21 +100,11 @@ tests:
         values: '5x19'
     alert_rule_test:
       - eval_time: 14m
-        alertname: K8sResourceQuotaBlocksLargestPod
+        alertname: K8sResourceQuotaBlocksSmallestPod
         exp_alerts: []
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksLargestPod
-        exp_alerts:
-          - exp_labels:
-              severity: info
-              k8s_cluster_name: otel-receivers-only
-              k8s_namespace_name: team-d
-              k8s_resourcequota_name: pod-count
-              resource: pods
-            exp_annotations:
-              summary: 'Namespace quota cannot fit another pod.'
-              description: 'ResourceQuota pod-count in namespace team-d has less pods headroom (0) than another pod the size of its largest would consume, so no such pod can be scheduled.'
-              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod'
+        exp_alerts: []
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod
         exp_alerts:
