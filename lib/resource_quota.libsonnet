@@ -19,12 +19,17 @@ local podFitResources = {
   'limits.memory': { pattern: 'limits[.]memory', requestMetric: 'k8s_container_memory_limit_bytes' },
 };
 
-local resolvePodFitResources(config) =
+local countResourcesBelongTo = 'min';
+
+local appliesTo(aggregation, resource) =
+  std.objectHas(podFitResources[resource], 'requestMetric') || aggregation == countResourcesBelongTo;
+
+local resolvePodFitResources(aggregation, config) =
   local requested = std.get(config, 'resourceQuotaPodFitResources', []);
   local known = std.objectFields(podFitResources);
   local unknown = [resource for resource in requested if !std.member(known, resource)];
   assert unknown == [] : 'resourceQuotaPodFitResources has unknown resource(s) %s, expected a subset of %s' % [unknown, known];
-  requested;
+  [resource for resource in requested if appliesTo(aggregation, resource)];
 
 local quotaHeadroom(spec, config) =
   local by = grouping.maybeWithGrouping(quotaBy, config);
@@ -70,6 +75,6 @@ local podFitBranch(aggregation, resource, config) =
   podFitExpr(aggregation, config)::
     std.join(' or ', [
       '(%s)' % podFitBranch(aggregation, resource, config)
-      for resource in resolvePodFitResources(config)
+      for resource in resolvePodFitResources(aggregation, config)
     ]),
 }
