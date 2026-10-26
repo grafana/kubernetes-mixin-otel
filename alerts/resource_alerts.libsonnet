@@ -55,7 +55,7 @@ local quotaRatio(config) =
             },
           },
         ] + (
-          if quota.podFitResources('max', $._config) == [] then [] else [
+          if quota.resolvePodFitResources('max', $._config) == [] then [] else [
             {
               alert: 'K8sResourceQuotaBlocksLargestPod',
               expr: quota.podFitExpr('max', $._config),
@@ -70,7 +70,7 @@ local quotaRatio(config) =
             },
           ]
         ) + (
-          if quota.podFitResources('min', $._config) == [] then [] else [
+          if quota.resolvePodFitResources('min', $._config) == [] then [] else [
             {
               alert: 'K8sResourceQuotaBlocksSmallestPod',
               expr: quota.podFitExpr('min', $._config),

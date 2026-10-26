@@ -25,7 +25,8 @@ local appliesTo(aggregation, resource) =
   std.objectHas(podFitResources[resource], 'requestMetric') || aggregation == countResourcesBelongTo;
 
 local resolvePodFitResources(aggregation, config) =
-  local requested = std.get(config, 'resourceQuotaPodFitResources', []);
+  assert std.member(['max', 'min'], aggregation) : 'podFitExpr aggregation must be max or min, got %s' % [aggregation];
+  local requested = config.resourceQuotaPodFitResources;
   local known = std.objectFields(podFitResources);
   local unknown = [resource for resource in requested if !std.member(known, resource)];
   assert unknown == [] : 'resourceQuotaPodFitResources has unknown resource(s) %s, expected a subset of %s' % [unknown, known];
@@ -70,7 +71,7 @@ local podFitBranch(aggregation, resource, config) =
 {
   quotaBy:: quotaBy,
 
-  podFitResources:: resolvePodFitResources,
+  resolvePodFitResources:: resolvePodFitResources,
 
   podFitExpr(aggregation, config)::
     std.join(' or ', [
