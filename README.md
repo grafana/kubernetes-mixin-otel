@@ -98,7 +98,7 @@ _config+:: {
 },
 ```
 
-`resourceQuotaPodFitResources` (default `['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory']`) — which quota resources `K8sResourceQuotaBlocksLargestPod` and `K8sResourceQuotaBlocksSmallestPod` compare against the pods actually running in the namespace. Each entry adds one branch to both alerts, so trim the list to the resources your quotas actually set:
+`resourceQuotaPodFitResources` (default `['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory']`) — which quota resources `K8sResourceQuotaBlocksLargestPod` and `K8sResourceQuotaBlocksSmallestPod` compare against active (Pending or Running) pods in the namespace. Each non-`pods` entry adds one branch to both alerts, while `pods` adds a branch only to `K8sResourceQuotaBlocksSmallestPod`, so trim the list to the resources your quotas actually set:
 
 ```jsonnet
 _config+:: {
