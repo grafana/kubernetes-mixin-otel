@@ -1,3 +1,4 @@
+// expect: already matched by a query attribute
 local selectors = import '../../../lib/selectors.libsonnet';
 
 selectors.selector(

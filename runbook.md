@@ -1,13 +1,13 @@
 # Kubernetes OTel Alert Runbooks
 
 Runbooks for the alerts in this mixin. These alerts are built on OpenTelemetry
-receiver metrics rather than kube-state-metrics, so they are named with an
+receiver metrics rather than kube-state-metrics, so they are named with a
 `K8s` prefix and are not interchangeable with the upstream
 [kubernetes-mixin](https://github.com/kubernetes-sigs/kubernetes-mixin) alerts
 of similar names.
 
 Node condition alerts read `k8s.node.condition_<name>` from the
-[k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/k8sclusterreceiver),
+[k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver),
 which emits one metric per entry in `node_conditions_to_report` (default
 `[Ready]`). A condition absent from that list produces no metric at all, not a
 zero — so if one of these alerts never fires, check the collector config first.
@@ -201,3 +201,83 @@ Compare against the quota's recent changes to see whether the limit was reduced.
 
 **Mitigation.** Either restore the previous limit or delete objects until usage
 is back under it.
+
+##### Alert Name: "K8sResourceQuotaBlocksLargestPod"
++ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod)
+
+**Meaning.** The quota has headroom left, but less than the largest active pod
+(Pending or Running) in the namespace requests. Another copy of that pod would be rejected.
+
+**Impact.** The namespace is partially wedged: small workloads still schedule,
+the largest ones no longer do. `K8sResourceQuotaAlmostFull` covers the same
+window but cannot distinguish "near the limit and fine" from "near the limit and
+unable to replace its biggest pod", which is what this alert adds.
+
+For cpu and memory, headroom below the smallest pod is also below the largest, so
+when `K8sResourceQuotaBlocksSmallestPod` fires, this alert will fire as well. This mixin
+ships no inhibition; to be paged once, inhibit this alert on
+`k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name, resource`:
+
+```yaml
+inhibit_rules:
+  - source_matchers: [alertname = K8sResourceQuotaBlocksSmallestPod]
+    target_matchers: [alertname = K8sResourceQuotaBlocksLargestPod]
+    equal: [k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name, resource]
+```
+
+**Diagnosis.**
+
+```shell
+kubectl describe resourcequota $RESOURCEQUOTA -n $NAMESPACE
+kubectl get pods -n $NAMESPACE -o custom-columns=NAME:.metadata.name,CPU:'.spec.containers[*].resources.requests.cpu',MEM:'.spec.containers[*].resources.requests.memory'
+```
+
+Compare the quota's remaining headroom against the largest pod listed.
+
+**Mitigation.** Raise the quota, shrink the largest workload's requests, or
+reclaim capacity from pods that no longer need it.
+
+##### Alert Name: "K8sResourceQuotaBlocksSmallestPod"
++ *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its smallest pod needs, so no further pod can be scheduled.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod)
+
+**Meaning.** Headroom is below even the smallest active pod (Pending or Running)
+in the namespace, so nothing further can be admitted. For a `pods` count quota
+this is simply zero slots remaining.
+
+**Impact.** The namespace is fully wedged for this resource: no workload can
+scale up and no evicted pod can be replaced. For cpu and memory resources
+`K8sResourceQuotaBlocksLargestPod` fires alongside this one, since the smallest
+pod not fitting implies the largest does not either; for `pods` it does not,
+because a count quota has no largest-versus-smallest distinction and the branch
+is emitted only here.
+
+**Diagnosis.** As for `K8sResourceQuotaBlocksLargestPod`, plus:
+
+```shell
+kubectl get events -n $NAMESPACE --field-selector reason=FailedCreate
+```
+
+A quota rejection never produces a Pod object — the ReplicaSet controller fails
+and nothing enters `Pending` — so these events, not pod status, are where the
+rejection shows up.
+
+**Mitigation.** Raise the quota or free capacity. Unlike the largest-pod case
+there is no workload small enough to fit, so shrinking a single deployment's
+requests may not be enough.
+
+**Known limitations.** Both pod-fit alerts estimate the next pod's size from the
+pods currently running, which carries three caveats:
+
++ Init containers and native sidecars are absent from
+  `k8s.container.*_request`, so pods whose effective request is driven by an
+  init container are under-counted and the alert may fire late.
++ ResourceQuota `scopeSelector` is not modelled. A quota scoped to a
+  PriorityClass charges only a subset of the namespace's pods, but the pod size
+  is computed namespace-wide, so the threshold may come from a pod the quota
+  never charges.
++ A namespace with a quota but no active pods produces no alert, since there is
+  no pod size to compare against.

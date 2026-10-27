@@ -1,11 +1,10 @@
 // alerts path must match the path in the kubernetes-mixin template
 local grouping = import '../lib/grouping.libsonnet';
+local quota = import '../lib/resource_quota.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
 
-local quotaBy = ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name', 'resource'];
-
 local quotaRatio(config) =
-  local by = std.join(', ', grouping.maybeWithGrouping(quotaBy, config));
+  local by = std.join(', ', grouping.maybeWithGrouping(quota.quotaBy, config));
   'max by (%s) (%s) / (max by (%s) (%s) > 0)' % [
     by,
     selectors.withCustomAttributes('k8s_resource_quota_used', config),
@@ -55,7 +54,37 @@ local quotaRatio(config) =
               summary: 'Namespace quota has exceeded the limits.',
             },
           },
-        ],
+        ] + (
+          if quota.resolvePodFitResources('max', $._config) == [] then [] else [
+            {
+              alert: 'K8sResourceQuotaBlocksLargestPod',
+              expr: quota.podFitExpr('max', $._config),
+              'for': '15m',
+              labels: {
+                severity: 'info',
+              },
+              annotations: {
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.',
+                summary: 'Namespace quota cannot fit another large replica pod.',
+              },
+            },
+          ]
+        ) + (
+          if quota.resolvePodFitResources('min', $._config) == [] then [] else [
+            {
+              alert: 'K8sResourceQuotaBlocksSmallestPod',
+              expr: quota.podFitExpr('min', $._config),
+              'for': '15m',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its smallest pod needs, so no further pod can be scheduled.',
+                summary: 'Namespace quota cannot fit any additional replica pod.',
+              },
+            },
+          ]
+        ),
       },
     ],
   },

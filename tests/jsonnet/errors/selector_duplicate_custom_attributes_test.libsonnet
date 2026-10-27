@@ -1,3 +1,4 @@
+// expect: custom.attributes has multiple
 local selectors = import '../../../lib/selectors.libsonnet';
 
 selectors.selector(

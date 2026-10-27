@@ -98,6 +98,16 @@ _config+:: {
 },
 ```
 
+`resourceQuotaPodFitResources` (default `['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory']`) — which quota resources `K8sResourceQuotaBlocksLargestPod` and `K8sResourceQuotaBlocksSmallestPod` compare against active (Pending or Running) pods in the namespace. Each non-`pods` entry adds one branch to both alerts, while `pods` adds a branch only to `K8sResourceQuotaBlocksSmallestPod`, so trim the list to the resources your quotas actually set:
+
+```jsonnet
+_config+:: {
+  resourceQuotaPodFitResources: ['pods', 'requests.cpu'],
+},
+```
+
+Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).

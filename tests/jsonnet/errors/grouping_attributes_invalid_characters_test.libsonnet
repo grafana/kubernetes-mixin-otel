@@ -1,3 +1,4 @@
+// expect: must be valid Prometheus label names
 local common = import '../../../dashboards/resources/queries/common.libsonnet';
 
 common.metricSum(
