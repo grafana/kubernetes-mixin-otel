@@ -244,9 +244,9 @@ reclaim capacity from pods that no longer need it.
 + *Severity*: warning
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockssmallestpod)
 
-**Meaning.** Headroom is below even the smallest running pod in the namespace,
-so nothing further can be admitted. For a `pods` count quota this is simply zero
-slots remaining.
+**Meaning.** Headroom is below even the smallest active pod (Pending or Running)
+in the namespace, so nothing further can be admitted. For a `pods` count quota
+this is simply zero slots remaining.
 
 **Impact.** The namespace is fully wedged for this resource: no workload can
 scale up and no evicted pod can be replaced. For cpu and memory resources
@@ -279,5 +279,5 @@ pods currently running, which carries three caveats:
   PriorityClass charges only a subset of the namespace's pods, but the pod size
   is computed namespace-wide, so the threshold may come from a pod the quota
   never charges.
-+ A namespace with a quota but no running pods produces no alert, since there is
++ A namespace with a quota but no active pods produces no alert, since there is
   no pod size to compare against.

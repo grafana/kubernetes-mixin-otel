@@ -106,7 +106,7 @@ _config+:: {
 },
 ```
 
-Set it to `[]` to drop both alerts entirely. `pods` is emitted only on `K8sResourceQuotaBlocksSmallestPod`, since a count quota has no largest-versus-smallest distinction.
+Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
 
 ## Architecture
 
