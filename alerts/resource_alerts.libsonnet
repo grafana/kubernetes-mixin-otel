@@ -65,7 +65,7 @@ local quotaRatio(config) =
               },
               annotations: {
                 description: 'ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.',
-                summary: 'Namespace quota cannot fit another pod.',
+                summary: 'Namespace quota cannot fit another large replica pod.',
               },
             },
           ]
