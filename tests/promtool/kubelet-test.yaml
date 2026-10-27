@@ -4,8 +4,8 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
-  # one node per pressure condition, plus an Unknown (-1) memory condition that must not fire
   - interval: 1m
+    name: node pressure alerts fire per condition and an Unknown memory condition does not
     input_series:
       - series: 'k8s_node_condition_disk_pressure{host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp",k8s_cluster_name="otel-receivers-only",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-f8mp"}'
         values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
@@ -43,8 +43,8 @@ tests:
         alertname: K8sNodeMemoryPressure
         exp_alerts: []
 
-  # duplicate scrapes, all three pressures on one node, and a healthy node
   - interval: 1m
+    name: node pressure alerts dedupe duplicate scrapes and ignore a healthy node
     input_series:
       - series: 'k8s_node_condition_disk_pressure{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-duplicate-scrape"}'
         values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
@@ -105,8 +105,8 @@ tests:
               description: 'node-all-conditions has an active PIDPressure Condition. The number of processes on the node is approaching the limit and the kubelet may start evicting pods.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodepidpressure'
 
-  # Ready condition: False (0) and Unknown (-1) both fire, True (1) never does
   - interval: 1m
+    name: K8sNodeNotReady fires on both a False and an Unknown Ready condition but not True
     input_series:
       - series: 'k8s_node_condition_ready{host_name="collector-a",k8s_cluster_name="otel-receivers-only",k8s_node_name="node-not-ready"}'
         values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
