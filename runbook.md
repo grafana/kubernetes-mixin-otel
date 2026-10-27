@@ -216,7 +216,7 @@ window but cannot distinguish "near the limit and fine" from "near the limit and
 unable to replace its biggest pod", which is what this alert adds.
 
 For cpu and memory, headroom below the smallest pod is also below the largest, so
-`K8sResourceQuotaBlocksSmallestPod` always fires alongside this alert. This mixin
+when `K8sResourceQuotaBlocksSmallestPod` fires, this alert will fire as well. This mixin
 ships no inhibition; to be paged once, inhibit this alert on
 `k8s_cluster_name, k8s_namespace_name, k8s_resourcequota_name, resource`:
 
