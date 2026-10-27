@@ -207,8 +207,8 @@ is back under it.
 + *Severity*: info
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8sresourcequotablockslargestpod)
 
-**Meaning.** The quota has headroom left, but less than the largest running pod
-in the namespace requests. Another copy of that pod would be rejected.
+**Meaning.** The quota has headroom left, but less than the largest active pod
+(Pending or Running) in the namespace requests. Another copy of that pod would be rejected.
 
 **Impact.** The namespace is partially wedged: small workloads still schedule,
 the largest ones no longer do. `K8sResourceQuotaAlmostFull` covers the same
