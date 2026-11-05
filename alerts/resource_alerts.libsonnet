@@ -77,11 +77,13 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
           },
           {
             alert: 'K8sContainerMemoryNearLimit',
-            expr: 'max by (%s) (%s) > %g' % [
-              std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, $._config)),
-              selectors.withCustomAttributes('k8s_container_memory_limit_utilization_ratio', $._config),
-              $._config.containerMemoryNearLimitPercent / 100,
-            ],
+            expr: promql.gt({
+              left: promql.max({
+                by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                expr: selectors.withCustomAttributes('k8s_container_memory_limit_utilization_ratio', $._config),
+              }),
+              right: '%g' % [$._config.containerMemoryNearLimitPercent / 100],
+            }),
             'for': '15m',
             labels: {
               severity: 'warning',
@@ -93,11 +95,13 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
           },
           {
             alert: 'K8sContainerCPUNearLimit',
-            expr: 'max by (%s) (%s) > %g' % [
-              std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, $._config)),
-              selectors.withCustomAttributes('k8s_container_cpu_limit_utilization_ratio', $._config),
-              $._config.containerCPUNearLimitPercent / 100,
-            ],
+            expr: promql.gt({
+              left: promql.max({
+                by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                expr: selectors.withCustomAttributes('k8s_container_cpu_limit_utilization_ratio', $._config),
+              }),
+              right: '%g' % [$._config.containerCPUNearLimitPercent / 100],
+            }),
             'for': '15m',
             labels: {
               severity: 'info',
