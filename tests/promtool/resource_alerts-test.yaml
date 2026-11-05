@@ -409,3 +409,79 @@ tests:
               summary: 'Container CPU usage is close to its limit.'
               description: 'Container app in pod hot (namespace team-n) is using 95% of its CPU limit.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainercpunearlimit'
+
+  - interval: 1m
+    input_series:
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="overcommitted",k8s_node_name="n1"}'
+        values: '4x19'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="overcommitted",k8s_node_name="n2"}'
+        values: '4x19'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="overcommitted",k8s_node_name="n3"}'
+        values: '4x19'
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p1",k8s_container_name="app"}'
+        values: '5x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p1"}'
+        values: '2x19'
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p2",k8s_container_name="app"}'
+        values: '4x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p2"}'
+        values: '2x19'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="tolerant",k8s_node_name="n1"}'
+        values: '4x19'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="tolerant",k8s_node_name="n2"}'
+        values: '4x19'
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="tolerant",k8s_namespace_name="team-o",k8s_pod_name="p3",k8s_container_name="app"}'
+        values: '3x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="tolerant",k8s_namespace_name="team-o",k8s_pod_name="p3"}'
+        values: '2x19'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="single-node",k8s_node_name="n1"}'
+        values: '4x19'
+      - series: 'k8s_container_cpu_request{k8s_cluster_name="single-node",k8s_namespace_name="team-o",k8s_pod_name="p4",k8s_container_name="app"}'
+        values: '9x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="single-node",k8s_namespace_name="team-o",k8s_pod_name="p4"}'
+        values: '2x19'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: K8sCPUOvercommit
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: K8sCPUOvercommit
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: overcommitted
+            exp_annotations:
+              summary: 'Cluster has overcommitted CPU resource requests.'
+              description: 'Cluster overcommitted has overcommitted CPU resource requests for Pods by 1.00 CPU cores beyond the capacity left if its largest node fails.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scpuovercommit'
+
+  - interval: 1m
+    input_series:
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="overcommitted",k8s_node_name="n1"}'
+        values: '4000000000x19'
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="overcommitted",k8s_node_name="n2"}'
+        values: '4000000000x19'
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="overcommitted",k8s_node_name="n3"}'
+        values: '4000000000x19'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p1",k8s_container_name="app"}'
+        values: '5000000000x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p1"}'
+        values: '2x19'
+      - series: 'k8s_container_memory_request_bytes{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p2",k8s_container_name="app"}'
+        values: '4000000000x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="overcommitted",k8s_namespace_name="team-o",k8s_pod_name="p2"}'
+        values: '2x19'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: K8sMemoryOvercommit
+        exp_alerts: []
+      - eval_time: 11m
+        alertname: K8sMemoryOvercommit
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: overcommitted
+            exp_annotations:
+              summary: 'Cluster has overcommitted memory resource requests.'
+              description: 'Cluster overcommitted has overcommitted memory resource requests for Pods by 1GB beyond the capacity left if its largest node fails.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryovercommit'

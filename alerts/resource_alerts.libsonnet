@@ -13,12 +13,50 @@ local quotaRatio(config) =
     selectors.withCustomAttributes('k8s_resource_quota_hard_limit', config),
   ];
 
+local overcommitExpr(requestMetric, allocatableMetric, config) =
+  local cluster = std.join(', ', grouping.maybeWithGrouping(['k8s_cluster_name'], config));
+  local allocatable = selectors.withCustomAttributes(allocatableMetric, config);
+  'sum by (%s) (max by (%s) (%s)) - ((sum by (%s) (max by (%s) (%s)) - max by (%s) (%s)) > 0) > 0' % [
+    cluster,
+    std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, config)),
+    activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
+    cluster,
+    std.join(', ', grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config)),
+    allocatable,
+    cluster,
+    allocatable,
+  ];
+
 {
   prometheusAlerts+:: {
     groups+: [
       {
         name: 'k8s.configuration.resource_management',
         rules: [
+          {
+            alert: 'K8sCPUOvercommit',
+            expr: overcommitExpr('k8s_container_cpu_request', 'k8s_node_allocatable_cpu', $._config),
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has overcommitted CPU resource requests for Pods by {{ printf "%.2f" $value }} CPU cores beyond the capacity left if its largest node fails.',
+              summary: 'Cluster has overcommitted CPU resource requests.',
+            },
+          },
+          {
+            alert: 'K8sMemoryOvercommit',
+            expr: overcommitExpr('k8s_container_memory_request_bytes', 'k8s_node_allocatable_memory_bytes', $._config),
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has overcommitted memory resource requests for Pods by {{ $value | humanize }}B beyond the capacity left if its largest node fails.',
+              summary: 'Cluster has overcommitted memory resource requests.',
+            },
+          },
           {
             alert: 'K8sContainerMemoryNearLimit',
             expr: 'max by (%s) (%s) > %g' % [

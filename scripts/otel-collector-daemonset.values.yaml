@@ -137,7 +137,7 @@ config:
 clusterRole:
   rules:
     - apiGroups: ['']
-      resources: ['nodes/proxy']
+      resources: ['nodes/pods']
       verbs: ['get']
 
 ports:
