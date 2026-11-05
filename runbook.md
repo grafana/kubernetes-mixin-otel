@@ -130,7 +130,9 @@ exhausting the node.
 comes from `k8s.container.memory_limit_utilization` on the
 [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/kubeletstatsreceiver/metadata.yaml),
 which is disabled by default; if this alert never fires, enable it under the
-receiver's `metrics`. Containers without a memory limit emit no series.
+receiver's `metrics`. Containers without a memory limit emit no series. The
+ratio uses raw memory usage, which includes reclaimable page cache, so it can
+overstate real OOM risk.
 
 **Impact.** The container is at risk of being OOM-killed and restarted.
 
