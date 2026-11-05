@@ -1,4 +1,5 @@
 // alerts path must match the path in the kubernetes-mixin template
+local activePods = import '../lib/active_pods.libsonnet';
 local grouping = import '../lib/grouping.libsonnet';
 local quota = import '../lib/resource_quota.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
@@ -15,6 +16,43 @@ local quotaRatio(config) =
 {
   prometheusAlerts+:: {
     groups+: [
+      {
+        name: 'k8s.configuration.resource_management',
+        rules: [
+          {
+            alert: 'K8sContainerMemoryNearLimit',
+            expr: 'max by (%s) (%s) > %g' % [
+              std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, $._config)),
+              selectors.withCustomAttributes('k8s_container_memory_limit_utilization_ratio', $._config),
+              $._config.containerMemoryNearLimitPercent / 100,
+            ],
+            'for': '15m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its memory limit.',
+              summary: 'Container memory usage is close to its limit.',
+            },
+          },
+          {
+            alert: 'K8sContainerCPUNearLimit',
+            expr: 'max by (%s) (%s) > %g' % [
+              std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, $._config)),
+              selectors.withCustomAttributes('k8s_container_cpu_limit_utilization_ratio', $._config),
+              $._config.containerCPUNearLimitPercent / 100,
+            ],
+            'for': '15m',
+            labels: {
+              severity: 'info',
+            },
+            annotations: {
+              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its CPU limit.',
+              summary: 'Container CPU usage is close to its limit.',
+            },
+          },
+        ],
+      },
       {
         name: 'k8s.policy.resource_quota',
         rules: [

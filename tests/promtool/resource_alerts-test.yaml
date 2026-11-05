@@ -357,3 +357,55 @@ tests:
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod
         exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'k8s_container_memory_limit_utilization_ratio{cloud_availability_zone="us-west1-a",host_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-i70p",instance="default.otel-collector-deployment-opentelemetry-collector-68f55c47bvqmc.opentelemetry-collector",job="default/otel-collector-deployment",k8s_cluster_name="otel-receivers-only",k8s_container_name="opentelemetry-collector",k8s_deployment_name="otel-collector-deployment-opentelemetry-collector",k8s_namespace_name="default",k8s_node_name="gke-otel-receivers-on-default-pool-v2-03ad09ad-i70p",k8s_pod_name="otel-collector-deployment-opentelemetry-collector-68f55c47bvqmc",k8s_replicaset_name="otel-collector-deployment-opentelemetry-collector-68f55c47d4",service_instance_id="default.otel-collector-deployment-opentelemetry-collector-68f55c47bvqmc.opentelemetry-collector",service_name="otel-collector-deployment",service_namespace="default",service_version="0.153.0"}'
+        values: '0.95x19'
+      - series: 'k8s_container_memory_limit_utilization_ratio{k8s_cluster_name="otel-receivers-only",k8s_container_name="app",k8s_namespace_name="team-m",k8s_pod_name="below-threshold"}'
+        values: '0.85x19'
+      - series: 'k8s_container_memory_limit_utilization_ratio{k8s_cluster_name="otel-receivers-only",k8s_container_name="app",k8s_namespace_name="team-m",k8s_pod_name="at-threshold"}'
+        values: '0.9x19'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: K8sContainerMemoryNearLimit
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: K8sContainerMemoryNearLimit
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: default
+              k8s_pod_name: otel-collector-deployment-opentelemetry-collector-68f55c47bvqmc
+              k8s_container_name: opentelemetry-collector
+            exp_annotations:
+              summary: 'Container memory usage is close to its limit.'
+              description: 'Container opentelemetry-collector in pod otel-collector-deployment-opentelemetry-collector-68f55c47bvqmc (namespace default) is using 95% of its memory limit.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainermemorynearlimit'
+
+  - interval: 1m
+    input_series:
+      - series: 'k8s_container_cpu_limit_utilization_ratio{k8s_cluster_name="otel-receivers-only",k8s_container_name="app",k8s_namespace_name="team-n",k8s_pod_name="hot"}'
+        values: '0.95x19'
+      - series: 'k8s_container_cpu_limit_utilization_ratio{k8s_cluster_name="otel-receivers-only",k8s_container_name="app",k8s_namespace_name="team-n",k8s_pod_name="below-threshold"}'
+        values: '0.85x19'
+      - series: 'k8s_container_cpu_limit_utilization_ratio{k8s_cluster_name="otel-receivers-only",k8s_container_name="app",k8s_namespace_name="team-n",k8s_pod_name="at-threshold"}'
+        values: '0.9x19'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: K8sContainerCPUNearLimit
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: K8sContainerCPUNearLimit
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: otel-receivers-only
+              k8s_namespace_name: team-n
+              k8s_pod_name: hot
+              k8s_container_name: app
+            exp_annotations:
+              summary: 'Container CPU usage is close to its limit.'
+              description: 'Container app in pod hot (namespace team-n) is using 95% of its CPU limit.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainercpunearlimit'

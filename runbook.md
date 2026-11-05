@@ -118,6 +118,60 @@ typically a container missing an init process, leaving zombies behind.
 the kubelet, or a PID resource limit on the workload, to stop one pod
 exhausting the node.
 
+## Container resources
+
+##### Alert Name: "K8sContainerMemoryNearLimit"
++ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its memory limit.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainermemorynearlimit)
+
+**Meaning.** A container's memory usage has stayed above
+`containerMemoryNearLimitPercent` (default 90%) of its memory limit. The ratio
+comes from `k8s.container.memory_limit_utilization` on the
+[kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/kubeletstatsreceiver/metadata.yaml),
+which is disabled by default; if this alert never fires, enable it under the
+receiver's `metrics`. Containers without a memory limit emit no series.
+
+**Impact.** The container is at risk of being OOM-killed and restarted.
+
+**Diagnosis.**
+
+```shell
+kubectl top pod $POD -n $NAMESPACE --containers
+kubectl describe pod $POD -n $NAMESPACE
+```
+
+Look for `OOMKilled` under the container's last state.
+
+**Mitigation.** Raise the memory limit, or fix the leak or unbounded cache in
+the workload.
+
+##### Alert Name: "K8sContainerCPUNearLimit"
++ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its CPU limit.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainercpunearlimit)
+
+**Meaning.** A container's CPU usage has stayed above
+`containerCPUNearLimitPercent` (default 90%) of its CPU limit. The ratio comes
+from `k8s.container.cpu_limit_utilization` on the
+[kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/kubeletstatsreceiver/metadata.yaml),
+which is disabled by default; if this alert never fires, enable it under the
+receiver's `metrics`. Containers without a CPU limit emit no series.
+
+**Impact.** The container is likely being throttled by the kernel, which
+increases latency but does not restart it. Reported at `info` because a
+workload sized to its limit sits here by design.
+
+**Diagnosis.**
+
+```shell
+kubectl top pod $POD -n $NAMESPACE --containers
+kubectl get pod $POD -n $NAMESPACE -o jsonpath='{.spec.containers[*].resources}'
+```
+
+**Mitigation.** Raise the CPU limit, or remove it if throttling is hurting
+latency and the node has spare capacity.
+
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
