@@ -3,6 +3,9 @@ local activePods = import '../lib/active_pods.libsonnet';
 local grouping = import '../lib/grouping.libsonnet';
 local quota = import '../lib/resource_quota.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
+local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
+
+local promql = tsqtsq.promql;
 
 local quotaRatio(config) =
   local by = std.join(', ', grouping.maybeWithGrouping(quota.quotaBy, config));
@@ -14,18 +17,33 @@ local quotaRatio(config) =
   ];
 
 local overcommitExpr(requestMetric, allocatableMetric, config) =
-  local cluster = std.join(', ', grouping.maybeWithGrouping(['k8s_cluster_name'], config));
+  local cluster = grouping.maybeWithGrouping(['k8s_cluster_name'], config);
   local allocatable = selectors.withCustomAttributes(allocatableMetric, config);
-  'sum by (%s) (max by (%s) (%s)) - ((sum by (%s) (max by (%s) (%s)) - max by (%s) (%s)) > 0) > 0' % [
-    cluster,
-    std.join(', ', grouping.maybeWithGrouping(activePods.containerMaxBy, config)),
-    activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
-    cluster,
-    std.join(', ', grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config)),
-    allocatable,
-    cluster,
-    allocatable,
-  ];
+  promql.gt({
+    left: promql.sub({
+      left: promql.sum({
+        by: cluster,
+        expr: promql.max({
+          by: grouping.maybeWithGrouping(activePods.containerMaxBy, config),
+          expr: activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
+        }),
+      }),
+      right: promql.gt({
+        left: promql.sub({
+          left: promql.sum({
+            by: cluster,
+            expr: promql.max({
+              by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config),
+              expr: allocatable,
+            }),
+          }),
+          right: promql.max({ by: cluster, expr: allocatable }),
+        }),
+        right: '0',
+      }),
+    }),
+    right: '0',
+  });
 
 {
   prometheusAlerts+:: {
