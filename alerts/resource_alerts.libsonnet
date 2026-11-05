@@ -19,30 +19,26 @@ local quotaRatio(config) =
 local overcommitExpr(requestMetric, allocatableMetric, config) =
   local cluster = grouping.maybeWithGrouping(['k8s_cluster_name'], config);
   local allocatable = selectors.withCustomAttributes(allocatableMetric, config);
-  promql.gt({
-    left: promql.sub({
-      left: promql.sum({
-        by: cluster,
-        expr: promql.max({
-          by: grouping.maybeWithGrouping(activePods.containerMaxBy, config),
-          expr: activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
-        }),
-      }),
-      right: promql.gt({
-        left: promql.sub({
-          left: promql.sum({
-            by: cluster,
-            expr: promql.max({
-              by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config),
-              expr: allocatable,
-            }),
-          }),
-          right: promql.max({ by: cluster, expr: allocatable }),
-        }),
-        right: '0',
+  local requests = promql.sum({
+    by: cluster,
+    expr: promql.max({
+      by: grouping.maybeWithGrouping(activePods.containerMaxBy, config),
+      expr: activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
+    }),
+  });
+  local capacityWithoutLargestNode = promql.sub({
+    left: promql.sum({
+      by: cluster,
+      expr: promql.max({
+        by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config),
+        expr: allocatable,
       }),
     }),
-    right: '0',
+    right: promql.max({ by: cluster, expr: allocatable }),
+  });
+  promql.and({
+    left: promql.gt({ left: promql.sub({ left: requests, right: capacityWithoutLargestNode }), right: '0' }),
+    right: promql.gt({ left: capacityWithoutLargestNode, right: '0' }),
   });
 
 {
