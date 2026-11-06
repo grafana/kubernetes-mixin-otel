@@ -28,12 +28,6 @@ presets:
 
 config:
   receivers:
-    kubeletstats:
-      metrics:
-        k8s.container.cpu_limit_utilization:
-          enabled: true
-        k8s.container.memory_limit_utilization:
-          enabled: true
     otlp:
       protocols:
         grpc:
@@ -133,12 +127,6 @@ config:
           batch,
         ]
         exporters: [otlp_http/metrics, prometheus]
-
-clusterRole:
-  rules:
-    - apiGroups: ['']
-      resources: ['nodes/proxy']
-      verbs: ['get']
 
 ports:
   prometheus:

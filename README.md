@@ -108,12 +108,11 @@ _config+:: {
 
 Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
 
-`containerMemoryNearLimitPercent` and `containerCPUNearLimitPercent` (default `90` each) — the share of its memory or CPU limit a container must use for 15 minutes before `K8sContainerMemoryNearLimit` (warning) or `K8sContainerCPUNearLimit` (info) fires. Raise the CPU threshold if brief saturation is routine for your workloads, since CPU is throttled rather than killed:
+`containerMemoryNearLimitPercent` (default `90`) — the share of its memory limit a container must use for 15 minutes before `K8sContainerMemoryNearLimit` fires:
 
 ```jsonnet
 _config+:: {
   containerMemoryNearLimitPercent: 85,
-  containerCPUNearLimitPercent: 95,
 },
 ```
 

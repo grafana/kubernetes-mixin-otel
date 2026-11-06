@@ -74,9 +74,18 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
           {
             alert: 'K8sContainerMemoryNearLimit',
             expr: promql.gt({
-              left: promql.max({
-                by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
-                expr: selectors.withCustomAttributes('k8s_container_memory_limit_utilization_ratio', $._config),
+              left: promql.div({
+                left: promql.max({
+                  by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                  expr: selectors.withCustomAttributes('container_memory_working_set_bytes', $._config),
+                }),
+                right: promql.gt({
+                  left: promql.max({
+                    by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                    expr: selectors.withCustomAttributes('k8s_container_memory_limit_bytes', $._config),
+                  }),
+                  right: '0',
+                }),
               }),
               right: '%g' % [$._config.containerMemoryNearLimitPercent / 100],
             }),
@@ -87,24 +96,6 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
             annotations: {
               description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its memory limit.',
               summary: 'Container memory usage is close to its limit.',
-            },
-          },
-          {
-            alert: 'K8sContainerCPUNearLimit',
-            expr: promql.gt({
-              left: promql.max({
-                by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
-                expr: selectors.withCustomAttributes('k8s_container_cpu_limit_utilization_ratio', $._config),
-              }),
-              right: '%g' % [$._config.containerCPUNearLimitPercent / 100],
-            }),
-            'for': '15m',
-            labels: {
-              severity: 'info',
-            },
-            annotations: {
-              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its CPU limit.',
-              summary: 'Container CPU usage is close to its limit.',
             },
           },
         ],
