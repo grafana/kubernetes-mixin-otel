@@ -19,7 +19,7 @@ local conditionAlerts = [
     local failures = [
       '%s expected:\n%s\n\ngot:\n%s' % [a.alert, expected, result]
       for a in conditionAlerts
-      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s) %s' % [a.metric, a.comparison]]
+      for expected in ['(max by (k8s_cluster_name, k8s_node_name) (%s) %s)' % [a.metric, a.comparison]]
       for result in [exprFor(a.alert, {})]
       if result != expected
     ];
@@ -31,7 +31,7 @@ local conditionAlerts = [
     local failures = [
       '%s expected:\n%s\n\ngot:\n%s' % [a.alert, expected, result]
       for a in conditionAlerts
-      for expected in ['max by (k8s_cluster_name, k8s_node_name) (%s{env="prod"}) %s' % [a.metric, a.comparison]]
+      for expected in ['(max by (k8s_cluster_name, k8s_node_name) (%s{env="prod"}) %s)' % [a.metric, a.comparison]]
       for result in [exprFor(a.alert, config)]
       if result != expected
     ];
