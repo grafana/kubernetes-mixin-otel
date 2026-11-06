@@ -70,6 +70,30 @@ local promql = tsqtsq.promql;
               summary: 'Node has an active PIDPressure Condition.',
             },
           },
+          {
+            alert: 'K8sNodeEviction',
+            expr: promql.count({
+              by: ['k8s_cluster_name', 'k8s_node_name'],
+              expr: promql.unless({
+                left: promql.max({
+                  by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_node_name'],
+                  expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config), right: '1' }),
+                }),
+                right: promql.max({
+                  by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
+                  expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config) + ' ' + promql.offset({ units: { m: 15 } }), right: '1' }),
+                }),
+                on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
+              }),
+            }),
+            labels: {
+              severity: 'info',
+            },
+            annotations: {
+              description: 'Node {{ $labels.k8s_node_name }} has evicted {{ $value }} pod(s) in the last 15 minutes.',
+              summary: 'Node is evicting pods.',
+            },
+          },
         ],
       },
     ],
