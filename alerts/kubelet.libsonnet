@@ -3,7 +3,6 @@ local selectors = import '../lib/selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
-local nodeLabels = ['k8s_cluster_name', 'k8s_node_name'];
 
 {
   prometheusAlerts+:: {
@@ -14,7 +13,7 @@ local nodeLabels = ['k8s_cluster_name', 'k8s_node_name'];
           {
             alert: 'K8sNodeNotReady',
             expr: promql.lte({
-              left: promql.max({ by: nodeLabels, expr: selectors.withCustomAttributes('k8s_node_condition_ready', $._config) }),
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_ready', $._config) }),
               right: '0',
             }),
             'for': '15m',
@@ -29,7 +28,7 @@ local nodeLabels = ['k8s_cluster_name', 'k8s_node_name'];
           {
             alert: 'K8sNodeMemoryPressure',
             expr: promql.eq({
-              left: promql.max({ by: nodeLabels, expr: selectors.withCustomAttributes('k8s_node_condition_memory_pressure', $._config) }),
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_memory_pressure', $._config) }),
               right: '1',
             }),
             'for': '10m',
@@ -44,7 +43,7 @@ local nodeLabels = ['k8s_cluster_name', 'k8s_node_name'];
           {
             alert: 'K8sNodeDiskPressure',
             expr: promql.eq({
-              left: promql.max({ by: nodeLabels, expr: selectors.withCustomAttributes('k8s_node_condition_disk_pressure', $._config) }),
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_disk_pressure', $._config) }),
               right: '1',
             }),
             'for': '10m',
@@ -59,7 +58,7 @@ local nodeLabels = ['k8s_cluster_name', 'k8s_node_name'];
           {
             alert: 'K8sNodePIDPressure',
             expr: promql.eq({
-              left: promql.max({ by: nodeLabels, expr: selectors.withCustomAttributes('k8s_node_condition_pid_pressure', $._config) }),
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_pid_pressure', $._config) }),
               right: '1',
             }),
             'for': '10m',
