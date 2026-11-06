@@ -33,13 +33,14 @@ local quotaOvercommitExpr(resourcePattern, quotaDivisor, allocatableMetric, conf
   });
 
 local quotaRatio(config) =
-  local by = std.join(', ', grouping.maybeWithGrouping(quota.quotaBy, config));
-  'max by (%s) (%s) / (max by (%s) (%s) > 0)' % [
-    by,
-    selectors.withCustomAttributes('k8s_resource_quota_used', config),
-    by,
-    selectors.withCustomAttributes('k8s_resource_quota_hard_limit', config),
-  ];
+  local by = grouping.maybeWithGrouping(quota.quotaBy, config);
+  promql.div({
+    left: promql.max({ by: by, expr: selectors.withCustomAttributes('k8s_resource_quota_used', config) }),
+    right: promql.gt({
+      left: promql.max({ by: by, expr: selectors.withCustomAttributes('k8s_resource_quota_hard_limit', config) }),
+      right: '0',
+    }),
+  });
 
 {
   prometheusAlerts+:: {
@@ -49,7 +50,10 @@ local quotaRatio(config) =
         rules: [
           {
             alert: 'K8sResourceQuotaAlmostFull',
-            expr: '%s > %g < 1' % [quotaRatio($._config), $._config.resourceQuotaAlmostFullPercent / 100],
+            expr: promql.lt({
+              left: promql.gt({ left: quotaRatio($._config), right: '%g' % [$._config.resourceQuotaAlmostFullPercent / 100] }),
+              right: '1',
+            }),
             'for': '15m',
             labels: {
               severity: 'info',
@@ -61,7 +65,7 @@ local quotaRatio(config) =
           },
           {
             alert: 'K8sResourceQuotaFullyUsed',
-            expr: '%s == 1' % quotaRatio($._config),
+            expr: promql.eq({ left: quotaRatio($._config), right: '1' }),
             'for': '15m',
             labels: {
               severity: 'info',
@@ -73,7 +77,7 @@ local quotaRatio(config) =
           },
           {
             alert: 'K8sResourceQuotaExceeded',
-            expr: '%s > 1' % quotaRatio($._config),
+            expr: promql.gt({ left: quotaRatio($._config), right: '1' }),
             'for': '15m',
             labels: {
               severity: 'warning',
