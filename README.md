@@ -108,6 +108,14 @@ _config+:: {
 
 Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
 
+`containerMemoryNearLimitPercent` (default `90`) — the share of its memory limit a container must use for 15 minutes before `K8sContainerMemoryNearLimit` fires:
+
+```jsonnet
+_config+:: {
+  containerMemoryNearLimitPercent: 85,
+},
+```
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
