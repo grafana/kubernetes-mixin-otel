@@ -85,7 +85,7 @@ local quotaRatio(config) =
           },
           {
             alert: 'K8sCPUQuotaOvercommit',
-            expr: quotaOvercommitExpr('(requests[.])?cpu', 1000, 'k8s_node_allocatable_cpu', $._config),
+            expr: quotaOvercommitExpr('cpu|requests[.]cpu', 1000, 'k8s_node_allocatable_cpu', $._config),
             'for': '5m',
             labels: {
               severity: 'warning',
@@ -97,7 +97,7 @@ local quotaRatio(config) =
           },
           {
             alert: 'K8sMemoryQuotaOvercommit',
-            expr: quotaOvercommitExpr('(requests[.])?memory', null, 'k8s_node_allocatable_memory_bytes', $._config),
+            expr: quotaOvercommitExpr('memory|requests[.]memory', null, 'k8s_node_allocatable_memory_bytes', $._config),
             'for': '5m',
             labels: {
               severity: 'warning',
