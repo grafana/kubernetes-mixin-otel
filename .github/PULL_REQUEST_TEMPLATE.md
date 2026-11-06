@@ -1,3 +1,5 @@
+<!-- Title must be `type: description` (feat, fix, docs, perf, refactor, test, build, ci, chore, revert); the type sets the release-notes section. Example: `feat: add resource quota pod fit alerts` -->
+
 ## What changed
 
 <!-- What this does, in a sentence or two. Written by a human. -->
