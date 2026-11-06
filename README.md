@@ -111,3 +111,23 @@ Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smalles
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
+
+## Releases
+
+Push a `vX.Y.Z` tag from `main` to publish a GitHub release. The workflow runs `make test`, then attaches `kubernetes-mixin-otel.zip` containing the generated dashboards and alerts. Tags with a `-` suffix (for example `v1.0.0-rc1`) are published as prereleases.
+
+```bash
+git tag -s -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+```
+
+Release notes are generated from merged PRs and grouped by label ([.github/release.yml](.github/release.yml)). PR titles must follow `type: description` or `type(scope): description`; the [PR title workflow](.github/workflows/pr-title.yaml) rejects other titles and sets the label from the type:
+
+| Title | Label | Section |
+| --- | --- | --- |
+| `feat:` | `enhancement` | Features |
+| `fix:` | `bug` | Bug fixes |
+| `docs:` | `documentation` | Documentation |
+| any type with scope `deps` | `dependencies` | Dependencies |
+| `perf`, `refactor`, `test`, `build`, `ci`, `chore`, `revert` | `skip-changelog` | omitted from the notes |
+
+Add the `security` label by hand to list a PR under Security; it replaces `skip-changelog`. Editing the title or the labels re-applies the label.
