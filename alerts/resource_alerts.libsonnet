@@ -10,7 +10,7 @@ local quotaOvercommitExpr(resourcePattern, quotaDivisor, allocatableMetric, conf
   local cluster = grouping.maybeWithGrouping(['k8s_cluster_name'], config);
   local quotaTotal = promql.sum({
     by: cluster,
-    expr: promql.max({
+    expr: promql.min({
       by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name'], config),
       expr: selectors.selector('k8s_resource_quota_hard_limit', {}, [{ label: 'resource', operator: tsqtsq.MatchingOperator.regexMatch, value: resourcePattern }], config=config),
     }),
