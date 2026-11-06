@@ -1,7 +1,7 @@
 name: PR title
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, edited, synchronize, reopened, labeled, unlabeled]
 
 permissions: {}
@@ -53,8 +53,10 @@ jobs:
           fi
 
           for stale in enhancement bug documentation skip-changelog dependencies; do
-            gh api -X DELETE "repos/$REPO/issues/$PR/labels/$stale" --silent 2>/dev/null || true
+            if [[ "$stale" != "$label" ]] && grep -qx "$stale" <<< "$current"; then
+              gh api -X DELETE "repos/$REPO/issues/$PR/labels/$stale" --silent
+            fi
           done
-          if [[ -n "$label" ]]; then
+          if [[ -n "$label" ]] && ! grep -qx "$label" <<< "$current"; then
             gh api -X POST "repos/$REPO/issues/$PR/labels" -f "labels[]=$label" --silent
           fi
