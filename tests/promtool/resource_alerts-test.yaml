@@ -357,3 +357,73 @@ tests:
       - eval_time: 16m
         alertname: K8sResourceQuotaBlocksSmallestPod
         exp_alerts: []
+
+  # cpu and requests.cpu on one quota count once, limits.cpu is ignored, duplicate allocatable series count once, 1.5x does not fire, zero allocatable does not divide
+  - interval: 1m
+    input_series:
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="cpu"}'
+        values: '8000x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="requests.cpu"}'
+        values: '8000x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-b",k8s_resourcequota_name="q2",resource="limits.cpu"}'
+        values: '100000x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-c",k8s_resourcequota_name="q3",resource="requests.cpu"}'
+        values: '8000x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c1",k8s_node_name="node-1"}'
+        values: '4x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c1",k8s_node_name="node-1",service_instance_id="duplicate"}'
+        values: '4x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c1",k8s_node_name="node-2"}'
+        values: '4x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c2",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="requests.cpu"}'
+        values: '12000x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c2",k8s_node_name="node-1"}'
+        values: '4x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c2",k8s_node_name="node-2"}'
+        values: '4x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c4",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="requests.cpu"}'
+        values: '4000x7'
+      - series: 'k8s_node_allocatable_cpu{k8s_cluster_name="c4",k8s_node_name="node-1"}'
+        values: '0x7'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: K8sCPUQuotaOvercommit
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: K8sCPUQuotaOvercommit
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: c1
+            exp_annotations:
+              summary: 'Cluster has overcommitted CPU resource quota.'
+              description: 'Cluster c1 has CPU resource quota across namespaces at 2.0x its allocatable CPU.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scpuquotaovercommit'
+
+  # memory and requests.memory on one quota count once, limits.memory is ignored
+  - interval: 1m
+    input_series:
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="memory"}'
+        values: '4000000000x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-a",k8s_resourcequota_name="q1",resource="requests.memory"}'
+        values: '4000000000x7'
+      - series: 'k8s_resource_quota_hard_limit{k8s_cluster_name="c1",k8s_namespace_name="team-b",k8s_resourcequota_name="q2",resource="limits.memory"}'
+        values: '90000000000x7'
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="c1",k8s_node_name="node-1"}'
+        values: '1000000000x7'
+      - series: 'k8s_node_allocatable_memory_bytes{k8s_cluster_name="c1",k8s_node_name="node-2"}'
+        values: '1000000000x7'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: K8sMemoryQuotaOvercommit
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: K8sMemoryQuotaOvercommit
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: c1
+            exp_annotations:
+              summary: 'Cluster has overcommitted memory resource quota.'
+              description: 'Cluster c1 has memory resource quota across namespaces at 2.0x its allocatable memory.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryquotaovercommit'

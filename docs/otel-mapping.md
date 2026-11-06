@@ -141,7 +141,7 @@ cAdvisor-specific and require the cAdvisor endpoint.
 | Prometheus metric | OTel receiver metric | OTel semconv metric | Notes |
 |-------------------|---------------------|---------------------|-------|
 | `kube_node_status_condition` | `k8s.node.condition_<name>` (per `node_conditions_to_report`) | `k8s.node.condition.status` | This mixin uses the per-condition metrics, one per entry in `node_conditions_to_report` (default `[Ready]`), e.g. `k8s.node.condition_memory_pressure`. The generic `k8s.node.condition` is a separate opt-in metric that carries the type as a `condition` attribute instead |
-| `kube_node_status_allocatable` | **No metric equivalent** | `k8s.node.cpu.allocatable`, `k8s.node.memory.allocatable`, `k8s.node.pod.allocatable` | Critical gap: allocatable capacity is not exposed as a metric by any current receiver. Semconv defines it but no receiver implements it yet |
+| `kube_node_status_allocatable` | `k8s.node.allocatable_cpu`, `k8s.node.allocatable_memory`, `k8s.node.allocatable_pods` (k8sclusterreceiver) | `k8s.node.cpu.allocatable`, `k8s.node.memory.allocatable`, `k8s.node.pod.allocatable` | Emitted only for the types in `allocatable_types_to_report`, which defaults to `[]`. Names differ from semconv |
 | `kube_node_status_capacity` | **No equivalent** | _(not defined in k8s semconv)_ | Not in any receiver |
 | `kube_node_spec_unschedulable` | **No equivalent** | _(not defined)_ | Not in receiver |
 | `kube_node_spec_taint` | **No equivalent** | _(not defined)_ | Not in receiver |
@@ -340,14 +340,13 @@ container specs (`k8s.container.*`) live in separate namespaces and require join
 |---------------|-------|
 | `k8s.pod.memory.paging.faults` | Page fault counter — not in default kubeletstatsreceiver output |
 | `k8s.node.memory.paging.faults` | Same |
-| `k8s.node.cpu.allocatable` | Allocatable CPU from node spec — not in kubeletstatsreceiver |
-| `k8s.node.memory.allocatable` | Allocatable memory from node spec — not in any receiver |
-| `k8s.node.ephemeral_storage.allocatable` | Same |
-| `k8s.node.pod.allocatable` | Max schedulable pods — not in any receiver |
+| `k8s.node.cpu.allocatable` | Not in kubeletstatsreceiver; k8sclusterreceiver emits `k8s.node.allocatable_cpu` instead |
+| `k8s.node.memory.allocatable` | k8sclusterreceiver emits `k8s.node.allocatable_memory` instead |
+| `k8s.node.ephemeral_storage.allocatable` | k8sclusterreceiver emits `k8s.node.allocatable_ephemeral_storage` instead |
+| `k8s.node.pod.allocatable` | k8sclusterreceiver emits `k8s.node.allocatable_pods` instead |
 
-These allocatable metrics are critical for the kubernetes-mixin dashboards
-(namespace CPU/memory usage vs. allocatable capacity) and are currently
-only available via `kube_node_status_allocatable` from kube-state-metrics.
+The k8sclusterreceiver allocatable metrics are only emitted for the types in
+`allocatable_types_to_report`, which defaults to `[]`.
 
 ---
 
