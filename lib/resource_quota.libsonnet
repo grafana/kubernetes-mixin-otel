@@ -74,8 +74,9 @@ local podFitBranch(aggregation, resource, config) =
   resolvePodFitResources:: resolvePodFitResources,
 
   podFitExpr(aggregation, config)::
-    std.join(' or ', [
+    local branches = [
       podFitBranch(aggregation, resource, config)
       for resource in resolvePodFitResources(aggregation, config)
-    ]),
+    ];
+    std.foldl(function(left, right) promql.or({ left: left, right: right }), branches[1:], branches[0]),
 }
