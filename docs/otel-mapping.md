@@ -211,7 +211,7 @@ They require `prometheusreceiver` scraping the `/metrics` endpoint of the Kubele
 |----------|--------------------|-----------------|
 | PLEG | `kubelet_pleg_relist_duration_seconds_*`, `kubelet_pleg_relist_interval_seconds_*` | Pod Lifecycle Event Generator latency — critical for detecting kubelet health issues |
 | Certificate management | `kubelet_certificate_manager_client_ttl_seconds`, `kubelet_certificate_manager_server_ttl_seconds`, `kubelet_certificate_manager_client_expiration_renew_errors`, `kubelet_server_expiration_renew_errors` | TLS certificate rotation health |
-| Evictions | `kubelet_evictions` | Pod eviction event counter |
+| Evictions | `kubelet_evictions` | Pod eviction event counter. `k8s.pod.status_reason` (k8sclusterreceiver, disabled by default) is a per-pod gauge, not a counter: `1` means Evicted. `K8sNodeEviction` uses it |
 | Runtime operations | `kubelet_runtime_operations_total`, `kubelet_runtime_operations_errors_total`, `kubelet_runtime_operations_duration_seconds_*` | Container runtime (Docker/containerd) operation health |
 | cgroup management | `kubelet_cgroup_manager_duration_seconds_*` | cgroup operation latency |
 | Storage operations | `storage_operation_*`, `volume_manager_total_volumes` | Kubernetes volume attach/detach/mount operations |

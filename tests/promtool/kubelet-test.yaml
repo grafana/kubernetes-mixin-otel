@@ -139,3 +139,29 @@ tests:
               summary: 'Node is not ready.'
               description: 'node-unknown has been unready for more than 15 minutes.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready'
+
+  - interval: 1m
+    name: a newly evicted pod fires, an already evicted pod does not, and the alert clears after 15 minutes
+    input_series:
+      - series: 'k8s_pod_status_reason{k8s_cluster_name="alloy-otel-engine",k8s_namespace_name="default",k8s_pod_name="old",k8s_node_name="node-1"}'
+        values: '1x50'
+      - series: 'k8s_pod_status_reason{k8s_cluster_name="alloy-otel-engine",k8s_namespace_name="default",k8s_pod_name="new",k8s_node_name="node-1"}'
+        values: '_x20 1x30'
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: K8sNodeEviction
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: K8sNodeEviction
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              k8s_cluster_name: alloy-otel-engine
+              k8s_node_name: node-1
+            exp_annotations:
+              summary: 'Node is evicting pods.'
+              description: 'Node node-1 has evicted 1 pod(s) in the last 15 minutes.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodeeviction'
+      - eval_time: 40m
+        alertname: K8sNodeEviction
+        exp_alerts: []
