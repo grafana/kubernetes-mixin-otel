@@ -1,5 +1,8 @@
 // alerts path must match the path in the kubernetes-mixin template
 local selectors = import '../lib/selectors.libsonnet';
+local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
+
+local promql = tsqtsq.promql;
 
 {
   prometheusAlerts+:: {
@@ -9,7 +12,10 @@ local selectors = import '../lib/selectors.libsonnet';
         rules: [
           {
             alert: 'K8sNodeNotReady',
-            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) <= 0' % selectors.withCustomAttributes('k8s_node_condition_ready', $._config),
+            expr: promql.lte({
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_ready', $._config) }),
+              right: '0',
+            }),
             'for': '15m',
             labels: {
               severity: 'warning',
@@ -21,7 +27,10 @@ local selectors = import '../lib/selectors.libsonnet';
           },
           {
             alert: 'K8sNodeMemoryPressure',
-            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_memory_pressure', $._config),
+            expr: promql.eq({
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_memory_pressure', $._config) }),
+              right: '1',
+            }),
             'for': '10m',
             labels: {
               severity: 'info',
@@ -33,7 +42,10 @@ local selectors = import '../lib/selectors.libsonnet';
           },
           {
             alert: 'K8sNodeDiskPressure',
-            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_disk_pressure', $._config),
+            expr: promql.eq({
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_disk_pressure', $._config) }),
+              right: '1',
+            }),
             'for': '10m',
             labels: {
               severity: 'info',
@@ -45,7 +57,10 @@ local selectors = import '../lib/selectors.libsonnet';
           },
           {
             alert: 'K8sNodePIDPressure',
-            expr: 'max by (k8s_cluster_name, k8s_node_name) (%s) == 1' % selectors.withCustomAttributes('k8s_node_condition_pid_pressure', $._config),
+            expr: promql.eq({
+              left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_condition_pid_pressure', $._config) }),
+              right: '1',
+            }),
             'for': '10m',
             labels: {
               severity: 'info',

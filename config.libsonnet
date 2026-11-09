@@ -4,6 +4,7 @@ local k8sAlertsConfig = (import 'github.com/kubernetes-sigs/kubernetes-mixin/ale
 k8sMixinConfig {
   _config+:: {
     cpuThrottlingPercent: k8sAlertsConfig.cpuThrottlingPercent,
+    resourceQuotaTotalOvercommitFactor: k8sAlertsConfig.namespaceOvercommitFactor,
     resourceQuotaAlmostFullPercent: 90,
     containerMemoryNearLimitPercent: 90,
     resourceQuotaPodFitResources: ['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory'],
