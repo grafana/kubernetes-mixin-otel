@@ -126,7 +126,9 @@ exhausting the node.
 **Meaning.** Pods on the node newly report the status reason `Evicted`
 (`k8s.pod.status_reason` of `1`, from the k8sclusterreceiver). The kubelet
 evicts pods when a resource such as memory, disk or PIDs reaches an eviction
-threshold. The metric is disabled by default; if the alert never fires, enable
+threshold. A pod can also be evicted when the scheduler preempts it to place a
+pod with a higher priority class, for example a DaemonSet pod or one with a
+node selector. The metric is disabled by default; if the alert never fires, enable
 it.
 
 **Impact.** The pod is terminated and its phase is set to `Failed`. A

@@ -108,6 +108,14 @@ _config+:: {
 
 Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
 
+`nodeEvictionRateThreshold` (default `0`) — evictions per second a node must exceed over 15 minutes before `K8sNodeEviction` fires. The default fires on any eviction; raise it to tolerate occasional ones, for example `0.01` fires above 9 evictions in 15 minutes:
+
+```jsonnet
+_config+:: {
+  nodeEvictionRateThreshold: 0.01,
+},
+```
+
 ## Architecture
 
 For detailed architecture diagrams and setup options (k3d vs KWOK), see [scripts/README.md](scripts/README.md).
