@@ -116,6 +116,14 @@ _config+:: {
 
 Set it to `[]` to drop both alerts entirely. `pods` is restricted to the smallest-pod alert because a count quota has no largest-versus-smallest distinction.
 
+`containerMemoryNearLimitPercent` (default `90`) — the share of its memory limit a container must use for 15 minutes before `K8sContainerMemoryNearLimit` fires:
+
+```jsonnet
+_config+:: {
+  containerMemoryNearLimitPercent: 85,
+},
+```
+
 `nodeEvictionRateThreshold` (default `0`) — evictions per second a node must exceed over 15 minutes before `K8sNodeEviction` fires. The default fires on any eviction; raise it to tolerate occasional ones, for example `0.01` fires above 9 evictions in 15 minutes:
 
 ```jsonnet

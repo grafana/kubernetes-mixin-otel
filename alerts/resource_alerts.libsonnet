@@ -1,4 +1,5 @@
 // alerts path must match the path in the kubernetes-mixin template
+local activePods = import '../lib/active_pods.libsonnet';
 local grouping = import '../lib/grouping.libsonnet';
 local quota = import '../lib/resource_quota.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
@@ -42,9 +43,90 @@ local quotaRatio(config) =
     }),
   });
 
+local overcommitExpr(requestMetric, allocatableMetric, config) =
+  local cluster = grouping.maybeWithGrouping(['k8s_cluster_name'], config);
+  local allocatable = selectors.withCustomAttributes(allocatableMetric, config);
+  local requests = promql.sum({
+    by: cluster,
+    expr: promql.max({
+      by: grouping.maybeWithGrouping(activePods.containerMaxBy, config),
+      expr: activePods.activeOnly(selectors.withCustomAttributes(requestMetric, config), {}, config),
+    }),
+  });
+  local capacityWithoutLargestNode = promql.sub({
+    left: promql.sum({
+      by: cluster,
+      expr: promql.max({
+        by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config),
+        expr: allocatable,
+      }),
+    }),
+    right: promql.max({ by: cluster, expr: allocatable }),
+  });
+  promql.and({
+    left: promql.gt({ left: promql.sub({ left: requests, right: capacityWithoutLargestNode }), right: '0' }),
+    right: promql.gt({ left: capacityWithoutLargestNode, right: '0' }),
+  });
+
 {
   prometheusAlerts+:: {
     groups+: [
+      {
+        name: 'k8s.configuration.resource_management',
+        rules: [
+          {
+            alert: 'K8sCPUOvercommit',
+            expr: overcommitExpr('k8s_container_cpu_request', 'k8s_node_allocatable_cpu', $._config),
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has overcommitted CPU resource requests for Pods by {{ printf "%.2f" $value }} CPU cores beyond the capacity left if its largest node fails.',
+              summary: 'Cluster has overcommitted CPU resource requests.',
+            },
+          },
+          {
+            alert: 'K8sMemoryOvercommit',
+            expr: overcommitExpr('k8s_container_memory_request_bytes', 'k8s_node_allocatable_memory_bytes', $._config),
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has overcommitted memory resource requests for Pods by {{ $value | humanize }}B beyond the capacity left if its largest node fails.',
+              summary: 'Cluster has overcommitted memory resource requests.',
+            },
+          },
+          {
+            alert: 'K8sContainerMemoryNearLimit',
+            expr: promql.gt({
+              left: promql.div({
+                left: promql.max({
+                  by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                  expr: selectors.withCustomAttributes('container_memory_working_set_bytes', $._config),
+                }),
+                right: promql.gt({
+                  left: promql.max({
+                    by: grouping.maybeWithGrouping(activePods.containerMaxBy, $._config),
+                    expr: selectors.withCustomAttributes('k8s_container_memory_limit_bytes', $._config),
+                  }),
+                  right: '0',
+                }),
+              }),
+              right: '%g' % [$._config.containerMemoryNearLimitPercent / 100],
+            }),
+            'for': '15m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its memory limit.',
+              summary: 'Container memory usage is close to its limit.',
+            },
+          },
+        ],
+      },
       {
         name: 'k8s.policy.resource_quota',
         rules: [
