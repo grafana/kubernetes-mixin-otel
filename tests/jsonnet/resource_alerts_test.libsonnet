@@ -23,6 +23,11 @@ local rulesNamed(alert, config) =
   local rules = std.flattenArrays([group.rules for group in m.prometheusAlerts.groups]);
   std.filter(function(r) r.alert == alert, rules);
 
+local quotaOvercommitAlerts = [
+  { alert: 'K8sCPUQuotaOvercommit', allocatable: 'k8s_node_allocatable_cpu' },
+  { alert: 'K8sMemoryQuotaOvercommit', allocatable: 'k8s_node_allocatable_memory_bytes' },
+];
+
 local podFitAlerts = [
   { alert: 'K8sResourceQuotaBlocksLargestPod', aggregation: 'max' },
   { alert: 'K8sResourceQuotaBlocksSmallestPod', aggregation: 'min' },
@@ -69,6 +74,39 @@ local podFitAlerts = [
     ];
     assert failures == [] : 'custom.groupingAttributes must reach both aggregation arms or the division matches nothing.\n%s' % std.join('\n\n', failures);
     'PASS: custom.groupingAttributes applied to both arms of all three quota alerts',
+
+  testQuotaOvercommitExprsApplyCustomAttributes:
+    local config = { custom+: { attributes: [{ label: 'env', operator: '=', value: 'prod' }] } };
+    local failures = [
+      '%s: %s' % [a.alert, problem]
+      for a in quotaOvercommitAlerts
+      for result in [exprFor(a.alert, config)]
+      for problem in
+        [
+          '%s renders without a selector, so no matcher can reach it' % metric
+          for metric in ['k8s_resource_quota_hard_limit', a.allocatable]
+          if !std.member(result, metric + '{')
+        ] + [
+          'filtered %d of %d selectors' % [std.length(std.findSubstr('env="prod"', result)), std.length(std.findSubstr('{', result))]
+          for _ in ['once']
+          if std.length(std.findSubstr('env="prod"', result)) != std.length(std.findSubstr('{', result))
+        ]
+    ];
+    assert failures == [] : 'custom.attributes must reach both the quota and allocatable selectors.\n%s' % std.join('\n', failures);
+    'PASS: custom.attributes reach both selectors of each quota overcommit alert',
+
+  testQuotaOvercommitExprsApplyGroupingAttributes:
+    local config = { custom+: { groupingAttributes: ['env'] } };
+    local failures = [
+      '%s has %d aggregations and %d grouped label lists\n%s' % [a.alert, aggregations, grouped, result]
+      for a in quotaOvercommitAlerts
+      for result in [exprFor(a.alert, config)]
+      for aggregations in [std.length(std.findSubstr(' by (', result))]
+      for grouped in [std.length(std.findSubstr(', env)', result))]
+      if grouped != aggregations
+    ];
+    assert failures == [] : 'custom.groupingAttributes must reach every aggregation or the division matches nothing.\n%s' % std.join('\n\n', failures);
+    'PASS: custom.groupingAttributes reach every aggregation of each quota overcommit alert',
 
   testPodFitPodsBranchOnlyReachesSmallestPodAlert:
     local countOnly = { resourceQuotaPodFitResources: ['pods'] };

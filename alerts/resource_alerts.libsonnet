@@ -6,6 +6,32 @@ local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
 
+local quotaOvercommitExpr(resourcePattern, quotaDivisor, allocatableMetric, config) =
+  local cluster = grouping.maybeWithGrouping(['k8s_cluster_name'], config);
+  local quotaTotal = promql.sum({
+    by: cluster,
+    expr: promql.min({
+      by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_namespace_name', 'k8s_resourcequota_name'], config),
+      expr: selectors.selector('k8s_resource_quota_hard_limit', {}, [{ label: 'resource', operator: tsqtsq.MatchingOperator.regexMatch, value: resourcePattern }], config=config),
+    }),
+  });
+  promql.gt({
+    left: promql.div({
+      left: if quotaDivisor == null then quotaTotal else promql.div({ left: quotaTotal, right: '%d' % quotaDivisor }),
+      right: promql.gt({
+        left: promql.sum({
+          by: cluster,
+          expr: promql.max({
+            by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_node_name'], config),
+            expr: selectors.withCustomAttributes(allocatableMetric, config),
+          }),
+        }),
+        right: '0',
+      }),
+    }),
+    right: '%g' % [config.resourceQuotaTotalOvercommitFactor],
+  });
+
 local quotaRatio(config) =
   local by = grouping.maybeWithGrouping(quota.quotaBy, config);
   promql.div({
@@ -59,6 +85,30 @@ local quotaRatio(config) =
             annotations: {
               description: 'Namespace {{ $labels.k8s_namespace_name }} is using {{ $value | humanizePercentage }} of its {{ $labels.resource }} quota in ResourceQuota {{ $labels.k8s_resourcequota_name }}.',
               summary: 'Namespace quota has exceeded the limits.',
+            },
+          },
+          {
+            alert: 'K8sCPUQuotaOvercommit',
+            expr: quotaOvercommitExpr('cpu|requests[.]cpu', 1000, 'k8s_node_allocatable_cpu', $._config),
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has CPU resource quota across namespaces at {{ printf "%.1f" $value }}x its allocatable CPU.',
+              summary: 'Cluster has overcommitted CPU resource quota.',
+            },
+          },
+          {
+            alert: 'K8sMemoryQuotaOvercommit',
+            expr: quotaOvercommitExpr('memory|requests[.]memory', null, 'k8s_node_allocatable_memory_bytes', $._config),
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Cluster {{ $labels.k8s_cluster_name }} has memory resource quota across namespaces at {{ printf "%.1f" $value }}x its allocatable memory.',
+              summary: 'Cluster has overcommitted memory resource quota.',
             },
           },
         ] + (
