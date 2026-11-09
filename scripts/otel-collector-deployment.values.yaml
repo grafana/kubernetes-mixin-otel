@@ -44,6 +44,8 @@ config:
       metrics:
         k8s.container.status.reason:
           enabled: true
+        k8s.pod.status_reason:
+          enabled: true
         k8s.resource_quota.hard_limit:
           enabled: true
         k8s.resource_quota.used:
