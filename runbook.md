@@ -202,6 +202,57 @@ Compare against the quota's recent changes to see whether the limit was reduced.
 **Mitigation.** Either restore the previous limit or delete objects until usage
 is back under it.
 
+##### Alert Name: "K8sCPUQuotaOvercommit"
++ *Message*: `Cluster {{ $labels.k8s_cluster_name }} has CPU resource quota across namespaces at {{ printf "%.1f" $value }}x its allocatable CPU.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scpuquotaovercommit)
+
+**Meaning.** CPU request quotas (`cpu` or `requests.cpu`) across namespaces add
+up to more than `resourceQuotaTotalOvercommitFactor` (default 1.5) times the cluster's
+allocatable CPU. `limits.cpu` quotas are not counted.
+
+**Impact.** Quota is checked at admission and does not set aside node capacity.
+If namespaces use their quota, pods that don't fit stay Pending.
+
+**Diagnosis.**
+
+```shell
+kubectl get resourcequota -A
+kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu
+```
+
+If the alert never fires, check that `k8s_node_allocatable_cpu` exists. The
+k8sclusterreceiver only emits it for `allocatable_types_to_report`, which
+defaults to empty.
+
+**Mitigation.** Lower quotas, add nodes, or raise `resourceQuotaTotalOvercommitFactor`.
+
+##### Alert Name: "K8sMemoryQuotaOvercommit"
++ *Message*: `Cluster {{ $labels.k8s_cluster_name }} has memory resource quota across namespaces at {{ printf "%.1f" $value }}x its allocatable memory.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryquotaovercommit)
+
+**Meaning.** Memory request quotas (`memory` or `requests.memory`) across
+namespaces add up to more than `resourceQuotaTotalOvercommitFactor` (default 1.5) times
+the cluster's allocatable memory. `limits.memory` quotas are not counted.
+
+**Impact.** Quota is checked at admission and does not set aside node capacity.
+Pods that don't fit stay Pending, and memory cannot be throttled, so a full node
+evicts pods or OOM-kills them.
+
+**Diagnosis.**
+
+```shell
+kubectl get resourcequota -A
+kubectl get nodes -o custom-columns=NAME:.metadata.name,MEMORY:.status.allocatable.memory
+```
+
+If the alert never fires, check that `k8s_node_allocatable_memory_bytes` exists.
+The k8sclusterreceiver only emits it for `allocatable_types_to_report`, which
+defaults to empty.
+
+**Mitigation.** Lower quotas, add nodes, or raise `resourceQuotaTotalOvercommitFactor`.
+
 ##### Alert Name: "K8sResourceQuotaBlocksLargestPod"
 + *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.`
 + *Severity*: info

@@ -98,6 +98,14 @@ _config+:: {
 },
 ```
 
+`resourceQuotaTotalOvercommitFactor` (default `1.5`) — how many times the cluster's allocatable CPU or memory the namespaces' request quotas may add up to before `K8sCPUQuotaOvercommit` and `K8sMemoryQuotaOvercommit` fire. Raise it if you deliberately overcommit quotas:
+
+```jsonnet
+_config+:: {
+  resourceQuotaTotalOvercommitFactor: 2,
+},
+```
+
 `resourceQuotaPodFitResources` (default `['pods', 'requests.cpu', 'requests.memory', 'limits.cpu', 'limits.memory']`) — which quota resources `K8sResourceQuotaBlocksLargestPod` and `K8sResourceQuotaBlocksSmallestPod` compare against active (Pending or Running) pods in the namespace. Each non-`pods` entry adds one branch to both alerts, while `pods` adds a branch only to `K8sResourceQuotaBlocksSmallestPod`, so trim the list to the resources your quotas actually set:
 
 ```jsonnet
