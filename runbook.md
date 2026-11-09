@@ -173,6 +173,82 @@ kubectl get pods -A --field-selector=spec.nodeName=$NODE,status.phase!=Succeeded
 **Mitigation.** Add nodes or spread workloads. Raise `maxPods` on the kubelet
 only if the node and its network can carry more pods.
 
+## Container resources
+
+Overcommit alerts compare the CPU and memory requests of active pods against
+`k8s.node.allocatable_cpu` and `k8s.node.allocatable_memory`. Those come from the
+[k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver/metadata.yaml)
+and are only emitted for the types listed in `allocatable_types_to_report`,
+which defaults to `[]`; set it to `[cpu, memory]`.
+
+##### Alert Name: "K8sCPUOvercommit"
++ *Message*: `Cluster {{ $labels.k8s_cluster_name }} has overcommitted CPU resource requests for Pods by {{ printf "%.2f" $value }} CPU cores beyond the capacity left if its largest node fails.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scpuovercommit)
+
+**Meaning.** Total CPU requests of Pending and Running pods exceed the
+allocatable CPU of all nodes except the largest one. Clusters with a single node
+never fire.
+
+**Impact.** If the largest node fails, its pods cannot all be rescheduled and
+some stay Pending.
+
+**Diagnosis.**
+
+```shell
+kubectl describe nodes | grep -A 8 "Allocated resources"
+kubectl get pods -A --field-selector=status.phase=Pending
+```
+
+**Mitigation.** Add nodes, or lower requests on over-provisioned workloads.
+
+##### Alert Name: "K8sMemoryOvercommit"
++ *Message*: `Cluster {{ $labels.k8s_cluster_name }} has overcommitted memory resource requests for Pods by {{ $value | humanize }}B beyond the capacity left if its largest node fails.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryovercommit)
+
+**Meaning.** Total memory requests of Pending and Running pods exceed the
+allocatable memory of all nodes except the largest one. Clusters with a single
+node never fire.
+
+**Impact.** If the largest node fails, its pods cannot all be rescheduled and
+some stay Pending.
+
+**Diagnosis.**
+
+```shell
+kubectl describe nodes | grep -A 8 "Allocated resources"
+kubectl get pods -A --field-selector=status.phase=Pending
+```
+
+**Mitigation.** Add nodes, or lower requests on over-provisioned workloads.
+
+##### Alert Name: "K8sContainerMemoryNearLimit"
++ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) is using {{ $value | humanizePercentage }} of its memory limit.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontainermemorynearlimit)
+
+**Meaning.** A container's memory working set has stayed above
+`containerMemoryNearLimitPercent` (default 90%) of its memory limit. It is
+`container.memory.working_set` ([kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/kubeletstatsreceiver/metadata.yaml))
+divided by `k8s.container.memory_limit` ([k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver/metadata.yaml)),
+both enabled by default. Containers without a limit are ignored.
+
+**Impact.** The kernel may OOM-kill the container when it detects memory
+pressure.
+
+**Diagnosis.**
+
+```shell
+kubectl top pod $POD -n $NAMESPACE --containers
+kubectl describe pod $POD -n $NAMESPACE
+```
+
+Look for `OOMKilled` under the container's last state.
+
+**Mitigation.** Raise the memory limit, or fix the leak or unbounded cache in
+the workload.
+
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
