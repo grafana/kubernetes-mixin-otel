@@ -557,6 +557,12 @@ tests:
         values: '1x19'
       - series: 'target_info{job="default/c",instance="default.pod-c.app",container_id="c1",k8s_container_status_last_terminated_reason="OOMKilled"}'
         values: '1x19'
+      - series: 'k8s_container_restarts{job="default/a",instance="default.pod-a.sidecar",k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a",k8s_container_name="sidecar"}'
+        values: '0x4 1x15'
+      - series: 'target_info{job="default/a",instance="default.pod-a.sidecar",container_id="s1",k8s_container_status_last_terminated_reason="Error"}'
+        values: '1x19'
+      - series: 'k8s_container_restarts{job="default/d",instance="default.pod-d.app",k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-d",k8s_container_name="app"}'
+        values: '0x4 1x15'
     alert_rule_test:
       - eval_time: 3m
         alertname: K8sContainerOOMKilled
