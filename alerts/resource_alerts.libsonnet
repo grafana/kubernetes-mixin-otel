@@ -127,17 +127,13 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
           },
           {
             alert: 'K8sContainerOOMKilled',
-            expr: promql.mul({
-              left: promql.gt({
-                left: 'delta(%s[15m])' % selectors.withCustomAttributes('k8s_container_restarts', $._config),
-                right: '0',
+            expr: promql.max({
+              by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'],
+              expr: promql.unless({
+                left: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config),
+                right: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config) + ' ' + promql.offset({ units: { m: 15 } }),
+                on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name', 'container_id'],
               }),
-              right: promql.max({
-                by: ['job', 'instance'],
-                expr: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config={}),
-              }),
-              on: ['job', 'instance'],
-              groupLeft: [],
             }),
             labels: {
               severity: 'warning',
