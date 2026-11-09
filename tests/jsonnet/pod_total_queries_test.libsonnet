@@ -11,7 +11,7 @@ local configInBytes = config {
 };
 
 local expectedReceiveBandwidth =
-  '(sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name) (rate(k8s_pod_network_io_bytes_total{direction="receive", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval]))) * 8)';
+  '(sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, interface) (rate(k8s_pod_network_io_bytes_total{direction="receive", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval]))) * 8)';
 
 {
   testReceiveBandwidth:
@@ -57,6 +57,16 @@ local expectedReceiveBandwidth =
     assert failures == [] :
            'receive/transmit panels share one OTel metric split by direction; a swapped direction is a silent correctness bug.\nWrong direction: %s' % std.join(', ', failures);
     'PASS: each query filters on the direction of its panel',
+
+  testInterfacesSummedNotDeduplicated:
+    local queries = [
+      podTotal[name](config)
+      for name in std.objectFieldsAll(podTotal)
+      if podTotal[name](config) != '0'
+    ];
+    assert std.all([std.member(q, 'k8s_pod_name, interface)') for q in queries]) :
+           'dedup must keep `interface`, or a multi-interface pod shows only its busiest interface instead of the total.\nGot:\n%s' % std.toString(queries);
+    'PASS: network queries sum across interfaces',
 
   testCustomAttributesApplied:
     local queries = [

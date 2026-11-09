@@ -7,7 +7,9 @@
 // - Packet counts have no OTel equivalent, so those panels return '0'.
 // - Upstream "Packets Dropped" panels are backed by `k8s.pod.network.errors`,
 //   the closest available signal, as in the Compute Resources / Pod dashboard.
-local commonQueries = import '../../resources/queries/common.libsonnet';
+local activePods = import '../../../lib/active_pods.libsonnet';
+local grouping = import '../../../lib/grouping.libsonnet';
+local selectors = import '../../../lib/selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
 local promql = tsqtsq.promql;
@@ -22,10 +24,21 @@ local direction(value) = [
   { label: 'direction', operator: tsqtsq.MatchingOperator.equal, value: value },
 ];
 
+// Like commonQueries.rateSumPodLevel, but keeps `interface` in the dedup so a
+// multi-interface pod reports the sum of its interfaces, as upstream does.
+local rateSumAcrossInterfaces(metric, by, dir, config) =
+  promql.sum({
+    by: grouping.maybeWithGrouping(by, config),
+    expr: promql.max({
+      by: grouping.maybeWithGrouping(activePods.podMaxBy + ['interface'], config),
+      expr: promql.rate({ expr: selectors.selector(metric, values, direction(dir), config=config) }),
+    }),
+  });
+
 // Upstream reports bandwidth in bits by default (config.units.networkMultiplier).
 local bandwidth(dir, by, config) =
   promql.mul({
-    left: commonQueries.rateSumPodLevel('k8s_pod_network_io_bytes_total', values, by=by, attributes=direction(dir), config=config),
+    left: rateSumAcrossInterfaces('k8s_pod_network_io_bytes_total', by, dir, config),
     right: std.toString(config.units.networkMultiplier),
   });
 
@@ -51,8 +64,8 @@ local bandwidth(dir, by, config) =
     '0',
 
   receivePacketsDropped(config)::
-    commonQueries.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
+    rateSumAcrossInterfaces('k8s_pod_network_errors_total', ['k8s_pod_name'], 'receive', config),
 
   transmitPacketsDropped(config)::
-    commonQueries.rateSumPodLevel('k8s_pod_network_errors_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
+    rateSumAcrossInterfaces('k8s_pod_network_errors_total', ['k8s_pod_name'], 'transmit', config),
 }
