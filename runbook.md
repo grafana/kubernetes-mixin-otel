@@ -226,6 +226,32 @@ Look for `OOMKilled` under the container's last state.
 **Mitigation.** Raise the memory limit, or fix the leak or unbounded cache in
 the workload.
 
+##### Alert Name: "K8sContainerOOMKilled"
++ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) restarted after being OOM-killed in the last 15 minutes.`
++ *Severity*: warning
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontaineroomkilled)
+
+**Meaning.** A container's restart count (`k8s.container.restarts`) rose in the
+last 15 minutes and its last termination reason is `OOMKilled`. The reason is
+the `k8s.container.status.last_terminated_reason` attribute of the
+k8sclusterreceiver, read from `target_info`. It is disabled by default; if the
+alert never fires, enable it. A container with `restartPolicy: Never` is not
+restarted, so it does not fire.
+
+**Impact.** The kernel's OOM killer killed the container, either because it
+exceeded its memory limit or because the node ran out of memory.
+
+**Diagnosis.**
+
+```shell
+kubectl describe pod $POD -n $NAMESPACE
+```
+
+Look for `OOMKilled` and exit code `137` under the container's last state.
+
+**Mitigation.** Raise the memory limit, or fix the leak or unbounded cache in
+the workload. If the node ran out of memory, see `K8sNodeMemoryPressure`.
+
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`

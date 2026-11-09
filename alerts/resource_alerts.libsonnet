@@ -125,6 +125,28 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
               summary: 'Container memory usage is close to its limit.',
             },
           },
+          {
+            alert: 'K8sContainerOOMKilled',
+            expr: promql.mul({
+              left: promql.gt({
+                left: promql.increase({ expr: selectors.withCustomAttributes('k8s_container_restarts', $._config), interval: '15m' }),
+                right: '0',
+              }),
+              right: promql.max({
+                by: ['job', 'instance'],
+                expr: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config={}),
+              }),
+              on: ['job', 'instance'],
+              groupLeft: [],
+            }),
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) restarted after being OOM-killed in the last 15 minutes.',
+              summary: 'Container was OOM-killed.',
+            },
+          },
         ],
       },
       {
