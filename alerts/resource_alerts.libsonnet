@@ -29,7 +29,7 @@ local quotaOvercommitExpr(resourcePattern, quotaDivisor, allocatableMetric, conf
         right: '0',
       }),
     }),
-    right: '%g' % [config.namespaceOvercommitFactor],
+    right: '%g' % [config.quotaOvercommitFactor],
   });
 
 local quotaRatio(config) =
