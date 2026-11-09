@@ -37,4 +37,14 @@ local conditionAlerts = [
     ];
     assert failures == [] : 'custom.attributes not applied to every node condition alert.\n%s' % std.join('\n\n', failures);
     'PASS: custom.attributes applied to all four node condition alerts',
+
+  testNodeEvictionThresholdDefaultsToAnyEviction:
+    local expr = exprFor('K8sNodeEviction', {});
+    assert std.endsWith(expr, ' > 0)') : 'expected K8sNodeEviction to fire on any eviction by default, got:\n%s' % expr;
+    'PASS: K8sNodeEviction defaults to firing above 0 evictions',
+
+  testNodeEvictionThresholdScalesRateToFifteenMinuteCount:
+    local expr = exprFor('K8sNodeEviction', { nodeEvictionRateThreshold: 0.01 });
+    assert std.endsWith(expr, ' > 9)') : 'expected a 0.01/s threshold to compare against 9 evictions per 15m, got:\n%s' % expr;
+    'PASS: nodeEvictionRateThreshold is scaled to a 15 minute count',
 }

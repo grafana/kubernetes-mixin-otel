@@ -118,6 +118,38 @@ typically a container missing an init process, leaving zombies behind.
 the kubelet, or a PID resource limit on the workload, to stop one pod
 exhausting the node.
 
+##### Alert Name: "K8sNodeEviction"
++ *Message*: `Node {{ $labels.k8s_node_name }} has evicted {{ $value }} pod(s) in the last 15 minutes.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodeeviction)
+
+**Meaning.** Pods on the node newly report the status reason `Evicted`
+(`k8s.pod.status_reason` of `1`, from the k8sclusterreceiver). The kubelet
+evicts pods when a resource such as memory, disk or PIDs reaches an eviction
+threshold. A pod can also be evicted when the scheduler preempts it to place a
+pod with a higher priority class, for example a DaemonSet pod or one with a
+node selector. The metric is disabled by default; if the alert never fires, enable
+it.
+
+**Impact.** The pod is terminated and its phase is set to `Failed`. A
+Deployment or StatefulSet creates a replacement. The evicted Pod object stays
+until it is deleted.
+
+**Diagnosis.**
+
+```shell
+kubectl get pods -A --field-selector=spec.nodeName=$NODE,status.phase=Failed
+kubectl describe pod $POD -n $NAMESPACE
+kubectl describe node $NODE
+```
+
+The node's conditions show which pressure was active. See the pressure alerts
+above.
+
+**Mitigation.** Fix the pressure on the node. Set memory limits and requests on
+workloads that lack them, or add capacity. Delete evicted pods once
+investigated.
+
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
