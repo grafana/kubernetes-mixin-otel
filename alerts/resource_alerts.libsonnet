@@ -129,7 +129,7 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
             alert: 'K8sContainerOOMKilled',
             expr: promql.mul({
               left: promql.gt({
-                left: promql.increase({ expr: selectors.withCustomAttributes('k8s_container_restarts', $._config), interval: '15m' }),
+                left: 'delta(%s[15m])' % selectors.withCustomAttributes('k8s_container_restarts', $._config),
                 right: '0',
               }),
               right: promql.max({
