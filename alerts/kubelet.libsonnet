@@ -105,12 +105,12 @@ local promql = tsqtsq.promql;
                   by: ['k8s_cluster_name', 'k8s_node_name'],
                   expr: promql.max({
                     by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_node_name'],
-                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_phase', $._config), right: '2' }),
+                    expr: promql.lte({ left: selectors.withCustomAttributes('k8s_pod_phase', $._config), right: '2' }),
                   }),
                 }),
                 right: promql.gt({
                   left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_allocatable_pods', $._config) }),
-                  right: '0',
+                  right: '1',
                 }),
               }),
               right: '0.95',

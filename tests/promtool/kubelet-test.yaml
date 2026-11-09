@@ -141,14 +141,14 @@ tests:
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodenotready'
 
   - interval: 1m
-    name: a node at its pod limit fires, a duplicate scrape is not double counted, and zero allocatable pods does not divide
+    name: a node at its pod limit fires counting a Pending pod, a duplicate scrape and a finished pod are not counted, and a node limited to one pod is ignored
     input_series:
       - series: 'k8s_node_allocatable_pods{k8s_cluster_name="c1",k8s_node_name="node-full"}'
         values: '2x19'
       - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="a",k8s_node_name="node-full"}'
         values: '2x19'
       - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="b",k8s_node_name="node-full"}'
-        values: '2x19'
+        values: '1x19'
       - series: 'k8s_node_allocatable_pods{k8s_cluster_name="c1",k8s_node_name="node-nearly"}'
         values: '4x19'
       - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="c",k8s_node_name="node-nearly"}'
@@ -159,8 +159,10 @@ tests:
         values: '2x19'
       - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="e",k8s_node_name="node-nearly"}'
         values: '2x19'
+      - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="g",k8s_node_name="node-nearly"}'
+        values: '3x19'
       - series: 'k8s_node_allocatable_pods{k8s_cluster_name="c1",k8s_node_name="node-zero"}'
-        values: '0x19'
+        values: '1x19'
       - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="f",k8s_node_name="node-zero"}'
         values: '2x19'
     alert_rule_test:

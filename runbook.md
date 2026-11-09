@@ -155,10 +155,10 @@ investigated.
 + *Severity*: info
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodetoomanypods)
 
-**Meaning.** Running pods on the node are above 95% of its pod limit, the
-kubelet's `maxPods`. The limit is `k8s.node.allocatable_pods`, which the
-k8sclusterreceiver emits only if `pods` is in `allocatable_types_to_report`.
-Pods that are not yet Running are not counted.
+**Meaning.** Active pods (Pending or Running) on the node are above 95% of its
+pod limit, the kubelet's `maxPods`. The limit is `k8s.node.allocatable_pods`,
+which the k8sclusterreceiver emits only if `pods` is in
+`allocatable_types_to_report`.
 
 **Impact.** The node cannot take many more pods. New pods go to other nodes, or
 stay unscheduled if none have room.
@@ -167,7 +167,7 @@ stay unscheduled if none have room.
 
 ```shell
 kubectl get node $NODE -o jsonpath='{.status.allocatable.pods}'
-kubectl get pods -A --field-selector=spec.nodeName=$NODE,status.phase=Running --no-headers | wc -l
+kubectl get pods -A --field-selector=spec.nodeName=$NODE,status.phase!=Succeeded,status.phase!=Failed --no-headers | wc -l
 ```
 
 **Mitigation.** Add nodes or spread workloads. Raise `maxPods` on the kubelet
