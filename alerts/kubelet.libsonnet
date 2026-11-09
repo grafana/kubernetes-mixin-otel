@@ -70,6 +70,33 @@ local promql = tsqtsq.promql;
               summary: 'Node has an active PIDPressure Condition.',
             },
           },
+          {
+            alert: 'K8sNodeTooManyPods',
+            expr: promql.gt({
+              left: promql.div({
+                left: promql.count({
+                  by: ['k8s_cluster_name', 'k8s_node_name'],
+                  expr: promql.max({
+                    by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_node_name'],
+                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_phase', $._config), right: '2' }),
+                  }),
+                }),
+                right: promql.gt({
+                  left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_allocatable_pods', $._config) }),
+                  right: '0',
+                }),
+              }),
+              right: '0.95',
+            }),
+            'for': '15m',
+            labels: {
+              severity: 'info',
+            },
+            annotations: {
+              description: 'Node {{ $labels.k8s_node_name }} is running {{ $value | humanizePercentage }} of its pod limit.',
+              summary: 'Node is close to its pod limit.',
+            },
+          },
         ],
       },
     ],
