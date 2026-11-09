@@ -208,7 +208,7 @@ is back under it.
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scpuquotaovercommit)
 
 **Meaning.** CPU request quotas (`cpu` or `requests.cpu`) across namespaces add
-up to more than `quotaOvercommitFactor` (default 1.5) times the cluster's
+up to more than `resourceQuotaOvercommitFactor` (default 1.5) times the cluster's
 allocatable CPU. `limits.cpu` quotas are not counted.
 
 **Impact.** Quota is checked at admission and does not set aside node capacity.
@@ -225,7 +225,7 @@ If the alert never fires, check that `k8s_node_allocatable_cpu` exists. The
 k8sclusterreceiver only emits it for `allocatable_types_to_report`, which
 defaults to empty.
 
-**Mitigation.** Lower quotas, add nodes, or raise `quotaOvercommitFactor`.
+**Mitigation.** Lower quotas, add nodes, or raise `resourceQuotaOvercommitFactor`.
 
 ##### Alert Name: "K8sMemoryQuotaOvercommit"
 + *Message*: `Cluster {{ $labels.k8s_cluster_name }} has memory resource quota across namespaces at {{ printf "%.1f" $value }}x its allocatable memory.`
@@ -233,7 +233,7 @@ defaults to empty.
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryquotaovercommit)
 
 **Meaning.** Memory request quotas (`memory` or `requests.memory`) across
-namespaces add up to more than `quotaOvercommitFactor` (default 1.5) times
+namespaces add up to more than `resourceQuotaOvercommitFactor` (default 1.5) times
 the cluster's allocatable memory. `limits.memory` quotas are not counted.
 
 **Impact.** Quota is checked at admission and does not set aside node capacity.
@@ -251,7 +251,7 @@ If the alert never fires, check that `k8s_node_allocatable_memory_bytes` exists.
 The k8sclusterreceiver only emits it for `allocatable_types_to_report`, which
 defaults to empty.
 
-**Mitigation.** Lower quotas, add nodes, or raise `quotaOvercommitFactor`.
+**Mitigation.** Lower quotas, add nodes, or raise `resourceQuotaOvercommitFactor`.
 
 ##### Alert Name: "K8sResourceQuotaBlocksLargestPod"
 + *Message*: `ResourceQuota {{ $labels.k8s_resourcequota_name }} in namespace {{ $labels.k8s_namespace_name }} has less {{ $labels.resource }} headroom ({{ $value | humanize }}) than its largest pod needs, so another pod that size cannot be scheduled.`

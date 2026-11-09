@@ -98,11 +98,11 @@ _config+:: {
 },
 ```
 
-`quotaOvercommitFactor` (default `1.5`) — how many times the cluster's allocatable CPU or memory the namespaces' request quotas may add up to before `K8sCPUQuotaOvercommit` and `K8sMemoryQuotaOvercommit` fire. Raise it if you deliberately overcommit quotas:
+`resourceQuotaOvercommitFactor` (default `1.5`) — how many times the cluster's allocatable CPU or memory the namespaces' request quotas may add up to before `K8sCPUQuotaOvercommit` and `K8sMemoryQuotaOvercommit` fire. Raise it if you deliberately overcommit quotas:
 
 ```jsonnet
 _config+:: {
-  quotaOvercommitFactor: 2,
+  resourceQuotaOvercommitFactor: 2,
 },
 ```
 
