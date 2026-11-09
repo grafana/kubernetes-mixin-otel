@@ -40,9 +40,7 @@ config:
         - MemoryPressure
         - DiskPressure
         - PIDPressure
-      allocatable_types_to_report:
-        - cpu
-        - memory
+      allocatable_types_to_report: [cpu, memory, pods]
       metrics:
         k8s.container.status.reason:
           enabled: true

@@ -118,6 +118,29 @@ typically a container missing an init process, leaving zombies behind.
 the kubelet, or a PID resource limit on the workload, to stop one pod
 exhausting the node.
 
+##### Alert Name: "K8sNodeTooManyPods"
++ *Message*: `Node {{ $labels.k8s_node_name }} is running {{ $value | humanizePercentage }} of its pod limit.`
++ *Severity*: info
++ *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8snodetoomanypods)
+
+**Meaning.** Running pods on the node are above 95% of its pod limit, the
+kubelet's `maxPods`. The limit is `k8s.node.allocatable_pods`, which the
+k8sclusterreceiver emits only if `pods` is in `allocatable_types_to_report`.
+Pods that are not yet Running are not counted.
+
+**Impact.** The node cannot take many more pods. New pods go to other nodes, or
+stay unscheduled if none have room.
+
+**Diagnosis.**
+
+```shell
+kubectl get node $NODE -o jsonpath='{.status.allocatable.pods}'
+kubectl get pods -A --field-selector=spec.nodeName=$NODE,status.phase=Running --no-headers | wc -l
+```
+
+**Mitigation.** Add nodes or spread workloads. Raise `maxPods` on the kubelet
+only if the node and its network can carry more pods.
+
 ## Resource quotas
 
 Quota alerts read `k8s.resource_quota.used` and `k8s.resource_quota.hard_limit`
