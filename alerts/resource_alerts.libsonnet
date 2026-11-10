@@ -128,10 +128,10 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
           {
             alert: 'K8sContainerOOMKilled',
             expr: promql.max({
-              by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'],
+              by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'], $._config),
               expr: promql.unless({
                 left: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config),
-                right: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config) + ' ' + promql.offset({ units: { m: 15 } }),
+                right: 'last_over_time(%s[1h] offset 15m)' % selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config),
                 on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name', 'container_id'],
               }),
             }),

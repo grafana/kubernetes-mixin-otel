@@ -549,6 +549,8 @@ tests:
         values: '_x30 1x25'
       - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a",k8s_container_name="sidecar",container_id="s1",k8s_container_status_last_terminated_reason="Error"}'
         values: '_x20 1x25'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-g",k8s_container_name="app",container_id="g1"}'
+        values: '_x20 1x25'
       - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-c",k8s_container_name="app",container_id="c1",k8s_container_status_last_terminated_reason="OOMKilled"}'
         values: '1x45'
       - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-f",k8s_container_name="app",container_id="f1",k8s_container_status_last_terminated_reason="OOMKilled"}'
