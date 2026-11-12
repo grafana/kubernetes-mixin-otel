@@ -109,6 +109,7 @@ local promql = tsqtsq.promql;
                     expr: promql.lte({ left: selectors.withCustomAttributes('k8s_pod_phase', $._config), right: podStatus.phase.running }),
                   }),
                 }),
+                // ignore nodes with a pod capacity of 1, like AWS Fargate nodes that only exist while their pod runs
                 right: promql.gt({
                   left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_allocatable_pods', $._config) }),
                   right: '1',
