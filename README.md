@@ -124,6 +124,14 @@ _config+:: {
 },
 ```
 
+`containerOOMKilledWindow` (default `'15m'`) — how long `K8sContainerOOMKilled` keeps firing after a container is OOM-killed and restarted. Use a PromQL duration such as `'30m'` or `'1h'`:
+
+```jsonnet
+_config+:: {
+  containerOOMKilledWindow: '30m',
+},
+```
+
 `nodeEvictionRateThreshold` (default `0`) — evictions per second a node must exceed over 15 minutes before `K8sNodeEviction` fires. The default fires on any eviction; raise it to tolerate occasional ones, for example `0.01` fires above 9 evictions in 15 minutes:
 
 ```jsonnet

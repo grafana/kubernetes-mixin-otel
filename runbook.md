@@ -227,18 +227,18 @@ Look for `OOMKilled` under the container's last state.
 the workload.
 
 ##### Alert Name: "K8sContainerOOMKilled"
-+ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) restarted after being OOM-killed in the last 15 minutes.`
++ *Message*: `Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) restarted after being OOM-killed in the last 15m.`
 + *Severity*: warning
 + *Runbook*: [Link](https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontaineroomkilled)
 
-**Meaning.** A container restarted in the last 15 minutes and its last
-termination reason is `OOMKilled`. The reason is the
+**Meaning.** A container restarted within `containerOOMKilledWindow` (default
+15m) and its last termination reason is `OOMKilled`. It is reported only while
+its Pod is Pending or Running. The reason is the
 `k8s.container.status.last_terminated_reason` attribute of the
 [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.153.0/receiver/k8sclusterreceiver/metadata.yaml),
 on `target_info`. It is disabled by default, and `target_info` exists only if
-the resource has `service.name` or `service.instance.id`, so if the alert never
-fires, check both. A container with `restartPolicy: Never` is not restarted, so
-it does not fire.
+the resource has `service.name` or `service.instance.id`. A container with
+`restartPolicy: Never` is not restarted, so it does not fire.
 
 **Impact.** The kernel's OOM killer killed the container, either because it
 exceeded its memory limit or because the node ran out of memory.

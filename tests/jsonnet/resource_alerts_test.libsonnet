@@ -198,4 +198,10 @@ local podFitAlerts = [
     ];
     assert failures == [] : 'the default resource list must produce a branch per supported resource.\n%s' % std.join('\n', failures);
     'PASS: default resourceQuotaPodFitResources covers cpu and memory requests and limits, plus pods on the smallest-pod alert',
+
+  testOOMKilledWindowIsConfigurable:
+    local rule = rulesNamed('K8sContainerOOMKilled', { containerOOMKilledWindow: '30m' })[0];
+    assert std.member(rule.expr, 'offset 30m') && !std.member(rule.expr, 'offset 15m') : 'containerOOMKilledWindow must set the offset.\nGot:\n%s' % rule.expr;
+    assert std.member(rule.annotations.description, 'last 30m') : 'the description must follow containerOOMKilledWindow.\nGot:\n%s' % rule.annotations.description;
+    'PASS: containerOOMKilledWindow reaches the offset and the description',
 }
