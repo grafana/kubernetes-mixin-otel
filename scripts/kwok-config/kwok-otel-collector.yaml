@@ -41,9 +41,7 @@ receivers:
       - MemoryPressure
       - DiskPressure
       - PIDPressure
-    allocatable_types_to_report:
-      - cpu
-      - memory
+    allocatable_types_to_report: [cpu, memory, pods]
     metadata_collection_interval: 5m
 
 processors:

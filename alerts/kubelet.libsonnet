@@ -1,4 +1,5 @@
 // alerts path must match the path in the kubernetes-mixin template
+local podStatus = import '../lib/pod_status.libsonnet';
 local selectors = import '../lib/selectors.libsonnet';
 local tsqtsq = import 'github.com/grafana/tsqtsq/jsonnet/promql.libsonnet';
 
@@ -78,11 +79,11 @@ local promql = tsqtsq.promql;
                 expr: promql.unless({
                   left: promql.max({
                     by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_node_name'],
-                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config), right: '1' }),
+                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config), right: podStatus.reason.evicted }),
                   }),
                   right: promql.max({
                     by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
-                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config) + ' ' + promql.offset({ units: { m: 15 } }), right: '1' }),
+                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config) + ' ' + promql.offset({ units: { m: 15 } }), right: podStatus.reason.evicted }),
                   }),
                   on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
                 }),
@@ -95,6 +96,34 @@ local promql = tsqtsq.promql;
             annotations: {
               description: 'Node {{ $labels.k8s_node_name }} has evicted {{ $value }} pod(s) in the last 15 minutes.',
               summary: 'Node is evicting pods.',
+            },
+          },
+          {
+            alert: 'K8sNodeTooManyPods',
+            expr: promql.gt({
+              left: promql.div({
+                left: promql.count({
+                  by: ['k8s_cluster_name', 'k8s_node_name'],
+                  expr: promql.max({
+                    by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_node_name'],
+                    expr: promql.lte({ left: selectors.withCustomAttributes('k8s_pod_phase', $._config), right: podStatus.phase.running }),
+                  }),
+                }),
+                // ignore nodes with a pod capacity of 1, like AWS Fargate nodes that only exist while their pod runs
+                right: promql.gt({
+                  left: promql.max({ by: ['k8s_cluster_name', 'k8s_node_name'], expr: selectors.withCustomAttributes('k8s_node_allocatable_pods', $._config) }),
+                  right: '1',
+                }),
+              }),
+              right: '0.95',
+            }),
+            'for': '15m',
+            labels: {
+              severity: 'info',
+            },
+            annotations: {
+              description: 'Node {{ $labels.k8s_node_name }} is running {{ $value | humanizePercentage }} of its pod limit.',
+              summary: 'Node is close to its pod limit.',
             },
           },
         ],
