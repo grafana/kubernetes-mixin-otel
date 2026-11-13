@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify tag is on main
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
