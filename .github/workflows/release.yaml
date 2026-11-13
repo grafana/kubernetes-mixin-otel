@@ -70,3 +70,4 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: kubernetes-mixin-otel.zip
+          fail_on_unmatched_files: true
