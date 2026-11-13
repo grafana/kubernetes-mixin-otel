@@ -43,14 +43,14 @@ local bandwidth(dir, by, config) =
   });
 
 {
-  // Gauge queries (no `by`)
+  // Upstream's gauges have no `by` because its pod variable is single-select;
+  // ours is multi-select, so group by pod to get one gauge per selected pod.
   gaugeReceiveBandwidth(config)::
-    bandwidth('receive', null, config),
+    bandwidth('receive', ['k8s_pod_name'], config),
 
   gaugeTransmitBandwidth(config)::
-    bandwidth('transmit', null, config),
+    bandwidth('transmit', ['k8s_pod_name'], config),
 
-  // Per-pod TimeSeries queries
   receiveBandwidth(config)::
     bandwidth('receive', ['k8s_pod_name'], config),
 

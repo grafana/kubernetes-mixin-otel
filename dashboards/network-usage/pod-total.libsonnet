@@ -28,6 +28,11 @@ local merged(config) = {
             uid: '${datasource}',
           },
         }
+        // Upstream labels gauges `$pod`, which with a multi-select variable puts
+        // every selected pod's name on each per-pod gauge.
+        + (if panel.type == 'gauge' then {
+             fieldConfig+: { defaults+: { displayName: '${__field.labels.k8s_pod_name}' } },
+           } else {})
         for panel in dashboard.panels
       ],
     },
