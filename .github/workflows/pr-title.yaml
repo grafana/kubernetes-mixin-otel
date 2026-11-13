@@ -1,0 +1,26 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|perf|refactor|test|build|ci|chore|revert)(\(([a-z0-9._/-]+)\))?!?: .+'
+          revert_pattern='^Revert ".+"$'
+          if [[ ! "$TITLE" =~ $revert_pattern && ! "$TITLE" =~ $pattern ]]; then
+            echo "::error::PR title must be 'type: description' or 'type(scope): description', where type is feat, fix, docs, perf, refactor, test, build, ci, chore or revert"
+            exit 1
+          fi
