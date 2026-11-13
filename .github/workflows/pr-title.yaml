@@ -2,7 +2,7 @@ name: PR title
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+    types: [opened, edited, synchronize, reopened]
 
 permissions: {}
 
@@ -13,50 +13,14 @@ concurrency:
 jobs:
   title:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
-      - name: Validate title and apply release-notes label
+      - name: Validate title
         env:
-          GH_TOKEN: ${{ github.token }}
           TITLE: ${{ github.event.pull_request.title }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
         run: |
           pattern='^(feat|fix|docs|perf|refactor|test|build|ci|chore|revert)(\(([a-z0-9._/-]+)\))?!?: .+'
           revert_pattern='^Revert ".+"$'
-          if [[ "$TITLE" =~ $revert_pattern ]]; then
-            type=revert
-            scope=""
-          elif [[ "$TITLE" =~ $pattern ]]; then
-            type="${BASH_REMATCH[1]}"
-            scope="${BASH_REMATCH[3]}"
-          else
+          if [[ ! "$TITLE" =~ $revert_pattern && ! "$TITLE" =~ $pattern ]]; then
             echo "::error::PR title must be 'type: description' or 'type(scope): description', where type is feat, fix, docs, perf, refactor, test, build, ci, chore or revert"
             exit 1
-          fi
-
-          if [[ "$scope" == "deps" ]]; then
-            label=dependencies
-          else
-            case "$type" in
-              feat) label=enhancement ;;
-              fix) label=bug ;;
-              docs) label=documentation ;;
-              *) label=skip-changelog ;;
-            esac
-          fi
-
-          current=$(gh api "repos/$REPO/issues/$PR" --jq '.labels[].name')
-          if [[ "$label" == skip-changelog ]] && grep -qx security <<< "$current"; then
-            label=""
-          fi
-
-          for stale in enhancement bug documentation skip-changelog dependencies; do
-            if [[ "$stale" != "$label" ]] && grep -qx "$stale" <<< "$current"; then
-              gh api -X DELETE "repos/$REPO/issues/$PR/labels/$stale" --silent
-            fi
-          done
-          if [[ -n "$label" ]] && ! grep -qx "$label" <<< "$current"; then
-            gh api -X POST "repos/$REPO/issues/$PR/labels" -f "labels[]=$label" --silent
           fi
