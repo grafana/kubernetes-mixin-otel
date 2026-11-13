@@ -125,6 +125,28 @@ local overcommitExpr(requestMetric, allocatableMetric, config) =
               summary: 'Container memory usage is close to its limit.',
             },
           },
+          {
+            alert: 'K8sContainerOOMKilled',
+            expr: activePods.activeOnly(
+              promql.max({
+                by: grouping.maybeWithGrouping(['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name'], $._config),
+                expr: promql.unless({
+                  left: selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config),
+                  right: 'last_over_time(%s[1h] offset %s)' % [selectors.selector('target_info', {}, [{ label: 'k8s_container_status_last_terminated_reason', operator: tsqtsq.MatchingOperator.equal, value: 'OOMKilled' }], config=$._config), $._config.containerOOMKilledWindow],
+                  on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name', 'k8s_container_name', 'container_id'],
+                }),
+              }),
+              {},
+              $._config,
+            ),
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'Container {{ $labels.k8s_container_name }} in pod {{ $labels.k8s_pod_name }} (namespace {{ $labels.k8s_namespace_name }}) restarted after being OOM-killed in the last %s.' % $._config.containerOOMKilledWindow,
+              summary: 'Container was OOM-killed.',
+            },
+          },
         ],
       },
       {

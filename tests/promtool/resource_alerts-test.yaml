@@ -539,3 +539,74 @@ tests:
               summary: 'Cluster has overcommitted memory resource quota.'
               description: 'Cluster c1 has memory resource quota across namespaces at 2.0x its allocatable memory.'
               runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8smemoryquotaovercommit'
+
+  # a container fires only when a new container_id reports OOMKilled in the last 15m; a restart is a new container_id
+  - interval: 1m
+    input_series:
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a",k8s_container_name="app",container_id="a1",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '_x20 1x10'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a",k8s_container_name="app",container_id="a2",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '_x30 1x25'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a",k8s_container_name="sidecar",container_id="s1",k8s_container_status_last_terminated_reason="Error"}'
+        values: '_x20 1x25'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-g",k8s_container_name="app",container_id="g1"}'
+        values: '_x20 1x25'
+      - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-a"}'
+        values: '2x45'
+      - series: 'k8s_pod_phase{k8s_cluster_name="c2",k8s_namespace_name="default",k8s_pod_name="pod-f"}'
+        values: '2x45'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-h",k8s_container_name="app",container_id="h1",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '_x20 1x25'
+      - series: 'k8s_pod_phase{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-h"}'
+        values: '3x45'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-i",k8s_container_name="app",container_id="i1",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '_x20 1x25'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-c",k8s_container_name="app",container_id="c1",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '1x45'
+      - series: 'target_info{k8s_cluster_name="c1",k8s_namespace_name="default",k8s_pod_name="pod-f",k8s_container_name="app",container_id="f1",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '1x45'
+      - series: 'target_info{k8s_cluster_name="c2",k8s_namespace_name="default",k8s_pod_name="pod-f",k8s_container_name="app",container_id="f2",k8s_container_status_last_terminated_reason="OOMKilled"}'
+        values: '_x20 1x25'
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: K8sContainerOOMKilled
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: K8sContainerOOMKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: c1
+              k8s_namespace_name: default
+              k8s_pod_name: pod-a
+              k8s_container_name: app
+            exp_annotations:
+              summary: 'Container was OOM-killed.'
+              description: 'Container app in pod pod-a (namespace default) restarted after being OOM-killed in the last 15m.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontaineroomkilled'
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: c2
+              k8s_namespace_name: default
+              k8s_pod_name: pod-f
+              k8s_container_name: app
+            exp_annotations:
+              summary: 'Container was OOM-killed.'
+              description: 'Container app in pod pod-f (namespace default) restarted after being OOM-killed in the last 15m.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontaineroomkilled'
+      - eval_time: 40m
+        alertname: K8sContainerOOMKilled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              k8s_cluster_name: c1
+              k8s_namespace_name: default
+              k8s_pod_name: pod-a
+              k8s_container_name: app
+            exp_annotations:
+              summary: 'Container was OOM-killed.'
+              description: 'Container app in pod pod-a (namespace default) restarted after being OOM-killed in the last 15m.'
+              runbook_url: 'https://github.com/grafana/kubernetes-mixin-otel/blob/main/runbook.md#alert-name-k8scontaineroomkilled'
+      - eval_time: 46m
+        alertname: K8sContainerOOMKilled
+        exp_alerts: []
