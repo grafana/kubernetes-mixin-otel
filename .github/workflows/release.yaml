@@ -60,6 +60,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
+          repository: grafana/kubernetes-mixin-otel
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: kubernetes-mixin-otel.zip
