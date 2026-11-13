@@ -120,4 +120,13 @@ Push a `vX.Y.Z` tag from `main` to publish a GitHub release. The workflow runs `
 git tag -s -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
 ```
 
-PR titles must follow `type: description` or `type(scope): description`; the [PR title workflow](.github/workflows/pr-title.yaml) rejects other titles.
+PR titles must follow `type: description` or `type(scope): description`; the [PR title workflow](.github/workflows/pr-title.yaml) rejects other titles. [`scripts/release-notes.sh`](scripts/release-notes.sh) builds the release notes from the merged PR titles since the previous tag:
+
+| Title | Section |
+| --- | --- |
+| scope `security` | Security |
+| `feat:` | Features |
+| `fix:` | Bug fixes |
+| `docs:` | Documentation |
+| scope `deps` | Dependencies |
+| any other type | omitted from the notes |

@@ -41,11 +41,18 @@ jobs:
       - name: Package assets
         run: zip kubernetes-mixin-otel.zip dashboards_out/*.json rules_out/prometheus_alerts.yaml
 
+      - name: Generate release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: scripts/release-notes.sh "$TAG" > release-notes.md
+
       - name: Upload release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-assets
-          path: kubernetes-mixin-otel.zip
+          path: |
+            kubernetes-mixin-otel.zip
+            release-notes.md
           if-no-files-found: error
 
   release:
@@ -67,7 +74,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           repository: grafana/kubernetes-mixin-otel
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: kubernetes-mixin-otel.zip
           fail_on_unmatched_files: true
