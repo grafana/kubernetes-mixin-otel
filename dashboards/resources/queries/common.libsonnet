@@ -47,6 +47,14 @@ local activeOnly = activePods.activeOnly;
       expr: promql.max({ by: maybeWithGrouping(podMaxBy, config), expr: promql.rate({ expr: selector(metric, values, attributes, config=config) }) }),
     }),
 
+  // For k8s.pod.network.* metrics: keeps `interface` in the dedup so a pod with
+  // several interfaces reports their sum rather than its busiest one.
+  rateSumPodNetwork(metric, values, by=null, attributes=[], config)::
+    promql.sum({
+      by: maybeWithGrouping(by, config),
+      expr: promql.max({ by: maybeWithGrouping(podMaxBy + ['interface'], config), expr: promql.rate({ expr: selector(metric, values, attributes, config=config) }) }),
+    }),
+
   rateAvg(metric, values, by=null, attributes=[], config)::
     promql.avg({
       by: maybeWithGrouping(by, config),
