@@ -4,6 +4,8 @@ JSONNET_VENDOR=vendor
 GRAFANA_DASHBOARD_LINTER_VERSION ?= 0.1.0
 # version in the filename so a bump re-downloads instead of reusing the old binary
 GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter-$(GRAFANA_DASHBOARD_LINTER_VERSION)
+MIXTOOL_VERSION ?= 3a8bcbe73b71cbaa4c8646a9d23fca5a4bd693b0
+MIXTOOL_BIN=$(BIN_DIR)/mixtool-$(MIXTOOL_VERSION)
 JB_BIN=$(BIN_DIR)/jb
 JSONNET_BIN=$(BIN_DIR)/jsonnet
 JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
@@ -159,6 +161,12 @@ $(TOOLING): scripts/tools.go scripts/go.mod scripts/go.sum | $(BIN_DIR)
 	@echo Installing tools from scripts/tools.go
 	@cd scripts && go list -e -mod=mod -tags tools -f '{{ range .Imports }}{{ printf "%s\n" .}}{{end}}' ./ | xargs -tI % go build -mod=mod -o $(BIN_DIR) %
 
+$(MIXTOOL_BIN): | $(BIN_DIR)
+	@echo "Installing mixtool $(MIXTOOL_VERSION)"
+	@tmp=$$(mktemp -d) && \
+		GOBIN=$$tmp go install github.com/monitoring-mixins/mixtool/cmd/mixtool@$(MIXTOOL_VERSION) && \
+		mv $$tmp/mixtool $@
+
 # Install dashboard-linter from the precompiled release (upstream-recommended path).
 # Verifies the archive against the published checksums.txt before extracting.
 $(GRAFANA_DASHBOARD_LINTER_BIN): | $(BIN_DIR)
@@ -203,7 +211,11 @@ $(RULES_OUT_DIR)/prometheus_alerts.yaml: $(JSONNET_BIN) $(JSONNET_VENDOR) $(JSON
 	@touch $@
 
 .PHONY: lint
-lint: jsonnet-lint dashboards-lint
+lint: jsonnet-lint dashboards-lint mixtool-lint
+
+.PHONY: mixtool-lint
+mixtool-lint: $(MIXTOOL_BIN) $(JSONNET_VENDOR)
+	@$(MIXTOOL_BIN) lint -J vendor mixin.libsonnet
 
 .PHONY: jsonnet-lint
 jsonnet-lint: $(JSONNETLINT_BIN) $(JSONNET_VENDOR)

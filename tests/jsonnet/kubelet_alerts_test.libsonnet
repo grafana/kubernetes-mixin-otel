@@ -43,6 +43,11 @@ local conditionAlerts = [
     assert std.endsWith(expr, ' > 0)') : 'expected K8sNodeEviction to fire on any eviction by default, got:\n%s' % expr;
     'PASS: K8sNodeEviction defaults to firing above 0 evictions',
 
+  testNodeEvictionThresholdRendersFractionalCounts:
+    local expr = exprFor('K8sNodeEviction', { nodeEvictionRateThreshold: 0.0005 });
+    assert std.endsWith(expr, ' > 0.45)') : 'expected a 0.0005/s threshold to compare against 0.45 evictions per 15m, got:\n%s' % expr;
+    'PASS: nodeEvictionRateThreshold renders fractional 15 minute counts',
+
   testNodeEvictionThresholdScalesRateToFifteenMinuteCount:
     local expr = exprFor('K8sNodeEviction', { nodeEvictionRateThreshold: 0.01 });
     assert std.endsWith(expr, ' > 9)') : 'expected a 0.01/s threshold to compare against 9 evictions per 15m, got:\n%s' % expr;

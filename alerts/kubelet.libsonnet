@@ -72,6 +72,7 @@ local promql = tsqtsq.promql;
             },
           },
           {
+            local evictionWindowMinutes = 15,
             alert: 'K8sNodeEviction',
             expr: promql.gt({
               left: promql.count({
@@ -83,18 +84,18 @@ local promql = tsqtsq.promql;
                   }),
                   right: promql.max({
                     by: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
-                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config) + ' ' + promql.offset({ units: { m: 15 } }), right: podStatus.reason.evicted }),
+                    expr: promql.eq({ left: selectors.withCustomAttributes('k8s_pod_status_reason', $._config) + ' ' + promql.offset({ units: { m: evictionWindowMinutes } }), right: podStatus.reason.evicted }),
                   }),
                   on: ['k8s_cluster_name', 'k8s_namespace_name', 'k8s_pod_name'],
                 }),
               }),
-              right: '%g' % [$._config.nodeEvictionRateThreshold * 900],
+              right: if $._config.nodeEvictionRateThreshold == 0 then '0' else '%g' % [$._config.nodeEvictionRateThreshold * evictionWindowMinutes * 60],
             }),
             labels: {
               severity: 'info',
             },
             annotations: {
-              description: 'Node {{ $labels.k8s_node_name }} has evicted {{ $value }} pod(s) in the last 15 minutes.',
+              description: 'Node {{ $labels.k8s_node_name }} has evicted {{ $value }} pod(s) in the last %d minutes.' % evictionWindowMinutes,
               summary: 'Node is evicting pods.',
             },
           },

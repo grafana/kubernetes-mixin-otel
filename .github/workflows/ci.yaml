@@ -26,3 +26,6 @@ jobs:
 
       - name: Run tests
         run: make test
+
+      - name: Lint mixin with mixtool
+        run: make mixtool-lint
