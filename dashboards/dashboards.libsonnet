@@ -1,3 +1,3 @@
-(import 'network-usage.libsonnet') +
+(import 'network.libsonnet') +
 (import 'persistentvolumesusage.libsonnet') +
 (import 'resources.libsonnet')

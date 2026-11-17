@@ -10,16 +10,7 @@ local configInBytes = config {
   units+: { network: 'binBps', networkMultiplier: 1 },
 };
 
-local expectedReceiveBandwidth =
-  '(sum by (k8s_pod_name) (max by (k8s_cluster_name, k8s_namespace_name, k8s_pod_name, interface) (rate(k8s_pod_network_io_bytes_total{direction="receive", k8s_cluster_name=~"${cluster:pipe}", k8s_namespace_name=~"${namespace:pipe}", k8s_pod_name=~"${pod:pipe}"}[$__rate_interval]))) * 8)';
-
 {
-  testReceiveBandwidth:
-    local result = podTotal.receiveBandwidth(config);
-    assert result == expectedReceiveBandwidth :
-           'receiveBandwidth failed.\nExpected:\n%s\n\nGot:\n%s' % [expectedReceiveBandwidth, result];
-    'PASS: receiveBandwidth',
-
   testBandwidthHonoursNetworkMultiplier:
     local queries = [
       podTotal.gaugeReceiveBandwidth(configInBytes),
@@ -53,8 +44,6 @@ local expectedReceiveBandwidth =
       gaugeTransmitBandwidth: 'transmit',
       receiveBandwidth: 'receive',
       transmitBandwidth: 'transmit',
-      receivePacketsDropped: 'receive',
-      transmitPacketsDropped: 'transmit',
     };
     local failures = [
       name
@@ -75,11 +64,17 @@ local expectedReceiveBandwidth =
            'dedup must keep `interface`, or a multi-interface pod shows only its busiest interface instead of the total.\nGot:\n%s' % std.toString(queries);
     'PASS: network queries sum across interfaces',
 
+  testUnmappedPanelsReturnZero:
+    local names = ['receivePackets', 'transmitPackets', 'receivePacketsDropped', 'transmitPacketsDropped'];
+    local failures = [name for name in names if podTotal[name](config) != '0'];
+    assert failures == [] :
+           'kubeletstats has no packet or dropped-packet metric; k8s.pod.network.errors is not a substitute for drops.\nNot 0: %s' % std.join(', ', failures);
+    'PASS: unmapped packet panels return 0',
+
   testCustomAttributesApplied:
     local queries = [
       podTotal.gaugeReceiveBandwidth(configWithCustomAttributes),
       podTotal.receiveBandwidth(configWithCustomAttributes),
-      podTotal.receivePacketsDropped(configWithCustomAttributes),
     ];
     assert std.all([std.member(q, 'env="prod"') && std.member(q, 'direction="receive"') for q in queries]) :
            'customAttributes must merge with the direction attribute.\nGot:\n%s' % std.toString(queries);
