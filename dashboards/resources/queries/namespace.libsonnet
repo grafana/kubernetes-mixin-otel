@@ -84,10 +84,10 @@ local direction(value) = [
 
   // Network Table Queries
   networkReceiveBandwidth(config)::
-    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive'), config=config),
+    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidth(config)::
-    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit'), config=config),
+    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   networkReceivePackets(config)::
     '0',
@@ -103,10 +103,10 @@ local direction(value) = [
 
   // Network TimeSeries Queries
   networkReceiveBandwidthTimeSeries(config)::
-    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('receive'), config=config),
+    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('receive'), config=config),
 
   networkTransmitBandwidthTimeSeries(config)::
-    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_namespace_name'], attributes=direction('transmit'), config=config),
+    commonQueries.rateSumPodNetwork('k8s_pod_network_io_bytes_total', values, by=['k8s_pod_name'], attributes=direction('transmit'), config=config),
 
   // Storage TimeSeries Queries
   iopsReadsWrites(config)::

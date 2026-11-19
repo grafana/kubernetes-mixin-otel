@@ -45,6 +45,12 @@ local configWithCustomAttributes = config {
            'Some ratio queries are not implemented';
     'PASS: all 4 ratio queries implemented',
 
+  testNetworkBandwidthGroupsByPod:
+    local queries = [namespace[name](config) for name in ['networkReceiveBandwidth', 'networkTransmitBandwidth', 'networkReceiveBandwidthTimeSeries', 'networkTransmitBandwidthTimeSeries']];
+    assert std.all([std.startsWith(q, 'sum by (k8s_pod_name) (') for q in queries]) :
+           'the Current Network Usage table joins on k8s_pod_name; grouping by anything else leaves it with no data.\nGot:\n%s' % std.toString(queries);
+    'PASS: network bandwidth groups by pod',
+
   testNetworkBandwidthSumsInterfaces:
     local queries = [namespace[name](config) for name in ['networkReceiveBandwidth', 'networkTransmitBandwidth', 'networkReceiveBandwidthTimeSeries', 'networkTransmitBandwidthTimeSeries']];
     assert std.all([std.member(q, 'k8s_pod_name, interface)') for q in queries]) :
