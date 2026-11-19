@@ -63,4 +63,16 @@ local configWithCustomAttributes = config {
     assert std.all([q != null && q != '' && q != '0' for q in queries]) :
            'Some ratio queries are not implemented';
     'PASS: all 4 ratio queries implemented',
+
+  testNetworkBandwidthSumsInterfaces:
+    local queries = [pod[name](config) for name in ['networkReceiveBandwidth', 'networkTransmitBandwidth']];
+    assert std.all([std.member(q, 'k8s_pod_name, interface)') for q in queries]) :
+           'dedup must keep `interface`, or a multi-interface pod shows only its busiest interface instead of the total.\nGot:\n%s' % std.toString(queries);
+    'PASS: network bandwidth sums across interfaces',
+
+  testNetworkPacketsDroppedUnmapped:
+    local failures = [name for name in ['networkReceivePacketsDropped', 'networkTransmitPacketsDropped'] if pod[name](config) != '0'];
+    assert failures == [] :
+           'kubeletstats has no dropped-packet metric; k8s.pod.network.errors is not a substitute for drops.\nNot 0: %s' % std.join(', ', failures);
+    'PASS: packets dropped panels return 0',
 }
