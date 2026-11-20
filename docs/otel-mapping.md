@@ -392,6 +392,7 @@ the following gaps must be bridged:
 | CPU throttling (`container_cpu_cfs_*`) | `prometheusreceiver` scraping cAdvisor |
 | Per-container disk I/O (`container_fs_*`) | `prometheusreceiver` scraping cAdvisor |
 | Per-container network (`container_network_*`) | `prometheusreceiver` scraping cAdvisor, or `k8s.pod.network.*` from kubeletstatsreceiver (pod-level only) |
+| Host-network pod filter (`kube_pod_info{host_network="false"}`) | None yet. kubeletstatsreceiver reports a host-network pod's `k8s.pod.network.io` as its node's interface traffic, and no resource attribute marks the pod as host-network, so network dashboards include it |
 | `container_memory_cache`, `container_memory_swap` | `prometheusreceiver` scraping cAdvisor |
 | Node allocatable capacity (`kube_node_status_allocatable`) | `prometheusreceiver` scraping kube-state-metrics (semconv defines metrics but no receiver implements them) |
 | Node unschedulable / taints / role | `prometheusreceiver` scraping kube-state-metrics |
