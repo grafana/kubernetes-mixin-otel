@@ -4,13 +4,29 @@
   semanticCommits: "enabled",
   minimumReleaseAge: "3 days",
   schedule: ["on Monday"],
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["scripts/*.sh"],
+      // Track both the tag and digest of annotated, pinned Docker images.
+      matchStrings: [
+        '# renovate: datasource=docker depName=(?<depName>\\S+)\\r?\\n[A-Z0-9_]+_IMAGE="[^\\s@"]+:(?<currentValue>[^\\s@:"]+)@(?<currentDigest>sha256:[a-f0-9]{64})"',
+      ],
+      datasourceTemplate: "docker",
+    },
+  ],
   packageRules: [
     {
       matchManagers: ["github-actions"],
       groupName: "github actions",
     },
     {
-      matchManagers: ["dockerfile", "docker-compose", "shell"],
+      matchManagers: ["dockerfile", "docker-compose"],
+      groupName: "docker",
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchDatasources: ["docker"],
       groupName: "docker",
     },
     {
